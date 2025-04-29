@@ -380,14 +380,25 @@ const BoxObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
 
 // Cylinder Object Component
 const CylinderObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
-  const position = object.position ? [
-    object.position.x, 
-    object.position.y, 
-    object.position.z
-  ] : [0, 0, 0];
+  // Extract position from object
+  const posX = object.position?.x || 0;
+  const posY = object.position?.y || 0;
+  const posZ = object.position?.z || 0;
   
+  // Extract dimensions
   const radius = object.radius || 5;
   const height = object.height || 10;
+  const innerRadius = object.innerRadius || 0;
+  
+  // Debug log to verify cylinder properties
+  console.log('Rendering cylinder with:', { 
+    radius, 
+    height, 
+    innerRadius, 
+    position: [posX, posY, posZ],
+    type: object.type,
+    name: object.name
+  });
   
   // Apply rotation (convert from degrees to radians)
   // For Geant4 compatibility, we need to apply rotations in the correct sequence:
@@ -405,30 +416,38 @@ const CylinderObject = React.forwardRef(({ object, isSelected, onClick }, ref) =
   // Extract Euler angles from the matrix (this will be in the THREE.js default order)
   const euler = new THREE.Euler();
   euler.setFromRotationMatrix(rotationMatrix);
+  
+  // Create a simple cylinder geometry
+  const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+  
+  // Use useEffect to log when the component mounts/updates
+  React.useEffect(() => {
+    console.log('CylinderObject mounted/updated', object);
+    return () => console.log('CylinderObject unmounted', object);
+  }, [object]);
 
   return (
-    <mesh 
-      ref={ref}
-      position={position}
-      rotation={[euler.x, euler.y, euler.z]}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      <cylinderGeometry args={[radius, radius, height, 32]} />
-      <meshStandardMaterial 
-        color="rgba(100, 255, 100, 0.7)" 
-        transparent={true}
-        opacity={0.7}
-      />
+    <group ref={ref} position={[posX, posY, posZ]} rotation={[euler.x, euler.y, euler.z]}>
+      <mesh
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+      >
+        <primitive object={cylinderGeometry} attach="geometry" />
+        <meshStandardMaterial 
+          color="rgba(100, 255, 100, 0.7)" 
+          transparent={true}
+          opacity={0.7}
+        />
+      </mesh>
       {isSelected && (
         <lineSegments>
-          <edgesGeometry attach="geometry" args={[new THREE.CylinderGeometry(radius, radius, height, 32)]} />
+          <edgesGeometry attach="geometry" args={[cylinderGeometry]} />
           <lineBasicMaterial attach="material" color="#ffff00" />
         </lineSegments>
       )}
-    </mesh>
+    </group>
   );
 });
 
@@ -599,32 +618,6 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   const setFrontView = () => {
     if (frontViewCamera) {
       frontViewCamera.position.set(0, 0, 250);
-      frontViewCamera.lookAt(0, 0, 0);
-      frontViewCamera.updateProjectionMatrix();
-    }
-  };
-  
-  // Handle canvas click to deselect
-  const handleCanvasClick = (e) => {
-    if (selectedGeometry && e.target === e.currentTarget) {
-      onSelect(null);
-    }
-  };
-  
-  // Handle transform end
-  const handleTransformEnd = (objectKey, updates, keepSelected = true) => {
-    // Get the current object
-    let currentObject;
-    if (objectKey === 'world') {
-      currentObject = { ...geometries.world };
-    } else if (objectKey.startsWith('volume-')) {
-      const index = parseInt(objectKey.split('-')[1]);
-      currentObject = { ...geometries.volumes[index] };
-    } else {
-      return;
-    }
-    
-    // Apply updates to the current object
     const updatedObject = { ...currentObject };
     
     // Update position
@@ -659,6 +652,14 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       if (updates.height !== undefined) {
         updatedObject.height = updates.height;
       }
+      if (updates.innerRadius !== undefined) {
+        updatedObject.innerRadius = updates.innerRadius;
+      }
+      console.log('Updated cylinder properties:', { 
+        radius: updatedObject.radius, 
+        height: updatedObject.height, 
+        innerRadius: updatedObject.innerRadius 
+      });
     }
     
     // Update radius for sphere

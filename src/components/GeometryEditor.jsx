@@ -213,6 +213,9 @@ const GeometryEditor = ({
         </Box>
         
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Rotation</Typography>
+        <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+          Rotations are applied sequentially in Geant4 order: first X, then Y (around new Y axis), then Z (around new Z axis).
+        </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
             label="X"
