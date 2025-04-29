@@ -8,7 +8,7 @@ A web-based application for creating and editing Geant4 geometry JSON files with
 - Support for basic shapes: Box, Cylinder, and Sphere
 - Material editor for defining custom materials
 - Real-time JSON preview and export
-- Automatic saving of work in progress to localStorage
+- Automatic saving of work in progress to localStorage.
 
 ## Usage
 
