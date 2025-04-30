@@ -498,15 +498,80 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     
     // Render all children of this parent
     return volumesByParent[parentKey].map(({ volume, key }) => {
+      // Get position and rotation from the volume
+      const position = volume.position ? [
+        volume.position.x || 0, 
+        volume.position.y || 0, 
+        volume.position.z || 0
+      ] : [0, 0, 0];
+      
+      // Apply rotation (convert from degrees to radians)
+      const rotX = THREE.MathUtils.degToRad(volume.rotation?.x || 0);
+      const rotY = THREE.MathUtils.degToRad(volume.rotation?.y || 0);
+      const rotZ = THREE.MathUtils.degToRad(volume.rotation?.z || 0);
+
+      // Create a rotation matrix that applies rotations in the correct sequence
+      const rotationMatrix = new THREE.Matrix4();
+      rotationMatrix.makeRotationX(rotX);
+      rotationMatrix.multiply(new THREE.Matrix4().makeRotationY(rotY));
+      rotationMatrix.multiply(new THREE.Matrix4().makeRotationZ(rotZ));
+
+      // Extract Euler angles from the matrix
+      const euler = new THREE.Euler();
+      euler.setFromRotationMatrix(rotationMatrix);
+      
       return (
-        <group key={key}>
+        <group key={key} position={position} rotation={[euler.x, euler.y, euler.z]}>
           <TransformableObject 
-            object={volume}
+            object={{
+              ...volume,
+              // Reset position and rotation since we're handling them in the parent group
+              position: { x: 0, y: 0, z: 0, unit: volume.position?.unit || 'cm' },
+              rotation: { x: 0, y: 0, z: 0, unit: volume.rotation?.unit || 'deg' }
+            }}
             objectKey={key}
             isSelected={selectedGeometry === key}
             transformMode={transformMode}
             onSelect={onSelect}
-            onTransformEnd={onTransformEnd}
+            onTransformEnd={(objKey, updatedProps) => {
+              // If position or rotation was updated, we need to update the volume's actual properties
+              if (updatedProps.position || updatedProps.rotation) {
+                // Get the original volume
+                const originalVolume = geometries.volumes[parseInt(objKey.split('-')[1])];
+                
+                // Create a new object with the updated properties
+                const newProps = {};
+                
+                // Handle position updates
+                if (updatedProps.position) {
+                  newProps.position = {
+                    ...originalVolume.position,
+                    ...updatedProps.position
+                  };
+                }
+                
+                // Handle rotation updates
+                if (updatedProps.rotation) {
+                  newProps.rotation = {
+                    ...originalVolume.rotation,
+                    ...updatedProps.rotation
+                  };
+                }
+                
+                // Handle other property updates
+                for (const prop in updatedProps) {
+                  if (prop !== 'position' && prop !== 'rotation') {
+                    newProps[prop] = updatedProps[prop];
+                  }
+                }
+                
+                // Call the original onTransformEnd with the updated properties
+                onTransformEnd(objKey, newProps);
+              } else {
+                // For other properties (size, radius, etc.), just pass them through
+                onTransformEnd(objKey, updatedProps);
+              }
+            }}
           />
           
           {/* Render children of this volume inside this group */}
