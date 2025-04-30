@@ -439,18 +439,82 @@ const SphereObject = React.forwardRef(({ object, isSelected, onClick }, ref) => 
 
 // Simple Scene component
 function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd }) {
-  // World box
-  const worldSize = geometries.world.size ? [
-    geometries.world.size.x, 
-    geometries.world.size.y, 
-    geometries.world.size.z
-  ] : [100, 100, 100];
+  // Create a map of volume names to their indices for easy lookup
+  const volumeNameToIndex = {};
+  geometries.volumes && geometries.volumes.forEach((volume, index) => {
+    if (volume.name) {
+      volumeNameToIndex[volume.name] = index;
+    }
+  });
   
-  const worldPosition = geometries.world.position ? [
-    geometries.world.position.x, 
-    geometries.world.position.y, 
-    geometries.world.position.z
-  ] : [0, 0, 0];
+  // Function to get a volume's parent object key
+  const getParentKey = (volume) => {
+    if (!volume.mother_volume || volume.mother_volume === 'World') {
+      return 'world';
+    }
+    
+    // Find the index of the parent volume by name
+    const parentIndex = volumeNameToIndex[volume.mother_volume];
+    if (parentIndex !== undefined) {
+      return `volume-${parentIndex}`;
+    }
+    
+    // Default to world if parent not found
+    return 'world';
+  };
+  
+  // Group volumes by their parent
+  const volumesByParent = {
+    world: [] // Volumes with World as parent
+  };
+  
+  // Initialize volume groups for all volumes
+  geometries.volumes && geometries.volumes.forEach((volume, index) => {
+    const key = `volume-${index}`;
+    volumesByParent[key] = []; // Initialize empty array for each volume
+  });
+  
+  // Populate the groups
+  geometries.volumes && geometries.volumes.forEach((volume, index) => {
+    const key = `volume-${index}`;
+    const parentKey = getParentKey(volume);
+    
+    // Add this volume to its parent's children list
+    if (volumesByParent[parentKey]) {
+      volumesByParent[parentKey].push({
+        volume,
+        key,
+        index
+      });
+    }
+  });
+  
+  // Recursive function to render a volume and its children
+  const renderVolumeHierarchy = (parentKey) => {
+    // If this parent has no children, return null
+    if (!volumesByParent[parentKey] || volumesByParent[parentKey].length === 0) {
+      return null;
+    }
+    
+    // Render all children of this parent
+    return volumesByParent[parentKey].map(({ volume, key }) => {
+      return (
+        <group key={key}>
+          <TransformableObject 
+            object={volume}
+            objectKey={key}
+            isSelected={selectedGeometry === key}
+            transformMode={transformMode}
+            onSelect={onSelect}
+            onTransformEnd={onTransformEnd}
+          />
+          
+          {/* Render children of this volume inside this group */}
+          {renderVolumeHierarchy(key)}
+        </group>
+      );
+    });
+  };
 
   return (
     <>
@@ -469,31 +533,107 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
         onTransformEnd={onTransformEnd}
       />
       
-      {/* Volume objects */}
-      {geometries.volumes && geometries.volumes.map((volume, index) => {
-        const key = `volume-${index}`;
-        return (
-          <TransformableObject 
-            key={key}
-            object={volume}
-            objectKey={key}
-            isSelected={selectedGeometry === key}
-            transformMode={transformMode}
-            onSelect={onSelect}
-            onTransformEnd={onTransformEnd}
-          />
-        );
-      })}
+      {/* Render volumes with World as parent and their children recursively */}
+      {renderVolumeHierarchy('world')}
     </>
   );
 }
 
 // GeometryTree component for the left panel
 const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
+  // Create a map of volume names to their indices for easy lookup
+  const volumeNameToIndex = {};
+  geometries.volumes && geometries.volumes.forEach((volume, index) => {
+    if (volume.name) {
+      volumeNameToIndex[volume.name] = index;
+    }
+  });
+  
+  // Function to get a volume's parent object key
+  const getParentKey = (volume) => {
+    if (!volume.mother_volume || volume.mother_volume === 'World') {
+      return 'world';
+    }
+    
+    // Find the index of the parent volume by name
+    const parentIndex = volumeNameToIndex[volume.mother_volume];
+    if (parentIndex !== undefined) {
+      return `volume-${parentIndex}`;
+    }
+    
+    // Default to world if parent not found
+    return 'world';
+  };
+  
+  // Group volumes by their parent
+  const volumesByParent = {
+    world: [] // Volumes with World as parent
+  };
+  
+  // Initialize volume groups for all volumes
+  geometries.volumes && geometries.volumes.forEach((volume, index) => {
+    const key = `volume-${index}`;
+    volumesByParent[key] = []; // Initialize empty array for each volume
+  });
+  
+  // Populate the groups
+  geometries.volumes && geometries.volumes.forEach((volume, index) => {
+    const key = `volume-${index}`;
+    const parentKey = getParentKey(volume);
+    
+    // Add this volume to its parent's children list
+    if (volumesByParent[parentKey]) {
+      volumesByParent[parentKey].push({
+        volume,
+        key,
+        index
+      });
+    }
+  });
+  
+  // Recursive function to render a volume and its children in the tree
+  const renderVolumeTree = (parentKey, level = 0) => {
+    // If this parent has no children, return null
+    if (!volumesByParent[parentKey] || volumesByParent[parentKey].length === 0) {
+      return null;
+    }
+    
+    // Render all children of this parent
+    return volumesByParent[parentKey].map(({ volume, key, index }) => {
+      let icon = '📦';
+      if (volume.type === 'sphere') icon = '🔴';
+      if (volume.type === 'cylinder') icon = '🧪';
+      
+      return (
+        <React.Fragment key={key}>
+          <div 
+            onClick={() => onSelect(key)}
+            style={{
+              padding: '8px',
+              backgroundColor: selectedGeometry === key ? '#1976d2' : '#fff',
+              color: selectedGeometry === key ? '#fff' : '#000',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              marginBottom: '5px',
+              marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <span style={{ marginRight: '5px' }}>{icon}</span>
+            {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+          </div>
+          {renderVolumeTree(key, level + 1)}
+        </React.Fragment>
+      );
+    });
+  };
+  
   return (
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
       <h3 style={{ margin: '0 0 10px 0' }}>Geometry Tree</h3>
       <div style={{ marginBottom: '5px' }}>
+        {/* World volume */}
         <div 
           onClick={() => onSelect('world')}
           style={{
@@ -511,33 +651,8 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
           <strong>World</strong>
         </div>
         
-        {geometries.volumes && geometries.volumes.map((volume, index) => {
-          const key = `volume-${index}`;
-          let icon = '📦';
-          if (volume.type === 'sphere') icon = '��';
-          if (volume.type === 'cylinder') icon = '🧪';
-          
-          return (
-            <div 
-              key={key}
-              onClick={() => onSelect(key)}
-              style={{
-                padding: '8px',
-                backgroundColor: selectedGeometry === key ? '#1976d2' : '#fff',
-                color: selectedGeometry === key ? '#fff' : '#000',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                marginBottom: '5px',
-                marginLeft: '15px',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <span style={{ marginRight: '5px' }}>{icon}</span>
-              {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
-            </div>
-          );
-        })}
+        {/* Render volumes with World as parent and their children recursively */}
+        {renderVolumeTree('world')}
       </div>
     </div>
   );

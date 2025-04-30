@@ -24,6 +24,7 @@ const GeometryEditor = ({
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [newGeometryType, setNewGeometryType] = useState('box');
+  const [newMotherVolume, setNewMotherVolume] = useState('World'); // Default mother volume for new geometries
 
   // Get the selected geometry object
   const getSelectedGeometryObject = () => {
@@ -108,7 +109,7 @@ const GeometryEditor = ({
       material: 'G4_AIR',
       position: { x: 0, y: 0, z: 0, unit: 'cm' },
       rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
-      mother_volume: 'World'
+      mother_volume: newMotherVolume // Use the selected mother volume
     };
     
     // Add specific properties based on geometry type
@@ -179,6 +180,37 @@ const GeometryEditor = ({
             ))}
           </Select>
         </FormControl>
+        
+        {/* Mother Volume selector - only show for non-world volumes */}
+        {selectedGeometry !== 'world' && (
+          <FormControl fullWidth margin="normal" size="small">
+            <InputLabel>Mother Volume</InputLabel>
+            <Select
+              value={selectedObject.mother_volume || 'World'}
+              label="Mother Volume"
+              onChange={(e) => {
+                e.stopPropagation();
+                handlePropertyChange('mother_volume', e.target.value, true, true);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              MenuProps={{
+                onClick: (e) => e.stopPropagation(),
+                PaperProps: { onClick: (e) => e.stopPropagation() }
+              }}
+            >
+              <MenuItem value="World">World</MenuItem>
+              {geometries.volumes && geometries.volumes.map((volume, index) => {
+                // Skip the current volume to prevent self-reference and circular dependencies
+                if (selectedGeometry === `volume-${index}`) return null;
+                return (
+                  <MenuItem key={`mother-${index}`} value={volume.name}>
+                    {volume.name}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+        )}
         
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Position</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -369,6 +401,22 @@ const GeometryEditor = ({
             <MenuItem value="box">Box</MenuItem>
             <MenuItem value="cylinder">Cylinder</MenuItem>
             <MenuItem value="sphere">Sphere</MenuItem>
+          </Select>
+        </FormControl>
+        
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Mother Volume</InputLabel>
+          <Select
+            value={newMotherVolume}
+            label="Mother Volume"
+            onChange={(e) => setNewMotherVolume(e.target.value)}
+          >
+            <MenuItem value="World">World</MenuItem>
+            {geometries.volumes && geometries.volumes.map((volume, index) => (
+              <MenuItem key={`mother-${index}`} value={volume.name}>
+                {volume.name}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
         
