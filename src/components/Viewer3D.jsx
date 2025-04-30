@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
+import CylinderObject from './CylinderObject';
 
 // Coordinate system component
 function CoordinateSystem() {
@@ -23,10 +24,13 @@ function CoordinateSystem() {
 function CameraSetup({ setFrontViewCamera }) {
   const { camera } = useThree();
   
-  // Set front view on initial load
+  // Set front view on initial load with z-axis pointing upward
   useEffect(() => {
-    camera.position.set(0, 0, 250);
+    // Position camera to look at the scene from the front (y-axis)
+    // with z-axis pointing upward
+    camera.position.set(0, -250, 0);
     camera.lookAt(0, 0, 0);
+    camera.up.set(0, 0, 1); // Set z-axis as the up direction
     
     // Store the camera in the ref for the front view button
     if (setFrontViewCamera) {
@@ -378,59 +382,7 @@ const BoxObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   );
 });
 
-// Cylinder Object Component
-const CylinderObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
-  const position = object.position ? [
-    object.position.x, 
-    object.position.y, 
-    object.position.z
-  ] : [0, 0, 0];
-  
-  const radius = object.radius || 5;
-  const height = object.height || 10;
-  
-  // Apply rotation (convert from degrees to radians)
-  // For Geant4 compatibility, we need to apply rotations in the correct sequence:
-  // First X, then Y (around new Y axis), then Z (around new Z axis)
-  const rotX = THREE.MathUtils.degToRad(object.rotation?.x || 0);
-  const rotY = THREE.MathUtils.degToRad(object.rotation?.y || 0);
-  const rotZ = THREE.MathUtils.degToRad(object.rotation?.z || 0);
-
-  // Create a rotation matrix that applies rotations in the correct sequence
-  const rotationMatrix = new THREE.Matrix4();
-  rotationMatrix.makeRotationX(rotX);
-  rotationMatrix.multiply(new THREE.Matrix4().makeRotationY(rotY));
-  rotationMatrix.multiply(new THREE.Matrix4().makeRotationZ(rotZ));
-
-  // Extract Euler angles from the matrix (this will be in the THREE.js default order)
-  const euler = new THREE.Euler();
-  euler.setFromRotationMatrix(rotationMatrix);
-
-  return (
-    <mesh 
-      ref={ref}
-      position={position}
-      rotation={[euler.x, euler.y, euler.z]}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      <cylinderGeometry args={[radius, radius, height, 32]} />
-      <meshStandardMaterial 
-        color="rgba(100, 255, 100, 0.7)" 
-        transparent={true}
-        opacity={0.7}
-      />
-      {isSelected && (
-        <lineSegments>
-          <edgesGeometry attach="geometry" args={[new THREE.CylinderGeometry(radius, radius, height, 32)]} />
-          <lineBasicMaterial attach="material" color="#ffff00" />
-        </lineSegments>
-      )}
-    </mesh>
-  );
-});
+// CylinderObject is now imported from './CylinderObject'
 
 // Sphere Object Component
 const SphereObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
@@ -598,8 +550,9 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   // Function to set front view
   const setFrontView = () => {
     if (frontViewCamera) {
-      frontViewCamera.position.set(0, 0, 250);
+      frontViewCamera.position.set(0, -250, 0);
       frontViewCamera.lookAt(0, 0, 0);
+      frontViewCamera.up.set(0, 0, 1); // Maintain z-axis as up direction
       frontViewCamera.updateProjectionMatrix();
     }
   };

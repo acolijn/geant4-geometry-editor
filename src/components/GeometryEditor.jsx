@@ -118,8 +118,10 @@ const GeometryEditor = ({
       newGeometry.radius = 5;
       newGeometry.height = 10;
       newGeometry.inner_radius = 0;
+      newGeometry.unit = 'cm'; // Add unit information for cylinder dimensions
     } else if (newGeometryType === 'sphere') {
       newGeometry.radius = 5;
+      newGeometry.unit = 'cm'; // Add unit information for sphere dimensions
     }
     
     onAddGeometry(newGeometry);
