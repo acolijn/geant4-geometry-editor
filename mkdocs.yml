@@ -1,0 +1,28 @@
+site_name: Geant4 Geometry Editor
+site_description: Documentation for the Geant4 Geometry Editor
+site_author: Geant4 Team
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - javascript
+    - json
+    - cpp
+
+nav:
+  - Home: 'index.md'
+  - Getting Started: 'getting-started.md'
+  - User Interface: 'user-interface.md'
+  - Geometry Components: 'geometry-components.md'
+  - Materials: 'materials.md'
+  - Coordinate System: 'coordinate-system.md'
+  - JSON Format: 'json-format.md'
+  - Integration with Geant4: 'integration-with-geant4.md'
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
