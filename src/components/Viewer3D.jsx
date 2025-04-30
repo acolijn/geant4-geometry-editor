@@ -498,65 +498,15 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     
     // Render all children of this parent
     return volumesByParent[parentKey].map(({ volume, key }) => {
-      // Get position and rotation from the volume
-      const position = volume.position ? [
-        volume.position.x || 0, 
-        volume.position.y || 0, 
-        volume.position.z || 0
-      ] : [0, 0, 0];
-      
-      const rotation = volume.rotation ? [
-        THREE.MathUtils.degToRad(volume.rotation.x || 0),
-        THREE.MathUtils.degToRad(volume.rotation.y || 0),
-        THREE.MathUtils.degToRad(volume.rotation.z || 0)
-      ] : [0, 0, 0];
-      
       return (
-        <group key={key} position={position} rotation={rotation}>
+        <group key={key}>
           <TransformableObject 
-            object={{
-              ...volume,
-              // Reset position and rotation since we're handling them in the parent group
-              position: { x: 0, y: 0, z: 0, unit: volume.position?.unit || 'cm' },
-              rotation: { x: 0, y: 0, z: 0, unit: volume.rotation?.unit || 'deg' }
-            }}
+            object={volume}
             objectKey={key}
-            parentKey={parentKey}
             isSelected={selectedGeometry === key}
             transformMode={transformMode}
             onSelect={onSelect}
-            onTransformEnd={(objKey, updatedProps) => {
-              // If position or rotation was updated, we need to update the volume's properties
-              if (updatedProps.position || updatedProps.rotation) {
-                // Create a new object with the updated properties
-                const newProps = { ...updatedProps };
-                
-                // If the position was reset to origin in the mesh, we need to preserve that
-                // in the volume's actual position property
-                if (newProps.position && 
-                    newProps.position.x === 0 && 
-                    newProps.position.y === 0 && 
-                    newProps.position.z === 0) {
-                  // Don't update position if it was reset to origin
-                  delete newProps.position;
-                }
-                
-                // Same for rotation
-                if (newProps.rotation && 
-                    newProps.rotation.x === 0 && 
-                    newProps.rotation.y === 0 && 
-                    newProps.rotation.z === 0) {
-                  // Don't update rotation if it was reset to origin
-                  delete newProps.rotation;
-                }
-                
-                // Call the callback with the updated properties
-                onTransformEnd(objKey, newProps);
-              } else {
-                // For other properties (size, radius, etc.), just pass them through
-                onTransformEnd(objKey, updatedProps);
-              }
-            }}
+            onTransformEnd={onTransformEnd}
           />
           
           {/* Render children of this volume inside this group */}
