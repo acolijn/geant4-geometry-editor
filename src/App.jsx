@@ -163,8 +163,36 @@ function App() {
     updateState();
   };
   
+  // Generate a unique name for a new geometry object
+  const generateUniqueName = (baseType) => {
+    // Capitalize the first letter of the type
+    const typeName = baseType.charAt(0).toUpperCase() + baseType.slice(1);
+    const prefix = `New${typeName}_`;
+    
+    // Get all existing names
+    const existingNames = [
+      geometries.world.name,
+      ...geometries.volumes.map(vol => vol.name)
+    ];
+    
+    // Find the next available number
+    let counter = 0;
+    let newName;
+    do {
+      newName = `${prefix}${counter}`;
+      counter++;
+    } while (existingNames.includes(newName));
+    
+    return newName;
+  };
+  
   // Handle adding a new geometry
   const handleAddGeometry = (newGeometry) => {
+    // If the geometry doesn't have a custom name, generate a unique one
+    if (!newGeometry.name || newGeometry.name === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
+      newGeometry.name = generateUniqueName(newGeometry.type);
+    }
+    
     setGeometries({
       ...geometries,
       volumes: [...geometries.volumes, newGeometry]
