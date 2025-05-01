@@ -97,12 +97,30 @@ export default function TransformableObject({ object, objectKey, transformMode, 
     const handleChange = () => {
       if (!meshRef.current) return;
       
-      // Update in real-time during transformation
+      // Ensure exact 1:1 mapping between visual position and property values
+      // by using the raw values without any scaling or transformation
       const pos = meshRef.current.position;
       const rot = meshRef.current.rotation;
       
-      // Ensure exact 1:1 mapping between visual position and property values
-      // by using the raw values without any scaling or transformation
+      // Special handling for cylinders to prevent erratic rotation
+      let rotX = rot.x;
+      let rotY = rot.y;
+      let rotZ = rot.z;
+      
+      // For cylinders, we need to handle rotations differently
+      if (object.type === 'cylinder') {
+        // Cylinders in Geant4 have their height along the z-axis
+        // We need to ensure rotations are applied correctly
+        
+        // Use quaternions to ensure smooth and predictable rotations
+        const quaternion = new THREE.Quaternion().setFromEuler(rot);
+        const euler = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
+        
+        rotX = euler.x;
+        rotY = euler.y;
+        rotZ = euler.z;
+      }
+      
       const updated = {
         position: {
           x: parseFloat(pos.x.toFixed(2)),
@@ -111,9 +129,9 @@ export default function TransformableObject({ object, objectKey, transformMode, 
           unit: object.position?.unit || 'cm'
         },
         rotation: {
-          x: parseFloat(THREE.MathUtils.radToDeg(rot.x).toFixed(2)),
-          y: parseFloat(THREE.MathUtils.radToDeg(rot.y).toFixed(2)),
-          z: parseFloat(THREE.MathUtils.radToDeg(rot.z).toFixed(2)),
+          x: parseFloat(THREE.MathUtils.radToDeg(rotX).toFixed(2)),
+          y: parseFloat(THREE.MathUtils.radToDeg(rotY).toFixed(2)),
+          z: parseFloat(THREE.MathUtils.radToDeg(rotZ).toFixed(2)),
           unit: object.rotation?.unit || 'deg'
         }
       };
@@ -135,6 +153,25 @@ export default function TransformableObject({ object, objectKey, transformMode, 
       if (meshRef.current) {
         const pos = meshRef.current.position;
         const rot = meshRef.current.rotation;
+        
+        // Special handling for cylinders to prevent erratic rotation
+        let rotX = rot.x;
+        let rotY = rot.y;
+        let rotZ = rot.z;
+        
+        // For cylinders, we need to handle rotations differently
+        if (object.type === 'cylinder') {
+          // Cylinders in Geant4 have their height along the z-axis
+          // We need to ensure rotations are applied correctly
+        
+          // Use quaternions to ensure smooth and predictable rotations
+          const quaternion = new THREE.Quaternion().setFromEuler(rot);
+          const euler = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
+        
+          rotX = euler.x;
+          rotY = euler.y;
+          rotZ = euler.z;
+        }
 
         // Ensure exact 1:1 mapping between visual position and property values
         // Use exact values without any scaling or transformation
@@ -146,9 +183,9 @@ export default function TransformableObject({ object, objectKey, transformMode, 
             unit: object.position?.unit || 'cm'
           },
           rotation: {
-            x: parseFloat(THREE.MathUtils.radToDeg(rot.x).toFixed(2)),
-            y: parseFloat(THREE.MathUtils.radToDeg(rot.y).toFixed(2)),
-            z: parseFloat(THREE.MathUtils.radToDeg(rot.z).toFixed(2)),
+            x: parseFloat(THREE.MathUtils.radToDeg(rotX).toFixed(2)),
+            y: parseFloat(THREE.MathUtils.radToDeg(rotY).toFixed(2)),
+            z: parseFloat(THREE.MathUtils.radToDeg(rotZ).toFixed(2)),
             unit: object.rotation?.unit || 'deg'
           }
         };
