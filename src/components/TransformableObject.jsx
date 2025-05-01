@@ -1,4 +1,4 @@
-// Final fix with live sync: TransformableObject with correct dragging and prop sync
+// TransformableObject with improved drag state management
 import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls } from '@react-three/drei';
@@ -10,16 +10,21 @@ import Sphere from './shapes/Sphere.jsx';
 const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
 const degToRad = (d) => THREE.MathUtils.degToRad(d);
 
-export default function TransformableObject({ object, transformMode, isSelected, onSelect, onTransformEnd }) {
+export default function TransformableObject({ object, objectKey, transformMode, isSelected, onSelect, onTransformEnd }) {
   const groupRef = useRef();
   const transformRef = useRef();
   const { camera, gl } = useThree();
   const [isDragging, setIsDragging] = useState(false);
+  const lastUpdateRef = useRef(null); // Store last update to prevent unnecessary jumps
 
   // Apply incoming props unless dragging
   useEffect(() => {
     const group = groupRef.current;
     if (!group || isDragging) return;
+    
+    // Skip update if this is the same data we just sent to parent
+    const incomingUpdate = JSON.stringify({ position: object.position, rotation: object.rotation });
+    if (lastUpdateRef.current === incomingUpdate) return;
 
     const [x, y, z] = object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0];
     const [rx, ry, rz] = object.rotation
@@ -45,21 +50,30 @@ export default function TransformableObject({ object, transformMode, isSelected,
     const handleChange = () => {
       const group = groupRef.current;
       if (!group) return;
-
-      onTransformEnd({
-        position: {
-          x: group.position.x,
-          y: group.position.y,
-          z: group.position.z,
-          unit: object.position?.unit || 'cm'
-        },
-        rotation: {
-          x: radToDeg(group.rotation.x),
-          y: radToDeg(group.rotation.y),
-          z: radToDeg(group.rotation.z),
-          unit: object.rotation?.unit || 'deg'
-        }
-      });
+      
+      // Only send updates if we're actually dragging to prevent unnecessary updates
+      if (!isDragging) return;
+      
+      const updatedPosition = {
+        x: group.position.x,
+        y: group.position.y,
+        z: group.position.z,
+        unit: object.position?.unit || 'cm'
+      };
+      
+      const updatedRotation = {
+        x: radToDeg(group.rotation.x),
+        y: radToDeg(group.rotation.y),
+        z: radToDeg(group.rotation.z),
+        unit: object.rotation?.unit || 'deg'
+      };
+      
+      // Store this update to prevent echo updates
+      const update = { position: updatedPosition, rotation: updatedRotation };
+      lastUpdateRef.current = JSON.stringify(update);
+      
+      // Pass objectKey as the first parameter to onTransformEnd
+      onTransformEnd(objectKey, update);
     };
 
     const handleMouseDown = () => {
@@ -68,8 +82,39 @@ export default function TransformableObject({ object, transformMode, isSelected,
     };
 
     const handleMouseUp = () => {
-      setIsDragging(false);
-      gl.domElement.style.cursor = 'auto';
+      // Get final position and rotation
+      const group = groupRef.current;
+      if (group) {
+        const finalUpdate = {
+          position: {
+            x: group.position.x,
+            y: group.position.y,
+            z: group.position.z,
+            unit: object.position?.unit || 'cm'
+          },
+          rotation: {
+            x: radToDeg(group.rotation.x),
+            y: radToDeg(group.rotation.y),
+            z: radToDeg(group.rotation.z),
+            unit: object.rotation?.unit || 'deg'
+          }
+        };
+        
+        // Store this update to prevent echo updates
+        lastUpdateRef.current = JSON.stringify(finalUpdate);
+        
+        // Send final update with objectKey as the first parameter
+        onTransformEnd(objectKey, finalUpdate);
+        
+        // Only release drag state after sending the final update
+        setTimeout(() => {
+          setIsDragging(false);
+          gl.domElement.style.cursor = 'auto';
+        }, 50); // Small delay to ensure state updates properly
+      } else {
+        setIsDragging(false);
+        gl.domElement.style.cursor = 'auto';
+      }
     };
 
     controls.addEventListener('objectChange', handleChange);
@@ -81,7 +126,7 @@ export default function TransformableObject({ object, transformMode, isSelected,
       controls.removeEventListener('mouseDown', handleMouseDown);
       controls.removeEventListener('mouseUp', handleMouseUp);
     };
-  }, [gl, isSelected, object, onTransformEnd]);
+  }, [gl, isSelected, object, onTransformEnd, isDragging]);
 
   const sharedProps = {
     ref: groupRef,

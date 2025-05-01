@@ -131,31 +131,36 @@ function App() {
   
   // Handle updating a geometry
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true) => {
-    // First update the geometry
-    if (id === 'world') {
-      setGeometries({
-        ...geometries,
-        world: updatedObject
-      });
-    } else if (id.startsWith('volume-')) {
-      const index = parseInt(id.split('-')[1]);
-      const updatedVolumes = [...geometries.volumes];
-      updatedVolumes[index] = updatedObject;
+    // Create a new state update that includes both geometry and selection changes
+    // to ensure they happen atomically and prevent flickering/jumping
+    const updateState = () => {
+      // First update the geometry
+      if (id === 'world') {
+        setGeometries(prevGeometries => ({
+          ...prevGeometries,
+          world: updatedObject
+        }));
+      } else if (id.startsWith('volume-')) {
+        const index = parseInt(id.split('-')[1]);
+        setGeometries(prevGeometries => {
+          const updatedVolumes = [...prevGeometries.volumes];
+          updatedVolumes[index] = updatedObject;
+          
+          return {
+            ...prevGeometries,
+            volumes: updatedVolumes
+          };
+        });
+      }
       
-      setGeometries({
-        ...geometries,
-        volumes: updatedVolumes
-      });
-    }
-    
-    // Always ensure the selection stays on the object that was just updated
-    // when keepSelected is true (which is the default for transform operations)
-    if (keepSelected) {
-      // Use setTimeout to ensure this runs after the state update
-      setTimeout(() => {
+      // Update selection in the same render cycle if needed
+      if (keepSelected) {
         setSelectedGeometry(id);
-      }, 0);
-    }
+      }
+    };
+    
+    // Execute the state update
+    updateState();
   };
   
   // Handle adding a new geometry

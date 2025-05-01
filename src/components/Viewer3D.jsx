@@ -158,7 +158,7 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
             objectKey={key}
             isSelected={selectedGeometry === key}
             transformMode={transformMode}
-            onSelect={onSelect}
+            onSelect={() => onSelect(key)}
             isMotherVolume={isMotherVolume}
             onTransformEnd={(objKey, updatedProps) => {
               // If position or rotation was updated, we need to update the volume's actual properties
@@ -226,7 +226,7 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
         objectKey="world"
         isSelected={selectedGeometry === 'world'}
         transformMode={transformMode}
-        onSelect={onSelect}
+        onSelect={() => onSelect('world')}
         onTransformEnd={onTransformEnd}
       />
       
@@ -392,19 +392,23 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
     // Apply updates to the current object
     const updatedObject = { ...currentObject };
     
-    // Update position
+    // Update position - ensure we're not losing any properties
     if (updates.position) {
       updatedObject.position = {
-        ...updatedObject.position,
-        ...updates.position
+        ...(updatedObject.position || {}),
+        ...updates.position,
+        // Ensure unit is preserved
+        unit: updates.position.unit || updatedObject.position?.unit || 'cm'
       };
     }
     
-    // Update rotation
+    // Update rotation - ensure we're not losing any properties
     if (updates.rotation) {
       updatedObject.rotation = {
-        ...updatedObject.rotation,
-        ...updates.rotation
+        ...(updatedObject.rotation || {}),
+        ...updates.rotation,
+        // Ensure unit is preserved
+        unit: updates.rotation.unit || updatedObject.rotation?.unit || 'deg'
       };
     }
     
@@ -434,7 +438,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       updatedObject.radius = updates.radius;
     }
     
-    // Call the update function with the keepSelected parameter
+    // Call the update function with the keepSelected parameter - no setTimeout needed
+    // This ensures the state update happens synchronously
     onUpdateGeometry(objectKey, updatedObject, keepSelected);
     
     // If this is a parent object, we need to ensure the parent-child relationship is maintained
@@ -456,9 +461,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
             if (volume.mother_volume === parentVolume.name) {
               // Ensure child volumes stay selected if they were previously selected
               if (selectedGeometry === `volume-${index}`) {
-                setTimeout(() => {
-                  onSelect(`volume-${index}`);
-                }, 0);
+                // Direct selection without setTimeout to avoid race conditions
+                onSelect(`volume-${index}`);
               }
             }
           });
