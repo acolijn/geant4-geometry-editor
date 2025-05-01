@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Box, 
   Paper, 
   Typography, 
   Button,
   Tabs,
-  Tab,
-  TextField
+  Tab
 } from '@mui/material';
 
 const JsonViewer = ({ geometries, materials }) => {
@@ -41,6 +40,16 @@ const JsonViewer = ({ geometries, materials }) => {
     navigator.clipboard.writeText(content);
   };
 
+  // Reference to the JSON container for scrolling
+  const jsonContainerRef = useRef(null);
+  
+  // Scroll to top function
+  const scrollToTop = () => {
+    if (jsonContainerRef.current) {
+      jsonContainerRef.current.scrollTop = 0;
+    }
+  };
+
   return (
     <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Tabs 
@@ -52,42 +61,64 @@ const JsonViewer = ({ geometries, materials }) => {
         <Tab label="Materials JSON" />
       </Tabs>
       
-      <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
+      <Box sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
         <Button 
           variant="contained" 
           onClick={() => handleDownload(
             tabValue === 0 ? geometryJson : materialsJson,
             tabValue === 0 ? 'geometry.json' : 'materials.json'
           )}
+          size="small"
         >
           Download JSON
         </Button>
         <Button 
           variant="outlined" 
           onClick={() => handleCopy(tabValue === 0 ? geometryJson : materialsJson)}
+          size="small"
         >
           Copy to Clipboard
         </Button>
+        <Button 
+          onClick={scrollToTop} 
+          size="small" 
+          variant="outlined"
+          sx={{ marginLeft: 'auto' }} 
+        >
+          Top
+        </Button>
       </Box>
       
-      <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
-        <TextField
-          multiline
-          fullWidth
-          variant="outlined"
-          value={tabValue === 0 ? geometryJson : materialsJson}
-          InputProps={{
-            readOnly: true,
-            style: { 
-              fontFamily: 'monospace', 
-              fontSize: '0.875rem',
-              whiteSpace: 'pre',
-              overflowWrap: 'normal',
-              overflowX: 'auto'
-            }
-          }}
-          sx={{ height: '100%' }}
-        />
+      <Box 
+        ref={jsonContainerRef}
+        sx={{ 
+          flexGrow: 1, 
+          overflow: 'auto', 
+          p: 2,
+          backgroundColor: '#f5f5f5',
+          borderRadius: 1,
+          mx: 2,
+          mb: 2,
+          fontFamily: 'monospace',
+          fontSize: '0.875rem',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+            height: '8px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#bdbdbd',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#e0e0e0',
+            borderRadius: '4px',
+          },
+        }}
+      >
+        {tabValue === 0 ? geometryJson : materialsJson}
       </Box>
     </Paper>
   );
