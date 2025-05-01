@@ -15,6 +15,7 @@ import Viewer3D from './components/Viewer3D';
 import GeometryEditor from './components/GeometryEditor';
 import MaterialsEditor from './components/MaterialsEditor';
 import JsonViewer from './components/JsonViewer';
+import ProjectManager from './components/ProjectManager';
 import './App.css'; 
 
 // Create a theme
@@ -102,22 +103,8 @@ function App() {
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   
-  // Try to load saved geometries and materials from localStorage on initial load
-  useEffect(() => {
-    try {
-      const savedGeometries = localStorage.getItem('geant4-geometries');
-      if (savedGeometries) {
-        setGeometries(JSON.parse(savedGeometries));
-      }
-      
-      const savedMaterials = localStorage.getItem('geant4-materials');
-      if (savedMaterials) {
-        setMaterials(JSON.parse(savedMaterials));
-      }
-    } catch (error) {
-      console.error('Error loading saved data:', error);
-    }
-  }, []);
+  // We'll no longer automatically load from localStorage on initial load
+  // This ensures we always start with the default empty world
   
   // Save geometries and materials to localStorage whenever they change
   useEffect(() => {
@@ -254,35 +241,77 @@ function App() {
   const handleUpdateMaterials = (updatedMaterials) => {
     setMaterials(updatedMaterials);
   };
+  
+  // Handle importing geometries from a JSON file
+  const handleImportGeometries = (importedGeometries) => {
+    // Validate the imported geometries structure
+    if (!importedGeometries.world || !Array.isArray(importedGeometries.volumes)) {
+      console.error('Invalid geometry format');
+      return;
+    }
+    
+    // Set the geometries state with the imported data
+    setGeometries(importedGeometries);
+    
+    // Reset the selection
+    setSelectedGeometry(null);
+  };
+  
+  // Handle importing materials from a JSON file
+  const handleImportMaterials = (importedMaterials) => {
+    // Validate the imported materials structure
+    if (typeof importedMaterials !== 'object') {
+      console.error('Invalid materials format');
+      return;
+    }
+    
+    // Set the materials state with the imported data
+    setMaterials(importedMaterials);
+  };
+  
+  // Handle loading a project (geometries and materials)
+  const handleLoadProject = (loadedGeometries, loadedMaterials) => {
+    // Set the geometries and materials state with the loaded data
+    setGeometries(loadedGeometries);
+    setMaterials(loadedMaterials);
+    
+    // Reset the selection
+    setSelectedGeometry(null);
+  };
 
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Geant4 Geometry Editor
-            </Typography>
-          </Toolbar>
+return (
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ mr: 2 }}>
+            Geant4 Geometry Editor
+          </Typography>
           <Tabs 
             value={tabValue} 
             onChange={(e, newValue) => setTabValue(newValue)}
+            sx={{ flexGrow: 1 }}
             centered
           >
-            <Tab label="Geometry" />
+            <Tab label="3D View" />
             <Tab label="Materials" />
             <Tab label="JSON" />
           </Tabs>
-        </AppBar>
-        
-        <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-          {/* Geometry Tab */}
-          {tabValue === 0 && (
-            <Box sx={{ display: 'flex', height: '100%' }}>
-              <Box sx={{ width: '70%', height: '100%' }}>
-                <Viewer3D 
-                  geometries={geometries} 
+          <ProjectManager 
+            geometries={geometries} 
+            materials={materials} 
+            onLoadProject={handleLoadProject} 
+          />
+        </Toolbar>
+      </AppBar>
+      <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+        {/* Geometry Tab */}
+        {tabValue === 0 && (
+          <Box sx={{ display: 'flex', height: '100%' }}>
+            <Box sx={{ width: '70%', height: '100%' }}>
+              <Viewer3D 
+                  geometries={geometries}
                   selectedGeometry={selectedGeometry}
                   onSelect={setSelectedGeometry}
                   onUpdateGeometry={handleUpdateGeometry}
@@ -310,13 +339,14 @@ function App() {
               />
             </Container>
           )}
-          
           {/* JSON Tab */}
           {tabValue === 2 && (
             <Container maxWidth="lg" sx={{ height: '100%', py: 2 }}>
               <JsonViewer 
-                geometries={geometries}
-                materials={materials}
+                geometries={geometries} 
+                materials={materials} 
+                onImportGeometries={handleImportGeometries}
+                onImportMaterials={handleImportMaterials}
               />
             </Container>
           )}
