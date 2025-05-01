@@ -134,17 +134,49 @@ function App() {
     // Create a new state update that includes both geometry and selection changes
     // to ensure they happen atomically and prevent flickering/jumping
     const updateState = () => {
-      // First update the geometry
+      // Check if the name has changed (for updating daughter references)
+      let oldName = null;
+      let newName = updatedObject.name;
+      
       if (id === 'world') {
-        setGeometries(prevGeometries => ({
-          ...prevGeometries,
-          world: updatedObject
-        }));
+        oldName = geometries.world.name;
+        
+        // First update the geometry
+        setGeometries(prevGeometries => {
+          // Update the world object
+          const updatedGeometries = {
+            ...prevGeometries,
+            world: updatedObject
+          };
+          
+          // If name changed, update all daughter volumes that reference this as mother
+          if (oldName !== newName) {
+            updatedGeometries.volumes = prevGeometries.volumes.map(volume => {
+              if (volume.mother_volume === oldName) {
+                return { ...volume, mother_volume: newName };
+              }
+              return volume;
+            });
+          }
+          
+          return updatedGeometries;
+        });
       } else if (id.startsWith('volume-')) {
         const index = parseInt(id.split('-')[1]);
+        oldName = geometries.volumes[index].name;
+        
         setGeometries(prevGeometries => {
           const updatedVolumes = [...prevGeometries.volumes];
           updatedVolumes[index] = updatedObject;
+          
+          // If name changed, update all daughter volumes that reference this as mother
+          if (oldName !== newName) {
+            updatedVolumes.forEach((volume, i) => {
+              if (i !== index && volume.mother_volume === oldName) {
+                updatedVolumes[i] = { ...volume, mother_volume: newName };
+              }
+            });
+          }
           
           return {
             ...prevGeometries,
