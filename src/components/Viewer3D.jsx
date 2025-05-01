@@ -52,7 +52,7 @@ function CameraSetup({ setFrontViewCamera }) {
 
 
 
-// Simple Scene component
+// Simple Scene component with flat object structure
 function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd }) {
   // Create a map of volume names to their indices for easy lookup
   const volumeNameToIndex = {};
@@ -104,111 +104,135 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     }
   });
   
-  // Recursive function to render a volume and its children
-  const renderVolumeHierarchy = (parentKey) => {
-    // If this parent has no children, return null
-    if (!volumesByParent[parentKey] || volumesByParent[parentKey].length === 0) {
-      return null;
+  // Function to calculate the world position of a volume based on its parent hierarchy
+  const calculateWorldPosition = (volume) => {
+    if (!volume.mother_volume || volume.mother_volume === 'World') {
+      // Direct child of world - use its own position
+      return {
+        position: volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0],
+        rotation: volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0]
+      };
     }
     
-    // Render all children of this parent
-    return volumesByParent[parentKey].map(({ volume, key }) => {
-      // Check if this is a mother volume (has children)
+    // Find parent volume
+    const parentIndex = volumeNameToIndex[volume.mother_volume];
+    if (parentIndex === undefined) {
+      // Parent not found, use own position
+      return {
+        position: volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0],
+        rotation: volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0]
+      };
+    }
+    
+    const parentVolume = geometries.volumes[parentIndex];
+    
+    // Get parent's world position recursively
+    const parentWorld = calculateWorldPosition(parentVolume);
+    
+    // Convert volume's local position to world position based on parent
+    const localPos = volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0];
+    const localRot = volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0];
+    
+    // Create a matrix to transform the local position by the parent's transform
+    const parentMatrix = new THREE.Matrix4();
+    
+    // Set parent rotation (convert from degrees to radians)
+    const parentRotX = THREE.MathUtils.degToRad(parentWorld.rotation[0]);
+    const parentRotY = THREE.MathUtils.degToRad(parentWorld.rotation[1]);
+    const parentRotZ = THREE.MathUtils.degToRad(parentWorld.rotation[2]);
+    
+    // Apply rotations in the correct sequence
+    const rotMatrix = new THREE.Matrix4();
+    rotMatrix.makeRotationX(parentRotX);
+    rotMatrix.multiply(new THREE.Matrix4().makeRotationY(parentRotY));
+    rotMatrix.multiply(new THREE.Matrix4().makeRotationZ(parentRotZ));
+    
+    // Set parent position and rotation
+    parentMatrix.setPosition(new THREE.Vector3(parentWorld.position[0], parentWorld.position[1], parentWorld.position[2]));
+    parentMatrix.multiply(rotMatrix);
+    
+    // Transform local position by parent matrix
+    const localVector = new THREE.Vector3(localPos[0], localPos[1], localPos[2]);
+    localVector.applyMatrix4(parentMatrix);
+    
+    // Combine rotations (add parent and local rotations)
+    // Note: This is a simplification - proper rotation combination would use quaternions
+    const combinedRotation = [
+      parentWorld.rotation[0] + localRot[0],
+      parentWorld.rotation[1] + localRot[1],
+      parentWorld.rotation[2] + localRot[2]
+    ];
+    
+    return {
+      position: [localVector.x, localVector.y, localVector.z],
+      rotation: combinedRotation
+    };
+  };
+  
+  // Function to handle transform updates for a volume and propagate to children
+  const handleVolumeTransform = (objKey, updatedProps) => {
+    // Update the volume's properties
+    onTransformEnd(objKey, updatedProps);
+    
+    // If this is a mother volume, we need to update all children
+    if (volumesByParent[objKey] && volumesByParent[objKey].length > 0) {
+      // We don't need to do anything here because the children will be re-rendered
+      // with their new calculated world positions when the state updates
+    }
+  };
+  
+  // Render all volumes in a flat structure
+  const renderVolumes = () => {
+    if (!geometries.volumes) return null;
+    
+    return geometries.volumes.map((volume, index) => {
+      const key = `volume-${index}`;
       const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
       
-      // Get position and rotation from the volume
-      const position = volume.position ? [
-        volume.position.x || 0, 
-        volume.position.y || 0, 
-        volume.position.z || 0
-      ] : [0, 0, 0];
+      // Calculate the world position for this volume
+      const worldTransform = calculateWorldPosition(volume);
       
-      // Apply rotation (convert from degrees to radians)
-      const rotX = THREE.MathUtils.degToRad(volume.rotation?.x || 0);
-      const rotY = THREE.MathUtils.degToRad(volume.rotation?.y || 0);
-      const rotZ = THREE.MathUtils.degToRad(volume.rotation?.z || 0);
-
+      // Apply rotation (convert from degrees to radians for Three.js)
+      const rotX = THREE.MathUtils.degToRad(worldTransform.rotation[0]);
+      const rotY = THREE.MathUtils.degToRad(worldTransform.rotation[1]);
+      const rotZ = THREE.MathUtils.degToRad(worldTransform.rotation[2]);
+      
       // Create a rotation matrix that applies rotations in the correct sequence
       const rotationMatrix = new THREE.Matrix4();
       rotationMatrix.makeRotationX(rotX);
       rotationMatrix.multiply(new THREE.Matrix4().makeRotationY(rotY));
       rotationMatrix.multiply(new THREE.Matrix4().makeRotationZ(rotZ));
-
+      
       // Extract Euler angles from the matrix
       const euler = new THREE.Euler();
       euler.setFromRotationMatrix(rotationMatrix);
       
-      // Create a group to contain both the volume and its children
-      // Using a group ensures that children move with their parent
       return (
-        <group 
-          key={key} 
-          position={position} 
-          rotation={[euler.x, euler.y, euler.z]}
-        >
-          {/* Main volume with reset position/rotation since the parent group handles positioning */}
-          <TransformableObject 
-            object={{
-              ...volume,
-              // Reset position and rotation since we're handling them in the parent group
-              // This prevents double-counting of position and rotation values
-              position: { x: 0, y: 0, z: 0, unit: volume.position?.unit || 'cm' },
-              rotation: { x: 0, y: 0, z: 0, unit: volume.rotation?.unit || 'deg' }
-            }}
-            objectKey={key}
-            isSelected={selectedGeometry === key}
-            transformMode={transformMode}
-            onSelect={() => onSelect(key)}
-            isMotherVolume={isMotherVolume}
-            onTransformEnd={(objKey, updatedProps) => {
-              // If position or rotation was updated, we need to update the volume's actual properties
-              if (updatedProps.position || updatedProps.rotation) {
-                // Get the original volume
-                const originalVolume = geometries.volumes[parseInt(objKey.split('-')[1])];
-                
-                // Create a new object with the updated properties
-                const newProps = {};
-                
-                // Handle position updates
-                if (updatedProps.position) {
-                  // Get the parent group's position to add to the updated position
-                  // This ensures we get the correct world position
-                  newProps.position = {
-                    x: updatedProps.position.x,
-                    y: updatedProps.position.y,
-                    z: updatedProps.position.z,
-                    unit: updatedProps.position.unit || 'cm'
-                  };
-                }
-                
-                // Handle rotation updates
-                if (updatedProps.rotation) {
-                  newProps.rotation = {
-                    ...originalVolume.rotation,
-                    ...updatedProps.rotation
-                  };
-                }
-                
-                // Handle other property updates
-                for (const prop in updatedProps) {
-                  if (prop !== 'position' && prop !== 'rotation') {
-                    newProps[prop] = updatedProps[prop];
-                  }
-                }
-                
-                // Call the original onTransformEnd with the updated properties
-                onTransformEnd(objKey, newProps);
-              } else {
-                // For other properties (size, radius, etc.), just pass them through
-                onTransformEnd(objKey, updatedProps);
-              }
-            }}
-          />
-          
-          {/* Render children of this volume inside the same group */}
-          {/* This ensures children move with their parent */}
-          {renderVolumeHierarchy(key)}
-        </group>
+        <TransformableObject 
+          key={key}
+          object={{
+            ...volume,
+            // Use calculated world position for rendering
+            calculatedWorldPosition: {
+              x: worldTransform.position[0],
+              y: worldTransform.position[1],
+              z: worldTransform.position[2]
+            },
+            calculatedWorldRotation: {
+              x: worldTransform.rotation[0],
+              y: worldTransform.rotation[1],
+              z: worldTransform.rotation[2]
+            }
+          }}
+          objectKey={key}
+          isSelected={selectedGeometry === key}
+          transformMode={transformMode}
+          onSelect={() => onSelect(key)}
+          isMotherVolume={isMotherVolume}
+          worldPosition={worldTransform.position}
+          worldRotation={[euler.x, euler.y, euler.z]}
+          onTransformEnd={(objKey, updatedProps) => handleVolumeTransform(objKey, updatedProps)}
+        />
       );
     });
   };
@@ -230,8 +254,8 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
         onTransformEnd={onTransformEnd}
       />
       
-      {/* Render volumes with World as parent and their children recursively */}
-      {renderVolumeHierarchy('world')}
+      {/* Render all volumes in a flat structure */}
+      {renderVolumes()}
     </>
   );
 }

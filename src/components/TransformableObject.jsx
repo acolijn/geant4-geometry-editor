@@ -1,4 +1,4 @@
-// TransformableObject with improved drag state management
+// TransformableObject with flat structure and world positions
 import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls } from '@react-three/drei';
@@ -10,30 +10,51 @@ import Sphere from './shapes/Sphere.jsx';
 const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
 const degToRad = (d) => THREE.MathUtils.degToRad(d);
 
-export default function TransformableObject({ object, objectKey, transformMode, isSelected, onSelect, onTransformEnd }) {
+export default function TransformableObject({ 
+  object, 
+  objectKey, 
+  transformMode, 
+  isSelected, 
+  onSelect, 
+  onTransformEnd,
+  worldPosition,
+  worldRotation
+}) {
   const groupRef = useRef();
   const transformRef = useRef();
   const { camera, gl } = useThree();
   const [isDragging, setIsDragging] = useState(false);
-  const lastUpdateRef = useRef(null); // Store last update to prevent unnecessary jumps
+  const lastPositionRef = useRef(null); // Track last position to prevent jumps
 
   // Apply incoming props unless dragging
   useEffect(() => {
     const group = groupRef.current;
     if (!group || isDragging) return;
+
+    // Use world position if provided, otherwise use object's own position
+    if (worldPosition) {
+      group.position.set(worldPosition[0], worldPosition[1], worldPosition[2]);
+    } else {
+      const [x, y, z] = object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0];
+      group.position.set(x, y, z);
+    }
     
-    // Skip update if this is the same data we just sent to parent
-    const incomingUpdate = JSON.stringify({ position: object.position, rotation: object.rotation });
-    if (lastUpdateRef.current === incomingUpdate) return;
-
-    const [x, y, z] = object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0];
-    const [rx, ry, rz] = object.rotation
-      ? [degToRad(object.rotation.x), degToRad(object.rotation.y), degToRad(object.rotation.z)]
-      : [0, 0, 0];
-
-    group.position.set(x, y, z);
-    group.rotation.set(rx, ry, rz);
-  }, [object.position, object.rotation, isDragging]);
+    // Use world rotation if provided, otherwise use object's own rotation
+    if (worldRotation) {
+      group.rotation.set(worldRotation[0], worldRotation[1], worldRotation[2]);
+    } else {
+      const [rx, ry, rz] = object.rotation
+        ? [degToRad(object.rotation.x), degToRad(object.rotation.y), degToRad(object.rotation.z)]
+        : [0, 0, 0];
+      group.rotation.set(rx, ry, rz);
+    }
+    
+    // Store the current position for comparison during dragging
+    lastPositionRef.current = { 
+      position: worldPosition ? { x: worldPosition[0], y: worldPosition[1], z: worldPosition[2] } : { ...object.position },
+      rotation: worldRotation ? { x: radToDeg(worldRotation[0]), y: radToDeg(worldRotation[1]), z: radToDeg(worldRotation[2]) } : { ...object.rotation }
+    };
+  }, [object.position, object.rotation, worldPosition, worldRotation, isDragging]);
 
   // Sync transform mode to control
   useEffect(() => {
@@ -47,76 +68,99 @@ export default function TransformableObject({ object, objectKey, transformMode, 
     const controls = transformRef.current;
     if (!controls || !isSelected) return;
 
+    // Track changes during dragging
     const handleChange = () => {
+      if (!isDragging) return;
+      
       const group = groupRef.current;
       if (!group) return;
       
-      // Only send updates if we're actually dragging to prevent unnecessary updates
-      if (!isDragging) return;
+      // Calculate the delta from the original position
+      const originalPosition = lastPositionRef.current?.position || { x: 0, y: 0, z: 0 };
       
-      const updatedPosition = {
+      // Get current world position from the group
+      const currentPosition = {
         x: group.position.x,
         y: group.position.y,
         z: group.position.z,
         unit: object.position?.unit || 'cm'
       };
       
-      const updatedRotation = {
+      // Convert world rotation to degrees for the data model
+      const currentRotation = {
         x: radToDeg(group.rotation.x),
         y: radToDeg(group.rotation.y),
         z: radToDeg(group.rotation.z),
         unit: object.rotation?.unit || 'deg'
       };
       
-      // Store this update to prevent echo updates
-      const update = { position: updatedPosition, rotation: updatedRotation };
-      lastUpdateRef.current = JSON.stringify(update);
+      // For objects with a parent, we need to convert world position to local position
+      // This is handled by the parent component that calculates world positions
       
-      // Pass objectKey as the first parameter to onTransformEnd
-      onTransformEnd(objectKey, update);
+      // Send live updates to parent - use the current world position directly
+      onTransformEnd(objectKey, { 
+        position: currentPosition, 
+        rotation: currentRotation 
+      });
     };
 
+    // Start dragging
     const handleMouseDown = () => {
       setIsDragging(true);
       gl.domElement.style.cursor = 'grabbing';
-    };
-
-    const handleMouseUp = () => {
-      // Get final position and rotation
+      
+      // Store the current position at the start of dragging
       const group = groupRef.current;
       if (group) {
-        const finalUpdate = {
+        lastPositionRef.current = {
           position: {
             x: group.position.x,
             y: group.position.y,
-            z: group.position.z,
-            unit: object.position?.unit || 'cm'
+            z: group.position.z
           },
           rotation: {
             x: radToDeg(group.rotation.x),
             y: radToDeg(group.rotation.y),
-            z: radToDeg(group.rotation.z),
-            unit: object.rotation?.unit || 'deg'
+            z: radToDeg(group.rotation.z)
           }
         };
-        
-        // Store this update to prevent echo updates
-        lastUpdateRef.current = JSON.stringify(finalUpdate);
-        
-        // Send final update with objectKey as the first parameter
-        onTransformEnd(objectKey, finalUpdate);
-        
-        // Only release drag state after sending the final update
-        setTimeout(() => {
-          setIsDragging(false);
-          gl.domElement.style.cursor = 'auto';
-        }, 50); // Small delay to ensure state updates properly
-      } else {
-        setIsDragging(false);
-        gl.domElement.style.cursor = 'auto';
       }
     };
 
+    // End dragging and finalize position
+    const handleMouseUp = () => {
+      const group = groupRef.current;
+      if (group) {
+        // Get final world position after drag
+        const finalPosition = {
+          x: group.position.x,
+          y: group.position.y,
+          z: group.position.z,
+          unit: object.position?.unit || 'cm'
+        };
+        
+        // Get final world rotation after drag
+        const finalRotation = {
+          x: radToDeg(group.rotation.x),
+          y: radToDeg(group.rotation.y),
+          z: radToDeg(group.rotation.z),
+          unit: object.rotation?.unit || 'deg'
+        };
+        
+        // Send final update to parent with world coordinates
+        // The parent component will handle converting to local coordinates if needed
+        onTransformEnd(objectKey, { 
+          position: finalPosition, 
+          rotation: finalRotation 
+        });
+      }
+      
+      // Reset drag state
+      setIsDragging(false);
+      gl.domElement.style.cursor = 'auto';
+    };
+
+    // Set up event listeners
     controls.addEventListener('objectChange', handleChange);
     controls.addEventListener('mouseDown', handleMouseDown);
     controls.addEventListener('mouseUp', handleMouseUp);
@@ -126,8 +170,9 @@ export default function TransformableObject({ object, objectKey, transformMode, 
       controls.removeEventListener('mouseDown', handleMouseDown);
       controls.removeEventListener('mouseUp', handleMouseUp);
     };
-  }, [gl, isSelected, object, onTransformEnd, isDragging]);
+  }, [gl, isSelected, object, onTransformEnd, isDragging, objectKey]);
 
+  // Shared props for all shape types
   const sharedProps = {
     ref: groupRef,
     position: [0, 0, 0],
@@ -135,7 +180,10 @@ export default function TransformableObject({ object, objectKey, transformMode, 
     color: object.color,
     wireframe: object.name === 'World',
     selected: isSelected,
-    onClick: () => onSelect()
+    onClick: (e) => {
+      e.stopPropagation();
+      onSelect();
+    }
   };
 
   return (
@@ -152,6 +200,12 @@ export default function TransformableObject({ object, objectKey, transformMode, 
           size={0.75}
           camera={camera}
           enabled
+          space="local"
+          // Set transform controls to use world space for translation
+          // but local space for rotation and scaling
+          translationSnap={null}
+          rotationSnap={null}
+          scaleSnap={null}
         />
       )}
     </>
