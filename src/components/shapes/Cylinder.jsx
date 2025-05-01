@@ -23,13 +23,22 @@ const Cylinder = forwardRef(({ position, radius, height, innerRadius = 0, rotati
   });
 
   // For Geant4, cylinders are typically along the z-axis
-  // We need to rotate them to match this convention
-  const defaultRotation = [Math.PI / 2, 0, 0];
-  const finalRotation = rotation ? [
-    defaultRotation[0] + rotation[0],
-    defaultRotation[1] + rotation[1],
-    defaultRotation[2] + rotation[2]
-  ] : defaultRotation;
+  // We need to rotate them to match this convention, but we need to be careful
+  // about how we apply this rotation to ensure transform controls work correctly
+  
+  // Create a rotation matrix for the default rotation (90 degrees around X)
+  const defaultRotationMatrix = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+  
+  // Create a rotation matrix for the object's rotation
+  const objectRotationMatrix = new THREE.Matrix4().makeRotationFromEuler(
+    new THREE.Euler(rotation[0], rotation[1], rotation[2])
+  );
+  
+  // Combine the rotations: first apply default rotation, then object rotation
+  const combinedMatrix = objectRotationMatrix.multiply(defaultRotationMatrix);
+  
+  // Extract the final Euler angles from the combined matrix
+  const finalRotation = new THREE.Euler().setFromRotationMatrix(combinedMatrix);
 
   return (
     <mesh

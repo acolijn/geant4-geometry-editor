@@ -113,6 +113,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     
     // Render all children of this parent
     return volumesByParent[parentKey].map(({ volume, key }) => {
+      // Check if this is a mother volume (has children)
+      const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
+      
       // Get position and rotation from the volume
       const position = volume.position ? [
         volume.position.x || 0, 
@@ -135,19 +138,17 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       const euler = new THREE.Euler();
       euler.setFromRotationMatrix(rotationMatrix);
       
+      // Create a fragment to contain both the volume and its children
       return (
-        <group key={key} position={position} rotation={[euler.x, euler.y, euler.z]}>
+        <React.Fragment key={key}>
+          {/* Main volume with its actual position and rotation */}
           <TransformableObject 
-            object={{
-              ...volume,
-              // Reset position and rotation since we're handling them in the parent group
-              position: { x: 0, y: 0, z: 0, unit: volume.position?.unit || 'cm' },
-              rotation: { x: 0, y: 0, z: 0, unit: volume.rotation?.unit || 'deg' }
-            }}
+            object={volume}
             objectKey={key}
             isSelected={selectedGeometry === key}
             transformMode={transformMode}
             onSelect={onSelect}
+            isMotherVolume={isMotherVolume}
             onTransformEnd={(objKey, updatedProps) => {
               // If position or rotation was updated, we need to update the volume's actual properties
               if (updatedProps.position || updatedProps.rotation) {
@@ -189,9 +190,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
             }}
           />
           
-          {/* Render children of this volume inside this group */}
+          {/* Render children of this volume */}
           {renderVolumeHierarchy(key)}
-        </group>
+        </React.Fragment>
       );
     });
   };
@@ -407,6 +408,9 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       if (updates.height !== undefined) {
         updatedObject.height = updates.height;
       }
+      if (updates.innerRadius !== undefined) {
+        updatedObject.innerRadius = updates.innerRadius;
+      }
     }
     
     // Update radius for sphere
@@ -416,6 +420,36 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
     
     // Call the update function with the keepSelected parameter
     onUpdateGeometry(objectKey, updatedObject, keepSelected);
+    
+    // If this is a parent object, we need to update the positions of all child objects
+    // to maintain the parent-child relationship
+    if (updates.position || updates.rotation) {
+      // This is only needed for mouse controls - numerical controls already handle this
+      // Find all child volumes that have this object as their mother_volume
+      if (objectKey === 'world') {
+        // No need to adjust world's children as they're positioned relative to world
+      } else if (objectKey.startsWith('volume-')) {
+        const parentIndex = parseInt(objectKey.split('-')[1]);
+        const parentVolume = geometries.volumes[parentIndex];
+        
+        // Only proceed if we have a valid parent volume name
+        if (parentVolume && parentVolume.name) {
+          // Find all volumes that have this volume as their mother
+          geometries.volumes.forEach((volume, index) => {
+            if (volume.mother_volume === parentVolume.name) {
+              // This is a child of the moved volume - we don't need to update its position
+              // as it's already positioned relative to its parent
+              // But we do need to ensure it stays selected if it was previously selected
+              if (selectedGeometry === `volume-${index}`) {
+                setTimeout(() => {
+                  setSelectedGeometry(`volume-${index}`);
+                }, 0);
+              }
+            }
+          });
+        }
+      }
+    }
   };
   
   // Check if geometries is valid
