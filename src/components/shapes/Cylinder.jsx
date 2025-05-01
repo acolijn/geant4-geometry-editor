@@ -10,7 +10,25 @@ const Cylinder = forwardRef(({ position, radius, height, innerRadius = 0, rotati
 
   const safePosition = position || [0, 0, 0];
   const safeRotation = rotation || [0, 0, 0];
-  const baseRotation = [Math.PI / 2 + safeRotation[0], safeRotation[1], safeRotation[2]];
+  
+  // Create a custom cylinder geometry that lies in the x-y plane with height along z-axis
+  const createCylinderGeometry = () => {
+    // Create a standard cylinder (which has height along y-axis in Three.js)
+    const cylinderGeom = new THREE.CylinderGeometry(
+      radius, // top radius
+      radius, // bottom radius
+      height, // height
+      32, // radial segments
+      1, // height segments
+      innerRadius > 0, // open ended?
+      innerRadius // inner radius
+    );
+    
+    // Rotate the geometry to align with z-axis (height along z)
+    cylinderGeom.rotateX(Math.PI/2);
+    
+    return cylinderGeom;
+  };
 
   useFrame(() => {
     const mesh = groupRef.current?.children?.[0];
@@ -29,7 +47,7 @@ const Cylinder = forwardRef(({ position, radius, height, innerRadius = 0, rotati
     <group
       ref={groupRef}
       position={safePosition}
-      rotation={baseRotation}
+      rotation={safeRotation} // Use original rotation without modification
       onClick={(e) => {
         e.stopPropagation();
         if (onClick) onClick();
@@ -39,7 +57,7 @@ const Cylinder = forwardRef(({ position, radius, height, innerRadius = 0, rotati
       onPointerOut={() => setHovered(false)}
     >
       <mesh castShadow receiveShadow>
-        <cylinderGeometry args={[radius, radius, height, 32, 1, innerRadius > 0, innerRadius]} />
+        <primitive object={createCylinderGeometry()} />
         <meshStandardMaterial 
           color={color || 'rgba(100, 255, 100, 0.7)'} 
           wireframe={wireframe}
@@ -49,7 +67,10 @@ const Cylinder = forwardRef(({ position, radius, height, innerRadius = 0, rotati
       </mesh>
       {selected && (
         <lineSegments>
-          <edgesGeometry attach="geometry" args={[new THREE.CylinderGeometry(radius, radius, height, 32, 1, innerRadius > 0, innerRadius)]} />
+          <primitive 
+            object={new THREE.EdgesGeometry(createCylinderGeometry())} 
+            attach="geometry" 
+          />
           <lineBasicMaterial attach="material" color="#ffff00" />
         </lineSegments>
       )}
