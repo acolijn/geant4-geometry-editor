@@ -138,12 +138,23 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       const euler = new THREE.Euler();
       euler.setFromRotationMatrix(rotationMatrix);
       
-      // Create a fragment to contain both the volume and its children
+      // Create a group to contain both the volume and its children
+      // Using a group ensures that children move with their parent
       return (
-        <React.Fragment key={key}>
-          {/* Main volume with its actual position and rotation */}
+        <group 
+          key={key} 
+          position={position} 
+          rotation={[euler.x, euler.y, euler.z]}
+        >
+          {/* Main volume with reset position/rotation since the parent group handles positioning */}
           <TransformableObject 
-            object={volume}
+            object={{
+              ...volume,
+              // Reset position and rotation since we're handling them in the parent group
+              // This prevents double-counting of position and rotation values
+              position: { x: 0, y: 0, z: 0, unit: volume.position?.unit || 'cm' },
+              rotation: { x: 0, y: 0, z: 0, unit: volume.rotation?.unit || 'deg' }
+            }}
             objectKey={key}
             isSelected={selectedGeometry === key}
             transformMode={transformMode}
@@ -160,9 +171,13 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
                 
                 // Handle position updates
                 if (updatedProps.position) {
+                  // Get the parent group's position to add to the updated position
+                  // This ensures we get the correct world position
                   newProps.position = {
-                    ...originalVolume.position,
-                    ...updatedProps.position
+                    x: updatedProps.position.x,
+                    y: updatedProps.position.y,
+                    z: updatedProps.position.z,
+                    unit: updatedProps.position.unit || 'cm'
                   };
                 }
                 
@@ -190,9 +205,10 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
             }}
           />
           
-          {/* Render children of this volume */}
+          {/* Render children of this volume inside the same group */}
+          {/* This ensures children move with their parent */}
           {renderVolumeHierarchy(key)}
-        </React.Fragment>
+        </group>
       );
     });
   };
@@ -421,13 +437,12 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
     // Call the update function with the keepSelected parameter
     onUpdateGeometry(objectKey, updatedObject, keepSelected);
     
-    // If this is a parent object, we need to update the positions of all child objects
-    // to maintain the parent-child relationship
+    // If this is a parent object, we need to ensure the parent-child relationship is maintained
+    // The group structure in the render function already ensures children move with parents visually
+    // This section handles the data model updates
     if (updates.position || updates.rotation) {
-      // This is only needed for mouse controls - numerical controls already handle this
-      // Find all child volumes that have this object as their mother_volume
       if (objectKey === 'world') {
-        // No need to adjust world's children as they're positioned relative to world
+        // World volume updates don't need special handling for children
       } else if (objectKey.startsWith('volume-')) {
         const parentIndex = parseInt(objectKey.split('-')[1]);
         const parentVolume = geometries.volumes[parentIndex];
@@ -435,14 +450,14 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
         // Only proceed if we have a valid parent volume name
         if (parentVolume && parentVolume.name) {
           // Find all volumes that have this volume as their mother
+          // We don't need to update their positions since they're already positioned relative to parent
+          // in the Three.js scene graph, but we do need to maintain selection state
           geometries.volumes.forEach((volume, index) => {
             if (volume.mother_volume === parentVolume.name) {
-              // This is a child of the moved volume - we don't need to update its position
-              // as it's already positioned relative to its parent
-              // But we do need to ensure it stays selected if it was previously selected
+              // Ensure child volumes stay selected if they were previously selected
               if (selectedGeometry === `volume-${index}`) {
                 setTimeout(() => {
-                  setSelectedGeometry(`volume-${index}`);
+                  onSelect(`volume-${index}`);
                 }, 0);
               }
             }

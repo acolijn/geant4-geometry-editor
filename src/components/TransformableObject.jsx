@@ -1,304 +1,112 @@
-// Updated TransformableObject with verified pivot alignment
-import React, { useRef, useState, useEffect } from 'react';
+// Final fix with live sync: TransformableObject with correct dragging and prop sync
+import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
+import { TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import Box from './shapes/Box.jsx';
 import Cylinder from './shapes/Cylinder.jsx';
 import Sphere from './shapes/Sphere.jsx';
-import CustomTransformControls from './CustomTransformControls.jsx';
 
-export default function TransformableObject({ object, objectKey, transformMode, isSelected, onSelect, onTransformEnd, isMotherVolume = false }) {
-  const meshRef = useRef();
+const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
+const degToRad = (d) => THREE.MathUtils.degToRad(d);
+
+export default function TransformableObject({ object, transformMode, isSelected, onSelect, onTransformEnd }) {
+  const groupRef = useRef();
   const transformRef = useRef();
   const { camera, gl } = useThree();
-  const [isTransforming, setIsTransforming] = useState(false);
-  
-  // Store the previous object position to detect changes from properties panel
-  const prevObjectRef = useRef(object);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Get position and rotation from the object
-  const position = [object.position?.x || 0, object.position?.y || 0, object.position?.z || 0];
-  const rotation = [
-    THREE.MathUtils.degToRad(object.rotation?.x || 0),
-    THREE.MathUtils.degToRad(object.rotation?.y || 0),
-    THREE.MathUtils.degToRad(object.rotation?.z || 0)
-  ];
+  // Apply incoming props unless dragging
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group || isDragging) return;
 
-  // Update transform mode when it changes
+    const [x, y, z] = object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0];
+    const [rx, ry, rz] = object.rotation
+      ? [degToRad(object.rotation.x), degToRad(object.rotation.y), degToRad(object.rotation.z)]
+      : [0, 0, 0];
+
+    group.position.set(x, y, z);
+    group.rotation.set(rx, ry, rz);
+  }, [object.position, object.rotation, isDragging]);
+
+  // Sync transform mode to control
   useEffect(() => {
     if (transformRef.current) {
       transformRef.current.setMode(transformMode);
     }
   }, [transformMode]);
-  
-  // This effect syncs the mesh position with the object position when changed via properties panel
-  useEffect(() => {
-    // Skip during active transformations to avoid conflicts
-    if (isTransforming) return;
-    
-    // Check if position or rotation has changed from the properties panel
-    const prevPos = prevObjectRef.current?.position || {};
-    const prevRot = prevObjectRef.current?.rotation || {};
-    const currPos = object?.position || {};
-    const currRot = object?.rotation || {};
-    
-    const positionChanged = 
-      prevPos.x !== currPos.x || 
-      prevPos.y !== currPos.y || 
-      prevPos.z !== currPos.z;
-      
-    const rotationChanged = 
-      prevRot.x !== currRot.x || 
-      prevRot.y !== currRot.y || 
-      prevRot.z !== currRot.z;
-    
-    // If position or rotation changed and we have a mesh reference, update it
-    if ((positionChanged || rotationChanged) && meshRef.current) {
-      // Update the mesh position to match the object position exactly
-      // This ensures 1:1 mapping between property values and visual position
-      if (positionChanged) {
-        meshRef.current.position.set(
-          currPos.x || 0,
-          currPos.y || 0,
-          currPos.z || 0
-        );
-      }
-      
-      // Update the mesh rotation to match the object rotation exactly
-      if (rotationChanged) {
-        meshRef.current.rotation.set(
-          THREE.MathUtils.degToRad(currRot.x || 0),
-          THREE.MathUtils.degToRad(currRot.y || 0),
-          THREE.MathUtils.degToRad(currRot.z || 0)
-        );
-      }
-    }
-    
-    // Update the previous object reference
-    prevObjectRef.current = JSON.parse(JSON.stringify(object));
-  }, [object, isTransforming]);
 
-  // Set up transform control event listeners
+  // Handle drag and update geometry during interaction
   useEffect(() => {
     const controls = transformRef.current;
     if (!controls || !isSelected) return;
 
-    const handleStart = () => {
-      setIsTransforming(true);
-      gl.domElement.style.cursor = 'grabbing';
-
-      // Disable orbit controls during transformation
-      const orbitControls = gl.domElement.parentElement?.__r3f?.controls;
-      if (orbitControls) {
-        orbitControls.enabled = false;
-      }
-    };
-
     const handleChange = () => {
-      if (!meshRef.current) return;
-      
-      // Ensure exact 1:1 mapping between visual position and property values
-      // by using the raw values without any scaling or transformation
-      const pos = meshRef.current.position;
-      const rot = meshRef.current.rotation;
-      
-      // Special handling for cylinders to prevent erratic rotation
-      let rotX = rot.x;
-      let rotY = rot.y;
-      let rotZ = rot.z;
-      
-      // For cylinders, we need to handle rotations differently
-      if (object.type === 'cylinder') {
-        // Cylinders in Geant4 have their height along the z-axis
-        // We need to ensure rotations are applied correctly
-        
-        // Use quaternions to ensure smooth and predictable rotations
-        const quaternion = new THREE.Quaternion().setFromEuler(rot);
-        const euler = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
-        
-        rotX = euler.x;
-        rotY = euler.y;
-        rotZ = euler.z;
-      }
-      
-      const updated = {
+      const group = groupRef.current;
+      if (!group) return;
+
+      onTransformEnd({
         position: {
-          x: parseFloat(pos.x.toFixed(2)),
-          y: parseFloat(pos.y.toFixed(2)),
-          z: parseFloat(pos.z.toFixed(2)),
+          x: group.position.x,
+          y: group.position.y,
+          z: group.position.z,
           unit: object.position?.unit || 'cm'
         },
         rotation: {
-          x: parseFloat(THREE.MathUtils.radToDeg(rotX).toFixed(2)),
-          y: parseFloat(THREE.MathUtils.radToDeg(rotY).toFixed(2)),
-          z: parseFloat(THREE.MathUtils.radToDeg(rotZ).toFixed(2)),
+          x: radToDeg(group.rotation.x),
+          y: radToDeg(group.rotation.y),
+          z: radToDeg(group.rotation.z),
           unit: object.rotation?.unit || 'deg'
         }
-      };
-      
-      // Update in real-time
-      onTransformEnd(objectKey, updated, true);
+      });
     };
 
-    const handleEnd = () => {
-      setIsTransforming(false);
+    const handleMouseDown = () => {
+      setIsDragging(true);
+      gl.domElement.style.cursor = 'grabbing';
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
       gl.domElement.style.cursor = 'auto';
-
-      // Re-enable orbit controls
-      const orbitControls = gl.domElement.parentElement?.__r3f?.controls;
-      if (orbitControls) {
-        orbitControls.enabled = true;
-      }
-
-      if (meshRef.current) {
-        const pos = meshRef.current.position;
-        const rot = meshRef.current.rotation;
-        
-        // Special handling for cylinders to prevent erratic rotation
-        let rotX = rot.x;
-        let rotY = rot.y;
-        let rotZ = rot.z;
-        
-        // For cylinders, we need to handle rotations differently
-        if (object.type === 'cylinder') {
-          // Cylinders in Geant4 have their height along the z-axis
-          // We need to ensure rotations are applied correctly
-        
-          // Use quaternions to ensure smooth and predictable rotations
-          const quaternion = new THREE.Quaternion().setFromEuler(rot);
-          const euler = new THREE.Euler().setFromQuaternion(quaternion, 'XYZ');
-        
-          rotX = euler.x;
-          rotY = euler.y;
-          rotZ = euler.z;
-        }
-
-        // Ensure exact 1:1 mapping between visual position and property values
-        // Use exact values without any scaling or transformation
-        const updated = {
-          position: {
-            x: parseFloat(pos.x.toFixed(2)),
-            y: parseFloat(pos.y.toFixed(2)),
-            z: parseFloat(pos.z.toFixed(2)),
-            unit: object.position?.unit || 'cm'
-          },
-          rotation: {
-            x: parseFloat(THREE.MathUtils.radToDeg(rotX).toFixed(2)),
-            y: parseFloat(THREE.MathUtils.radToDeg(rotY).toFixed(2)),
-            z: parseFloat(THREE.MathUtils.radToDeg(rotZ).toFixed(2)),
-            unit: object.rotation?.unit || 'deg'
-          }
-        };
-
-        // Final update with keepSelected=true to maintain selection
-        onTransformEnd(objectKey, updated, true);
-      }
     };
 
-    controls.addEventListener('mouseDown', handleStart);
     controls.addEventListener('objectChange', handleChange);
-    controls.addEventListener('mouseUp', handleEnd);
+    controls.addEventListener('mouseDown', handleMouseDown);
+    controls.addEventListener('mouseUp', handleMouseUp);
 
     return () => {
-      controls.removeEventListener('mouseDown', handleStart);
       controls.removeEventListener('objectChange', handleChange);
-      controls.removeEventListener('mouseUp', handleEnd);
+      controls.removeEventListener('mouseDown', handleMouseDown);
+      controls.removeEventListener('mouseUp', handleMouseUp);
     };
-  }, [gl, isSelected, object, onTransformEnd, objectKey]);
+  }, [gl, isSelected, object, onTransformEnd]);
 
-  // Props shared by all shape components
   const sharedProps = {
-    ref: meshRef,
-    position,
-    rotation,
+    ref: groupRef,
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
     color: object.color,
     wireframe: object.name === 'World',
     selected: isSelected,
-    onClick: (e) => {
-      e.stopPropagation();
-      onSelect(objectKey);
-    }
+    onClick: () => onSelect()
   };
 
   return (
     <>
-      {/* Render the appropriate shape based on object type */}
-      {object.type === 'box' && (
-        <Box 
-          size={[object.size?.x || 1, object.size?.y || 1, object.size?.z || 1]} 
-          {...sharedProps} 
-        />
-      )}
-      {object.type === 'cylinder' && (
-        <Cylinder 
-          radius={object.radius || 1} 
-          height={object.height || 1} 
-          innerRadius={object.innerRadius} 
-          {...sharedProps} 
-        />
-      )}
-      {object.type === 'sphere' && (
-        <Sphere 
-          radius={object.radius || 1} 
-          {...sharedProps} 
-        />
-      )}
+      {object.type === 'box' && <Box size={[object.size?.x || 1, object.size?.y || 1, object.size?.z || 1]} {...sharedProps} />}
+      {object.type === 'cylinder' && <Cylinder radius={object.radius || 1} height={object.height || 1} innerRadius={object.innerRadius} {...sharedProps} />}
+      {object.type === 'sphere' && <Sphere radius={object.radius || 1} {...sharedProps} />}
 
-      {/* Attach custom transform controls directly to the mesh */}
-      {isSelected && meshRef.current && (
-        <CustomTransformControls
+      {isSelected && groupRef.current && (
+        <TransformControls
           ref={transformRef}
-          object={meshRef.current}
+          object={groupRef.current}
           mode={transformMode}
-          enabled={true}
-          onTransformStart={() => setIsTransforming(true)}
-          onTransformEnd={() => {
-            setIsTransforming(false);
-            if (meshRef.current) {
-              const pos = meshRef.current.position;
-              const rot = meshRef.current.rotation;
-              
-              const updated = {
-                position: {
-                  x: parseFloat(pos.x.toFixed(3)),
-                  y: parseFloat(pos.y.toFixed(3)),
-                  z: parseFloat(pos.z.toFixed(3)),
-                  unit: object.position?.unit || 'cm'
-                },
-                rotation: {
-                  x: parseFloat(THREE.MathUtils.radToDeg(rot.x).toFixed(3)),
-                  y: parseFloat(THREE.MathUtils.radToDeg(rot.y).toFixed(3)),
-                  z: parseFloat(THREE.MathUtils.radToDeg(rot.z).toFixed(3)),
-                  unit: object.rotation?.unit || 'deg'
-                }
-              };
-              
-              onTransformEnd(objectKey, updated, true);
-            }
-          }}
-          onTransformChange={() => {
-            if (meshRef.current) {
-              const pos = meshRef.current.position;
-              const rot = meshRef.current.rotation;
-              
-              const updated = {
-                position: {
-                  x: parseFloat(pos.x.toFixed(3)),
-                  y: parseFloat(pos.y.toFixed(3)),
-                  z: parseFloat(pos.z.toFixed(3)),
-                  unit: object.position?.unit || 'cm'
-                },
-                rotation: {
-                  x: parseFloat(THREE.MathUtils.radToDeg(rot.x).toFixed(3)),
-                  y: parseFloat(THREE.MathUtils.radToDeg(rot.y).toFixed(3)),
-                  z: parseFloat(THREE.MathUtils.radToDeg(rot.z).toFixed(3)),
-                  unit: object.rotation?.unit || 'deg'
-                }
-              };
-              
-              onTransformEnd(objectKey, updated, true);
-            }
-          }}
+          size={0.75}
+          camera={camera}
+          enabled
         />
       )}
     </>
