@@ -186,11 +186,48 @@ export default function TransformableObject({
     }
   };
 
+  // Debug log the object properties to help diagnose rendering issues
+  console.log(`RENDER - Object ${object.name} of type ${object.type}:`, {
+    objectProps: object,
+    size: object.size,
+    innerRadius: object.innerRadius,
+    inner_radius: object.inner_radius,
+    worldPosition,
+    worldRotation
+  });
+  
+  // Force a default size for box objects if size is missing
+  let boxSize = [1, 1, 1];
+  if (object.type === 'box') {
+    if (object.size) {
+      boxSize = [object.size.x || 1, object.size.y || 1, object.size.z || 1];
+    } else {
+      console.warn(`RENDER WARNING - Box object ${object.name} missing size property, using default size`);
+    }
+  }
+  
   return (
     <>
-      {object.type === 'box' && <Box size={[object.size?.x || 1, object.size?.y || 1, object.size?.z || 1]} {...sharedProps} />}
-      {object.type === 'cylinder' && <Cylinder radius={object.radius || 1} height={object.height || 1} innerRadius={object.innerRadius} {...sharedProps} />}
-      {object.type === 'sphere' && <Sphere radius={object.radius || 1} {...sharedProps} />}
+      {object.type === 'box' && (
+        <Box 
+          size={boxSize} 
+          {...sharedProps} 
+        />
+      )}
+      {object.type === 'cylinder' && (
+        <Cylinder 
+          radius={object.radius || 1} 
+          height={object.height || 1} 
+          innerRadius={object.innerRadius || object.inner_radius || 0} 
+          {...sharedProps} 
+        />
+      )}
+      {object.type === 'sphere' && (
+        <Sphere 
+          radius={object.radius || 1} 
+          {...sharedProps} 
+        />
+      )}
 
       {isSelected && groupRef.current && (
         <TransformControls

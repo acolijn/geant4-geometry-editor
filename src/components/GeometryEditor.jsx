@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Box, 
   Paper, 
@@ -11,8 +11,13 @@ import {
   Button,
   Tabs,
   Tab,
-  Divider
+  Divider,
+  Menu,
+  IconButton,
+  Tooltip,
+  Alert
 } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 const GeometryEditor = ({ 
   geometries, 
@@ -20,11 +25,107 @@ const GeometryEditor = ({
   selectedGeometry, 
   onUpdateGeometry, 
   onAddGeometry, 
-  onRemoveGeometry 
+  onRemoveGeometry,
+  extractObjectWithDescendants,
+  handleImportPartialFromAddNew
 }) => {
+  // Reference to the file input for importing object JSON files
+  const fileInputRef = useRef(null);
   const [tabValue, setTabValue] = useState(0);
   const [newGeometryType, setNewGeometryType] = useState('box');
   const [newMotherVolume, setNewMotherVolume] = useState('World'); // Default mother volume for new geometries
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const menuOpen = Boolean(menuAnchorEl);
+  const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
+  
+  // Handle opening the context menu
+  const handleMenuOpen = (event) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+  };
+  
+  // Handle closing the context menu
+  const handleMenuClose = (event) => {
+    if (event) event.stopPropagation();
+    setMenuAnchorEl(null);
+  };
+  
+  // Handle exporting the selected object with its descendants
+  const handleExportObject = (event) => {
+    if (event) event.stopPropagation();
+    handleMenuClose();
+    
+    if (!selectedGeometry) return;
+    
+    // Extract the selected object and its descendants
+    const exportData = extractObjectWithDescendants(selectedGeometry);
+    if (!exportData) return;
+    
+    // Add debug information to the export data
+    exportData.debug = {
+      exportedAt: new Date().toISOString(),
+      objectType: exportData.object.type,
+      objectName: exportData.object.name,
+      descendantCount: exportData.descendants.length
+    };
+    
+    // DETAILED DEBUG: Log the main object properties
+    console.log('EXPORT - Main object details:', {
+      name: exportData.object.name,
+      type: exportData.object.type,
+      mother_volume: exportData.object.mother_volume,
+      position: exportData.object.position,
+      rotation: exportData.object.rotation,
+      size: exportData.object.size,  // For box
+      radius: exportData.object.radius, // For cylinder/sphere
+      height: exportData.object.height, // For cylinder
+      inner_radius: exportData.object.inner_radius, // For cylinder
+      innerRadius: exportData.object.innerRadius // For cylinder (alternate property name)
+    });
+    
+    // DETAILED DEBUG: Log each descendant
+    if (exportData.descendants.length > 0) {
+      exportData.descendants.forEach((desc, index) => {
+        console.log(`EXPORT - Descendant ${index + 1}:`, {
+          name: desc.name,
+          type: desc.type,
+          mother_volume: desc.mother_volume,
+          position: desc.position,
+          rotation: desc.rotation,
+          size: desc.size,  // For box
+          radius: desc.radius, // For cylinder/sphere
+          height: desc.height, // For cylinder
+          inner_radius: desc.inner_radius, // For cylinder
+          innerRadius: desc.innerRadius // For cylinder (alternate property name)
+        });
+      });
+    }
+    
+    // Create a JSON file and trigger download
+    const jsonData = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary link and trigger the download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${exportData.object.name}_with_descendants.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Show alert with export information
+    setImportAlert({
+      show: true,
+      message: `Exported ${exportData.object.name} with ${exportData.descendants.length} descendants. Check browser console for details.`,
+      severity: 'info'
+    });
+    
+    // Create a global variable to make the export data accessible in the console
+    window.lastExportedObject = exportData;
+    console.log('Export data saved to window.lastExportedObject for debugging');
+  };
 
   // Get the selected geometry object
   const getSelectedGeometryObject = () => {
@@ -140,9 +241,37 @@ const GeometryEditor = ({
 
     return (
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6">
-          {selectedObject.name || 'Unnamed Geometry'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h6">
+            {selectedObject.name || 'Unnamed Geometry'}
+          </Typography>
+          
+          <Tooltip title="Object Options">
+            <IconButton
+              aria-label="more"
+              aria-controls="geometry-menu"
+              aria-haspopup="true"
+              onClick={handleMenuOpen}
+              size="small"
+            >
+              <MoreVertIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+        
+        <Menu
+          id="geometry-menu"
+          anchorEl={menuAnchorEl}
+          open={menuOpen}
+          onClose={handleMenuClose}
+          onClick={(e) => e.stopPropagation()}
+          PaperProps={{
+            onClick: (e) => e.stopPropagation(),
+            style: { minWidth: '200px' }
+          }}
+        >
+          <MenuItem onClick={handleExportObject}>Export Object with Descendants</MenuItem>
+        </Menu>
         
         <TextField
           label="Name"
@@ -385,11 +514,139 @@ const GeometryEditor = ({
     );
   };
 
+  // Generate a unique name for an object, ensuring it doesn't conflict with existing objects
+  const generateUniqueName = (baseName, type) => {
+    // Get all existing names
+    const existingNames = [
+      geometries.world.name,
+      ...geometries.volumes.map(vol => vol.name)
+    ];
+    
+    // If the name doesn't exist, use it as is
+    if (!existingNames.includes(baseName)) {
+      return baseName;
+    }
+    
+    // Otherwise, generate a unique name with a counter
+    let counter = 1;
+    let newName;
+    do {
+      newName = `${baseName}_${counter}`;
+      counter++;
+    } while (existingNames.includes(newName));
+    
+    return newName;
+  };
+  
+  // Handle importing an object JSON file
+  const handleImportObjectFile = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = JSON.parse(e.target.result);
+        
+        // Log the imported content for debugging
+        console.log('Imported JSON content:', content);
+        
+        // Validate the object JSON format
+        if (content.object && Array.isArray(content.descendants)) {
+          // Use the new dedicated import function from App.jsx
+          const result = handleImportPartialFromAddNew(content, newMotherVolume);
+          
+          if (result.success) {
+            setImportAlert({
+              show: true,
+              message: result.message,
+              severity: 'success'
+            });
+            
+            // Auto-switch to the Properties tab to see the imported object
+            setTabValue(0);
+          } else {
+            setImportAlert({
+              show: true,
+              message: result.message,
+              severity: 'error'
+            });
+          }
+        } else {
+          setImportAlert({
+            show: true,
+            message: 'Invalid object format. The file must contain an "object" and "descendants" array.',
+            severity: 'error'
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing JSON file:', error);
+        setImportAlert({
+          show: true,
+          message: 'Error parsing JSON file. Please ensure it is valid JSON.',
+          severity: 'error'
+        });
+      }
+      
+      // Clear the file input
+      event.target.value = null;
+    };
+    
+    reader.readAsText(file);
+  };
+  
+  // Clear the import alert after a delay
+  React.useEffect(() => {
+    if (importAlert.show) {
+      const timer = setTimeout(() => {
+        setImportAlert({ ...importAlert, show: false });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [importAlert]);
+  
   // Render the "Add New" tab content
   const renderAddNewTab = () => {
     return (
       <Box sx={{ p: 2 }}>
         <Typography variant="h6">Add New Geometry</Typography>
+        
+        {importAlert.show && (
+          <Alert 
+            severity={importAlert.severity} 
+            sx={{ mt: 2, mb: 2 }}
+            onClose={() => setImportAlert({ ...importAlert, show: false })}
+          >
+            {importAlert.message}
+          </Alert>
+        )}
+        
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2, mb: 3 }}>
+          <Typography variant="subtitle1">Import Existing Object</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              component="label"
+              sx={{ flexGrow: 1 }}
+            >
+              Select Object JSON File
+              <input
+                type="file"
+                hidden
+                accept=".json"
+                ref={fileInputRef}
+                onChange={handleImportObjectFile}
+              />
+            </Button>
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Import a previously exported object with its descendants. The object will be added with {newMotherVolume} as its mother volume.
+          </Typography>
+        </Box>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Typography variant="subtitle1">Create New Object</Typography>
         
         <FormControl fullWidth margin="normal">
           <InputLabel>Geometry Type</InputLabel>

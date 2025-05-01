@@ -212,6 +212,9 @@ function App() {
       newGeometry.name = generateUniqueName(newGeometry.type);
     }
     
+    // Log the geometry being added
+    console.log('Adding geometry:', newGeometry);
+    
     setGeometries({
       ...geometries,
       volumes: [...geometries.volumes, newGeometry]
@@ -219,6 +222,171 @@ function App() {
     
     // Select the newly added geometry
     setSelectedGeometry(`volume-${geometries.volumes.length}`);
+    
+    // Return the name of the added geometry (useful for tracking)
+    return newGeometry.name;
+  };
+  
+  // Handle importing a partial geometry from the Add New tab
+  const handleImportPartialFromAddNew = (content, motherVolume) => {
+    if (!content || !content.object || !Array.isArray(content.descendants)) {
+      console.error('Invalid partial geometry format');
+      return { success: false, message: 'Invalid partial geometry format' };
+    }
+    
+    // DETAILED DEBUG: Log the entire content being imported
+    console.log('IMPORT - Full content being imported:', content);
+    
+    // Create a new copy of the current geometries to work with
+    const updatedGeometries = { 
+      world: { ...geometries.world },
+      volumes: [...geometries.volumes]
+    };
+    
+    // Create a name mapping to track renamed objects
+    const nameMapping = {};
+    const existingNames = [
+      geometries.world.name,
+      ...geometries.volumes.map(vol => vol.name)
+    ];
+    
+    // Process the main object
+    const mainObject = { ...content.object };
+    const originalMainName = mainObject.name;
+    
+    // Set the mother volume
+    mainObject.mother_volume = motherVolume;
+    
+    // CRITICAL FIX: Ensure the box has all required properties
+    if (mainObject.type === 'box') {
+      console.log('IMPORT - Processing box object:', mainObject);
+      
+      // Ensure size property exists
+      if (!mainObject.size) {
+        console.warn('IMPORT WARNING - Box missing size property, adding default');
+        mainObject.size = { x: 10, y: 10, z: 10, unit: 'cm' };
+      }
+      
+      // Ensure position property exists
+      if (!mainObject.position) {
+        console.warn('IMPORT WARNING - Box missing position property, adding default');
+        mainObject.position = { x: 0, y: 0, z: 0, unit: 'cm' };
+      }
+      
+      // Ensure rotation property exists
+      if (!mainObject.rotation) {
+        console.warn('IMPORT WARNING - Box missing rotation property, adding default');
+        mainObject.rotation = { x: 0, y: 0, z: 0, unit: 'deg' };
+      }
+    }
+    
+    // Check if the name already exists and generate a unique name if needed
+    if (existingNames.includes(originalMainName)) {
+      mainObject.name = generateUniqueName(mainObject.type);
+      nameMapping[originalMainName] = mainObject.name;
+      console.log(`IMPORT - Renamed main object from ${originalMainName} to ${mainObject.name}`);
+    }
+    
+    // DETAILED DEBUG: Log the main object after processing
+    console.log('IMPORT - Main object details after processing:', mainObject);
+    
+    // CRITICAL FIX: Directly add the main object to the volumes array
+    updatedGeometries.volumes.push(mainObject);
+    const addedMainName = mainObject.name;
+    const mainObjectIndex = updatedGeometries.volumes.length - 1;
+    
+    console.log(`IMPORT - Added main object with name: ${addedMainName} at index: ${mainObjectIndex}`);
+    
+    // Process descendants
+    if (content.descendants.length > 0) {
+      // First pass: generate unique names for all descendants
+      const processedDescendants = content.descendants.map(desc => {
+        const processedDesc = { ...desc };
+        const originalName = processedDesc.name;
+        
+        // CRITICAL FIX: Ensure each descendant has all required properties
+        if (processedDesc.type === 'cylinder') {
+          if (!processedDesc.radius) processedDesc.radius = 5;
+          if (!processedDesc.height) processedDesc.height = 10;
+          if (!processedDesc.inner_radius && !processedDesc.innerRadius) {
+            processedDesc.inner_radius = 0;
+          }
+        } else if (processedDesc.type === 'box') {
+          if (!processedDesc.size) {
+            processedDesc.size = { x: 10, y: 10, z: 10, unit: 'cm' };
+          }
+        }
+        
+        // Ensure position and rotation
+        if (!processedDesc.position) {
+          processedDesc.position = { x: 0, y: 0, z: 0, unit: 'cm' };
+        }
+        if (!processedDesc.rotation) {
+          processedDesc.rotation = { x: 0, y: 0, z: 0, unit: 'deg' };
+        }
+        
+        // Check if the name already exists
+        if (existingNames.includes(originalName) || nameMapping[originalName]) {
+          processedDesc.name = generateUniqueName(processedDesc.type);
+          nameMapping[originalName] = processedDesc.name;
+        }
+        
+        return processedDesc;
+      });
+      
+      // Second pass: update mother_volume references
+      const finalDescendants = processedDescendants.map(desc => {
+        const finalDesc = { ...desc };
+        
+        // Update mother_volume reference if it's been renamed
+        if (nameMapping[finalDesc.mother_volume]) {
+          finalDesc.mother_volume = nameMapping[finalDesc.mother_volume];
+        }
+        
+        // If the mother_volume is the original main object, update to the new name
+        if (finalDesc.mother_volume === originalMainName) {
+          finalDesc.mother_volume = addedMainName;
+        }
+        
+        return finalDesc;
+      });
+      
+      // Add all descendants to the volumes array
+      finalDescendants.forEach((desc, index) => {
+        console.log(`IMPORT - Adding descendant ${index + 1}/${finalDescendants.length}:`, desc);
+        updatedGeometries.volumes.push(desc);
+      });
+      
+      // CRITICAL FIX: Update the geometries state with the complete updated structure
+      setGeometries(updatedGeometries);
+      
+      // Select the newly added main object
+      setSelectedGeometry(`volume-${mainObjectIndex}`);
+      
+      return { 
+        success: true, 
+        message: `Imported ${addedMainName} with ${finalDescendants.length} descendants`,
+        mainObjectName: addedMainName
+      };
+    } else {
+      // No descendants, just update with the main object
+      setGeometries(updatedGeometries);
+      
+      // Select the newly added main object
+      setSelectedGeometry(`volume-${mainObjectIndex}`);
+      
+      return { 
+        success: true, 
+        message: `Imported ${addedMainName} successfully`,
+        mainObjectName: addedMainName
+      };
+    }
+    
+    return { 
+      success: true, 
+      message: `Imported ${addedMainName} successfully`,
+      mainObjectName: addedMainName
+    };
   };
   
   // Handle removing a geometry
@@ -257,6 +425,61 @@ function App() {
     setSelectedGeometry(null);
   };
   
+  // Handle importing a partial geometry (a specific object and its descendants)
+  const handleImportPartialGeometry = (partialGeometry) => {
+    // Validate the imported partial geometry structure
+    if (!partialGeometry.object || !Array.isArray(partialGeometry.descendants)) {
+      console.error('Invalid partial geometry format');
+      return;
+    }
+    
+    // Create a copy of the current geometries
+    const updatedGeometries = { ...geometries };
+    
+    // If the imported object is a world object, replace the current world
+    if (partialGeometry.object.name === 'World' || partialGeometry.isWorld) {
+      updatedGeometries.world = partialGeometry.object;
+    } else {
+      // Add the main object to volumes
+      const mainObject = { ...partialGeometry.object };
+      
+      // Generate a unique name if needed
+      if (updatedGeometries.world.name === mainObject.name || 
+          updatedGeometries.volumes.some(vol => vol.name === mainObject.name)) {
+        mainObject.name = generateUniqueName(mainObject.type);
+      }
+      
+      updatedGeometries.volumes = [...updatedGeometries.volumes, mainObject];
+    }
+    
+    // Add all descendants, updating their mother_volume references if needed
+    if (partialGeometry.descendants.length > 0) {
+      const originalMainName = partialGeometry.object.name;
+      const newMainName = updatedGeometries.volumes[updatedGeometries.volumes.length - 1].name;
+      
+      // Process each descendant
+      partialGeometry.descendants.forEach(descendant => {
+        const updatedDescendant = { ...descendant };
+        
+        // Update mother_volume reference if it was pointing to the main object
+        if (updatedDescendant.mother_volume === originalMainName) {
+          updatedDescendant.mother_volume = newMainName;
+        }
+        
+        // Generate a unique name if needed
+        if (updatedGeometries.world.name === updatedDescendant.name || 
+            updatedGeometries.volumes.some(vol => vol.name === updatedDescendant.name)) {
+          updatedDescendant.name = generateUniqueName(updatedDescendant.type);
+        }
+        
+        updatedGeometries.volumes = [...updatedGeometries.volumes, updatedDescendant];
+      });
+    }
+    
+    // Update the geometries state
+    setGeometries(updatedGeometries);
+  };
+  
   // Handle importing materials from a JSON file
   const handleImportMaterials = (importedMaterials) => {
     // Validate the imported materials structure
@@ -267,6 +490,48 @@ function App() {
     
     // Set the materials state with the imported data
     setMaterials(importedMaterials);
+  };
+  
+  // Extract a specific object and all its descendants
+  const extractObjectWithDescendants = (objectId) => {
+    let mainObject;
+    let isWorld = false;
+    
+    // Get the main object
+    if (objectId === 'world') {
+      mainObject = { ...geometries.world };
+      isWorld = true;
+    } else if (objectId.startsWith('volume-')) {
+      const index = parseInt(objectId.split('-')[1]);
+      mainObject = { ...geometries.volumes[index] };
+    } else {
+      return null; // Invalid ID
+    }
+    
+    // Find all descendants recursively
+    const findDescendants = (parentName, allVolumes) => {
+      return allVolumes.filter(volume => volume.mother_volume === parentName);
+    };
+    
+    // Start with direct children
+    let descendants = findDescendants(mainObject.name, geometries.volumes);
+    let allDescendants = [...descendants];
+    
+    // Find descendants of descendants (recursive)
+    for (let i = 0; i < descendants.length; i++) {
+      const childDescendants = findDescendants(descendants[i].name, geometries.volumes);
+      if (childDescendants.length > 0) {
+        allDescendants = [...allDescendants, ...childDescendants];
+        descendants = [...descendants, ...childDescendants];
+      }
+    }
+    
+    // Return the main object and all its descendants
+    return {
+      object: mainObject,
+      descendants: allDescendants,
+      isWorld
+    };
   };
   
   // Handle loading a project (geometries and materials)
@@ -325,6 +590,8 @@ return (
                   onUpdateGeometry={handleUpdateGeometry}
                   onAddGeometry={handleAddGeometry}
                   onRemoveGeometry={handleRemoveGeometry}
+                  extractObjectWithDescendants={extractObjectWithDescendants}
+                  handleImportPartialFromAddNew={handleImportPartialFromAddNew}
                 />
               </Box>
             </Box>
@@ -347,6 +614,7 @@ return (
                 materials={materials} 
                 onImportGeometries={handleImportGeometries}
                 onImportMaterials={handleImportMaterials}
+                onImportPartialGeometry={handleImportPartialGeometry}
               />
             </Container>
           )}

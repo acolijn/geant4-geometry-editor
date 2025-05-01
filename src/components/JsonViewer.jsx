@@ -10,9 +10,10 @@ import {
   Snackbar
 } from '@mui/material';
 
-const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMaterials }) => {
+const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMaterials, onImportPartialGeometry }) => {
   const [tabValue, setTabValue] = useState(0);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
+  const [importMode, setImportMode] = useState('full'); // 'full' or 'partial'
   const fileInputRef = useRef(null);
   
   // Format the JSON with proper indentation for display
@@ -38,20 +39,56 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
         
         // Determine if it's a geometry or materials file
         if (tabValue === 0) {
-          // Validate geometry format
-          if (content.world && Array.isArray(content.volumes)) {
-            onImportGeometries(content);
-            setAlert({ 
-              open: true, 
-              message: 'Geometry imported successfully!', 
-              severity: 'success' 
-            });
-          } else {
-            setAlert({ 
-              open: true, 
-              message: 'Invalid geometry format. File must contain "world" object and "volumes" array.', 
-              severity: 'error' 
-            });
+          if (importMode === 'full') {
+            // Validate full geometry format
+            if (content.world && Array.isArray(content.volumes)) {
+              onImportGeometries(content);
+              setAlert({ 
+                open: true, 
+                message: 'Geometry imported successfully!', 
+                severity: 'success' 
+              });
+            } else {
+              // Check if it's a partial geometry format
+              if (content.object && Array.isArray(content.descendants)) {
+                setAlert({ 
+                  open: true, 
+                  message: 'This appears to be a partial geometry file. Please use the "Import Partial Geometry" option.', 
+                  severity: 'warning' 
+                });
+              } else {
+                setAlert({ 
+                  open: true, 
+                  message: 'Invalid geometry format. File must contain "world" object and "volumes" array.', 
+                  severity: 'error' 
+                });
+              }
+            }
+          } else if (importMode === 'partial') {
+            // Validate partial geometry format
+            if (content.object && Array.isArray(content.descendants)) {
+              onImportPartialGeometry(content);
+              setAlert({ 
+                open: true, 
+                message: `Object "${content.object.name}" and ${content.descendants.length} descendants imported successfully!`, 
+                severity: 'success' 
+              });
+            } else {
+              // Check if it's a full geometry format
+              if (content.world && Array.isArray(content.volumes)) {
+                setAlert({ 
+                  open: true, 
+                  message: 'This appears to be a full geometry file. Please use the "Import Full Geometry" option.', 
+                  severity: 'warning' 
+                });
+              } else {
+                setAlert({ 
+                  open: true, 
+                  message: 'Invalid partial geometry format. File must contain "object" and "descendants" array.', 
+                  severity: 'error' 
+                });
+              }
+            }
           }
         } else {
           // Validate materials format
@@ -150,14 +187,45 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           >
             Copy to Clipboard
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            size="small"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Import from File
-          </Button>
+          
+          {tabValue === 0 && (
+            <>
+              <Button
+                variant="contained"
+                color={importMode === 'full' ? 'secondary' : 'inherit'}
+                size="small"
+                onClick={() => {
+                  setImportMode('full');
+                  fileInputRef.current?.click();
+                }}
+              >
+                Import Full Geometry
+              </Button>
+              <Button
+                variant="contained"
+                color={importMode === 'partial' ? 'secondary' : 'inherit'}
+                size="small"
+                onClick={() => {
+                  setImportMode('partial');
+                  fileInputRef.current?.click();
+                }}
+              >
+                Import Partial Geometry
+              </Button>
+            </>
+          )}
+          
+          {tabValue === 1 && (
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Import Materials
+            </Button>
+          )}
+          
           <input
             type="file"
             ref={fileInputRef}
