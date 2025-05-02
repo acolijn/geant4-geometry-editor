@@ -10,6 +10,7 @@ import TrapezoidObject from './TrapezoidObject.jsx';
 import TorusObject from './TorusObject.jsx';
 import EllipsoidObject from './EllipsoidObject.jsx';
 import PolyconeObject from './PolyconeObject.jsx';
+import UnionObject from './UnionObject.jsx';
 
 const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
 const degToRad = (d) => THREE.MathUtils.degToRad(d);
@@ -290,6 +291,8 @@ export default function TransformableObject({
         return <EllipsoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
       case 'polycone':
         return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'union':
+        return <UnionObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
       default:
         console.error(`Unknown object type: ${object.type}`);
         return null;

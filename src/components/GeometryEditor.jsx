@@ -38,6 +38,10 @@ const GeometryEditor = ({
   const menuOpen = Boolean(menuAnchorEl);
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
   
+  // State for union solid creation
+  const [firstSolid, setFirstSolid] = useState('');
+  const [secondSolid, setSecondSolid] = useState('');
+  
   // Handle opening the context menu
   const handleMenuOpen = (event) => {
     event.stopPropagation();
@@ -204,6 +208,68 @@ const GeometryEditor = ({
 
   const selectedObject = getSelectedGeometryObject();
 
+  // Handle rotation changes
+  const handleRotationChange = (axis, value) => {
+    if (!selectedGeometry) return;
+    
+    const updatedGeometries = { ...geometries };
+    
+    if (selectedGeometry === 'world') {
+      updatedGeometries.world.rotation = {
+        ...updatedGeometries.world.rotation,
+        [axis]: value
+      };
+    } else {
+      const index = parseInt(selectedGeometry.split('-')[1]);
+      updatedGeometries.volumes[index].rotation = {
+        ...updatedGeometries.volumes[index].rotation,
+        [axis]: value
+      };
+    }
+    
+    onUpdateGeometry(selectedGeometry, updatedGeometries);
+  };
+  
+  // Handle relative position changes for union solids
+  const handleRelativePositionChange = (axis, value) => {
+    if (!selectedGeometry) return;
+    
+    const index = parseInt(selectedGeometry.split('-')[1]);
+    const volume = geometries.volumes[index];
+    
+    // Ensure the object is a union solid
+    if (volume.type !== 'union') return;
+    
+    // Create updated relative position
+    const updatedRelativePosition = {
+      ...volume.relative_position,
+      [axis]: value
+    };
+    
+    // Update the geometry
+    onUpdateGeometry(selectedGeometry, { relative_position: updatedRelativePosition });
+  };
+  
+  // Handle relative rotation changes for union solids
+  const handleRelativeRotationChange = (axis, value) => {
+    if (!selectedGeometry) return;
+    
+    const index = parseInt(selectedGeometry.split('-')[1]);
+    const volume = geometries.volumes[index];
+    
+    // Ensure the object is a union solid
+    if (volume.type !== 'union') return;
+    
+    // Create updated relative rotation
+    const updatedRelativeRotation = {
+      ...volume.relative_rotation,
+      [axis]: value
+    };
+    
+    // Update the geometry
+    onUpdateGeometry(selectedGeometry, { relative_rotation: updatedRelativeRotation });
+  };
+
   // Handle property changes
   const handlePropertyChange = (property, value, allowNegative = true, isStringProperty = false) => {
     if (!selectedGeometry) return;
@@ -275,6 +341,109 @@ const GeometryEditor = ({
 
   // Add a new geometry
   const handleAddGeometry = () => {
+    // For union solids, we need to validate that both solids are selected
+    if (newGeometryType === 'union') {
+      if (!firstSolid || !secondSolid) {
+        setImportAlert({
+          show: true,
+          message: 'Please select both solids for the union operation.',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Get the indices of the selected solids
+      const firstSolidIndex = parseInt(firstSolid.split('-')[1]);
+      const secondSolidIndex = parseInt(secondSolid.split('-')[1]);
+      
+      // Get the actual solid objects
+      const firstSolidObj = geometries.volumes[firstSolidIndex];
+      const secondSolidObj = geometries.volumes[secondSolidIndex];
+      
+      if (!firstSolidObj || !secondSolidObj) {
+        setImportAlert({
+          show: true,
+          message: 'One or both of the selected solids could not be found.',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Create the union solid in a format compatible with the GeometryParser
+      // For a self-contained union solid, we need to include the complete definitions of both solids
+      // rather than just referencing them by name
+      
+      const newGeometry = {
+        type: 'union',
+        name: `Union_${firstSolidIndex}_${secondSolidIndex}`,
+        material: 'G4_AIR',
+        position: { x: 0, y: 0, z: 0, unit: 'cm' },
+        rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
+        mother_volume: newMotherVolume,
+        // Inline definitions of the solids being combined
+        solid1: {
+          // Copy all properties of the first solid except position, rotation, and mother_volume
+          // which are specific to the placement, not the solid definition
+          type: firstSolidObj.type,
+          ...(firstSolidObj.size && { size: { ...firstSolidObj.size } }),
+          ...(firstSolidObj.radius && { radius: firstSolidObj.radius }),
+          ...(firstSolidObj.height && { height: firstSolidObj.height }),
+          ...(firstSolidObj.inner_radius && { inner_radius: firstSolidObj.inner_radius }),
+          ...(firstSolidObj.innerRadius && { innerRadius: firstSolidObj.innerRadius }),
+          ...(firstSolidObj.dx1 && { dx1: firstSolidObj.dx1 }),
+          ...(firstSolidObj.dx2 && { dx2: firstSolidObj.dx2 }),
+          ...(firstSolidObj.dy1 && { dy1: firstSolidObj.dy1 }),
+          ...(firstSolidObj.dy2 && { dy2: firstSolidObj.dy2 }),
+          ...(firstSolidObj.dz && { dz: firstSolidObj.dz }),
+          ...(firstSolidObj.xRadius && { xRadius: firstSolidObj.xRadius }),
+          ...(firstSolidObj.yRadius && { yRadius: firstSolidObj.yRadius }),
+          ...(firstSolidObj.zRadius && { zRadius: firstSolidObj.zRadius }),
+          ...(firstSolidObj.majorRadius && { majorRadius: firstSolidObj.majorRadius }),
+          ...(firstSolidObj.minorRadius && { minorRadius: firstSolidObj.minorRadius }),
+          ...(firstSolidObj.zSections && { zSections: [...firstSolidObj.zSections] }),
+          ...(firstSolidObj.unit && { unit: firstSolidObj.unit })
+        },
+        solid2: {
+          // Copy all properties of the second solid except position, rotation, and mother_volume
+          type: secondSolidObj.type,
+          ...(secondSolidObj.size && { size: { ...secondSolidObj.size } }),
+          ...(secondSolidObj.radius && { radius: secondSolidObj.radius }),
+          ...(secondSolidObj.height && { height: secondSolidObj.height }),
+          ...(secondSolidObj.inner_radius && { inner_radius: secondSolidObj.inner_radius }),
+          ...(secondSolidObj.innerRadius && { innerRadius: secondSolidObj.innerRadius }),
+          ...(secondSolidObj.dx1 && { dx1: secondSolidObj.dx1 }),
+          ...(secondSolidObj.dx2 && { dx2: secondSolidObj.dx2 }),
+          ...(secondSolidObj.dy1 && { dy1: secondSolidObj.dy1 }),
+          ...(secondSolidObj.dy2 && { dy2: secondSolidObj.dy2 }),
+          ...(secondSolidObj.dz && { dz: secondSolidObj.dz }),
+          ...(secondSolidObj.xRadius && { xRadius: secondSolidObj.xRadius }),
+          ...(secondSolidObj.yRadius && { yRadius: secondSolidObj.yRadius }),
+          ...(secondSolidObj.zRadius && { zRadius: secondSolidObj.zRadius }),
+          ...(secondSolidObj.majorRadius && { majorRadius: secondSolidObj.majorRadius }),
+          ...(secondSolidObj.minorRadius && { minorRadius: secondSolidObj.minorRadius }),
+          ...(secondSolidObj.zSections && { zSections: [...secondSolidObj.zSections] }),
+          ...(secondSolidObj.unit && { unit: secondSolidObj.unit })
+        },
+        // Relative position of the second solid with respect to the first
+        // Set a default offset along the z-axis so the solids don't completely overlap
+        relative_position: { x: 0, y: 0, z: 5, unit: 'cm' },
+        relative_rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
+        // Store the volume indices for the editor's reference
+        _editorData: {
+          firstSolidIndex,
+          secondSolidIndex
+        }
+      };
+      
+      onAddGeometry(newGeometry);
+      
+      // Reset the solid selections after creating the union
+      setFirstSolid('');
+      setSecondSolid('');
+      return;
+    }
+    
+    // For basic geometries
     const newGeometry = {
       type: newGeometryType,
       name: `New${newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1)}`,
@@ -941,8 +1110,62 @@ const GeometryEditor = ({
             <MenuItem value="torus">Torus</MenuItem>
             <MenuItem value="ellipsoid">Ellipsoid</MenuItem>
             <MenuItem value="polycone">Polycone</MenuItem>
+            <Divider />
+            <MenuItem value="union">Union Solid</MenuItem>
           </Select>
         </FormControl>
+        
+        {/* Additional fields for union solid */}
+        {newGeometryType === 'union' && (
+          <Box sx={{ mt: 2, mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: '4px', backgroundColor: '#f9f9f9' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Union Solid Configuration</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              A union solid combines two existing solids. Select the two solids to combine.
+            </Typography>
+            
+            <FormControl fullWidth margin="normal">
+              <InputLabel>First Solid</InputLabel>
+              <Select
+                label="First Solid"
+                value={firstSolid}
+                onChange={(e) => setFirstSolid(e.target.value)}
+              >
+                <MenuItem value=""><em>Select a solid</em></MenuItem>
+                {geometries.volumes.map((volume, index) => (
+                  <MenuItem key={`first-${index}`} value={`volume-${index}`}>
+                    {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Second Solid</InputLabel>
+              <Select
+                label="Second Solid"
+                value={secondSolid}
+                onChange={(e) => setSecondSolid(e.target.value)}
+                disabled={!firstSolid} // Disable until first solid is selected
+              >
+                <MenuItem value=""><em>Select a solid</em></MenuItem>
+                {geometries.volumes.map((volume, index) => (
+                  <MenuItem 
+                    key={`second-${index}`} 
+                    value={`volume-${index}`}
+                    disabled={`volume-${index}` === firstSolid} // Can't select the same solid twice
+                  >
+                    {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              Note: The union will create a new solid that combines the two selected solids.
+              The original solids will remain unchanged.
+            </Typography>
+          </Box>
+        )}
         
         <FormControl fullWidth margin="normal">
           <InputLabel>Mother Volume</InputLabel>

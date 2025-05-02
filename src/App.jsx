@@ -577,7 +577,23 @@ return (
           <Tabs 
             value={tabValue} 
             onChange={(e, newValue) => setTabValue(newValue)}
-            sx={{ flexGrow: 1 }}
+            sx={{ 
+              flexGrow: 1,
+              '& .MuiTab-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontWeight: 'normal',
+              },
+              '& .Mui-selected': {
+                color: '#ffffff',
+                fontWeight: 'bold',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px 4px 0 0',
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                backgroundColor: '#ffffff',
+              }
+            }}
             centered
           >
             <Tab label="3D View" />
