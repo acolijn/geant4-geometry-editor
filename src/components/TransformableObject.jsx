@@ -6,6 +6,10 @@ import * as THREE from 'three';
 import Box from './shapes/Box.jsx';
 import Cylinder from './shapes/Cylinder.jsx';
 import Sphere from './shapes/Sphere.jsx';
+import Trapezoid from './shapes/Trapezoid.jsx';
+import Torus from './shapes/Torus.jsx';
+import Ellipsoid from './shapes/Ellipsoid.jsx';
+import Polycone from './shapes/Polycone.jsx';
 
 const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
 const degToRad = (d) => THREE.MathUtils.degToRad(d);
@@ -226,6 +230,51 @@ export default function TransformableObject({
         <Sphere 
           radius={object.radius || 1} 
           {...sharedProps} 
+        />
+      )}
+      {object.type === 'trapezoid' && (
+        <Trapezoid 
+          size={[
+            object.dx1 || 5, // Half-length in x at -z/2
+            object.dx2 || 5, // Half-length in x at +z/2
+            object.dy1 || 5, // Half-length in y at -z/2
+            object.dy2 || 5, // Half-length in y at +z/2
+            object.dz || 5    // Half-length in z
+          ]} 
+          {...sharedProps} 
+          color="rgba(255, 150, 100, 0.7)"
+        />
+      )}
+      {object.type === 'torus' && (
+        <Torus 
+          size={[
+            object.majorRadius || 5,
+            object.minorRadius || 1
+          ]} 
+          {...sharedProps} 
+          color="rgba(255, 100, 100, 0.7)"
+        />
+      )}
+      {object.type === 'ellipsoid' && (
+        <Ellipsoid 
+          size={[
+            object.xRadius || 5,
+            object.yRadius || 3,
+            object.zRadius || 4
+          ]} 
+          {...sharedProps} 
+          color="rgba(100, 255, 255, 0.7)"
+        />
+      )}
+      {object.type === 'polycone' && (
+        <Polycone 
+          zSections={object.zSections || [
+            { z: -5, rMin: 0, rMax: 3 },
+            { z: 0, rMin: 0, rMax: 5 },
+            { z: 5, rMin: 0, rMax: 2 }
+          ]} 
+          {...sharedProps} 
+          color="rgba(255, 200, 100, 0.7)"
         />
       )}
 

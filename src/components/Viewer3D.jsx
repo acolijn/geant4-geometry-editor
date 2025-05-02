@@ -6,6 +6,10 @@ import TransformableObject from './TransformableObject';
 import BoxObject from './BoxObject';
 import SphereObject from './SphereObject';
 import CylinderObject from './CylinderObject';
+import TrapezoidObject from './TrapezoidObject';
+import TorusObject from './TorusObject';
+import EllipsoidObject from './EllipsoidObject';
+import PolyconeObject from './PolyconeObject';
 
 // Coordinate system component
 function CoordinateSystem() {
