@@ -3,16 +3,26 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
-import Box from './shapes/Box.jsx';
-import Cylinder from './shapes/Cylinder.jsx';
-import Sphere from './shapes/Sphere.jsx';
-import Trapezoid from './shapes/Trapezoid.jsx';
-import Torus from './shapes/Torus.jsx';
-import Ellipsoid from './shapes/Ellipsoid.jsx';
-import Polycone from './shapes/Polycone.jsx';
+import BoxObject from './BoxObject.jsx';
+import CylinderObject from './CylinderObject.jsx';
+import SphereObject from './SphereObject.jsx';
+import TrapezoidObject from './TrapezoidObject.jsx';
+import TorusObject from './TorusObject.jsx';
+import EllipsoidObject from './EllipsoidObject.jsx';
+import PolyconeObject from './PolyconeObject.jsx';
 
 const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
 const degToRad = (d) => THREE.MathUtils.degToRad(d);
+
+// Debug helper function to log object details
+const debugObject = (prefix, object) => {
+  console.log(`${prefix} - Type: ${object.type}, Name: ${object.name}`, {
+    position: object.position,
+    rotation: object.rotation,
+    worldPosition: object.calculatedWorldPosition,
+    worldRotation: object.calculatedWorldRotation
+  });
+};
 
 export default function TransformableObject({ 
   object, 
@@ -24,16 +34,28 @@ export default function TransformableObject({
   worldPosition,
   worldRotation
 }) {
+  // Create a ref for the object
   const groupRef = useRef();
   const transformRef = useRef();
   const { camera, gl } = useThree();
   const [isDragging, setIsDragging] = useState(false);
   const lastPositionRef = useRef(null); // Track last position to prevent jumps
+  
+  // Log when the component is mounted or updated
+  useEffect(() => {
+    console.log(`TransformableObject mounted/updated: ${objectKey} (${object.type})`);
+    return () => {
+      console.log(`TransformableObject unmounted: ${objectKey} (${object.type})`);
+    };
+  }, [objectKey, object.type]);
 
   // Apply incoming props unless dragging
   useEffect(() => {
     const group = groupRef.current;
     if (!group || isDragging) return;
+
+    // Debug the object to help diagnose issues
+    debugObject(`Setting position for ${objectKey}`, object);
 
     // Use world position if provided, otherwise use object's own position
     if (worldPosition) {
@@ -58,7 +80,7 @@ export default function TransformableObject({
       position: worldPosition ? { x: worldPosition[0], y: worldPosition[1], z: worldPosition[2] } : { ...object.position },
       rotation: worldRotation ? { x: radToDeg(worldRotation[0]), y: radToDeg(worldRotation[1]), z: radToDeg(worldRotation[2]) } : { ...object.rotation }
     };
-  }, [object.position, object.rotation, worldPosition, worldRotation, isDragging]);
+  }, [object.position, object.rotation, worldPosition, worldRotation, isDragging, objectKey]);
 
   // Sync transform mode to control
   useEffect(() => {
@@ -78,6 +100,12 @@ export default function TransformableObject({
       
       const group = groupRef.current;
       if (!group) return;
+      
+      // Debug the transformation
+      console.log(`Transform change for ${objectKey} (${object.type})`, {
+        position: [group.position.x, group.position.y, group.position.z],
+        rotation: [radToDeg(group.rotation.x), radToDeg(group.rotation.y), radToDeg(group.rotation.z)]
+      });
       
       // Calculate the delta from the original position
       const originalPosition = lastPositionRef.current?.position || { x: 0, y: 0, z: 0 };
@@ -132,7 +160,12 @@ export default function TransformableObject({
     };
 
     // End dragging and finalize position
-    const handleMouseUp = () => {
+    const handleMouseUp = (e) => {
+      // Prevent the event from bubbling up to avoid deselection
+      if (e && e.stopPropagation) {
+        e.stopPropagation();
+      }
+      
       const group = groupRef.current;
       if (group) {
         // Get final world position after drag
@@ -151,17 +184,31 @@ export default function TransformableObject({
           unit: object.rotation?.unit || 'deg'
         };
         
+        // Debug the final transformation
+        console.log(`Final transform for ${objectKey} (${object.type})`, {
+          position: finalPosition,
+          rotation: finalRotation,
+          originalPosition: object.position,
+          originalRotation: object.rotation
+        });
+        
         // Send final update to parent with world coordinates
         // The parent component will handle converting to local coordinates if needed
+        // Pass true as the third parameter to ensure the object stays selected
         onTransformEnd(objectKey, { 
           position: finalPosition, 
           rotation: finalRotation 
-        });
+        }, true);
       }
       
       // Reset drag state
       setIsDragging(false);
       gl.domElement.style.cursor = 'auto';
+      
+      // Prevent default to avoid any unexpected behavior
+      if (e && e.preventDefault) {
+        e.preventDefault();
+      }
     };
 
     // Set up event listeners
@@ -210,74 +257,45 @@ export default function TransformableObject({
     }
   }
   
+  // Create a group for the transform controls
+  const renderObject = () => {
+    // Clone the object to avoid modifying the original
+    const clonedObject = { ...object };
+    
+    // Debug the object being rendered
+    console.log(`Rendering ${objectKey} (${object.type})`, {
+      position: worldPosition || (object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0]),
+      rotation: worldRotation || (object.rotation ? [degToRad(object.rotation.x), degToRad(object.rotation.y), degToRad(object.rotation.z)] : [0, 0, 0])
+    });
+    
+    // Render the appropriate object type
+    switch (object.type) {
+      case 'box':
+        return <BoxObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'cylinder':
+        return <CylinderObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'sphere':
+        return <SphereObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'trapezoid':
+        return <TrapezoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'torus':
+        return <TorusObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'ellipsoid':
+        return <EllipsoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'polycone':
+        return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      default:
+        console.error(`Unknown object type: ${object.type}`);
+        return null;
+    }
+  };
+
+  // No additional state needed
+
   return (
     <>
-      {object.type === 'box' && (
-        <Box 
-          size={boxSize} 
-          {...sharedProps} 
-        />
-      )}
-      {object.type === 'cylinder' && (
-        <Cylinder 
-          radius={object.radius || 1} 
-          height={object.height || 1} 
-          innerRadius={object.innerRadius || object.inner_radius || 0} 
-          {...sharedProps} 
-        />
-      )}
-      {object.type === 'sphere' && (
-        <Sphere 
-          radius={object.radius || 1} 
-          {...sharedProps} 
-        />
-      )}
-      {object.type === 'trapezoid' && (
-        <Trapezoid 
-          size={[
-            object.dx1 || 5, // Half-length in x at -z/2
-            object.dx2 || 5, // Half-length in x at +z/2
-            object.dy1 || 5, // Half-length in y at -z/2
-            object.dy2 || 5, // Half-length in y at +z/2
-            object.dz || 5    // Half-length in z
-          ]} 
-          {...sharedProps} 
-          color="rgba(255, 150, 100, 0.7)"
-        />
-      )}
-      {object.type === 'torus' && (
-        <Torus 
-          size={[
-            object.majorRadius || 5,
-            object.minorRadius || 1
-          ]} 
-          {...sharedProps} 
-          color="rgba(255, 100, 100, 0.7)"
-        />
-      )}
-      {object.type === 'ellipsoid' && (
-        <Ellipsoid 
-          size={[
-            object.xRadius || 5,
-            object.yRadius || 3,
-            object.zRadius || 4
-          ]} 
-          {...sharedProps} 
-          color="rgba(100, 255, 255, 0.7)"
-        />
-      )}
-      {object.type === 'polycone' && (
-        <Polycone 
-          zSections={object.zSections || [
-            { z: -5, rMin: 0, rMax: 3 },
-            { z: 0, rMin: 0, rMax: 5 },
-            { z: 5, rMin: 0, rMax: 2 }
-          ]} 
-          {...sharedProps} 
-          color="rgba(255, 200, 100, 0.7)"
-        />
-      )}
-
+      {renderObject()}
+      
       {isSelected && groupRef.current && (
         <TransformControls
           ref={transformRef}

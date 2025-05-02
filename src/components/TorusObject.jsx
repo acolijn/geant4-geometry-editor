@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import Torus from './shapes/Torus';
 
 // Torus Object Component
 const TorusObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
@@ -31,8 +30,19 @@ const TorusObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   const euler = new THREE.Euler();
   euler.setFromRotationMatrix(rotationMatrix);
 
+  // Create a torus geometry
+  const geometry = useMemo(() => {
+    return new THREE.TorusGeometry(
+      majorRadius,
+      minorRadius,
+      16, // radialSegments
+      32, // tubularSegments
+      Math.PI * 2 // arc
+    );
+  }, [majorRadius, minorRadius]);
+
   return (
-    <mesh 
+    <mesh
       ref={ref}
       position={position}
       rotation={[euler.x, euler.y, euler.z]}
@@ -41,11 +51,18 @@ const TorusObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
         if (onClick) onClick();
       }}
     >
-      <Torus 
-        size={[majorRadius, minorRadius]} 
-        selected={isSelected}
-        color="rgba(255, 100, 100, 0.7)"
+      <primitive object={geometry} />
+      <meshStandardMaterial 
+        color="rgba(255, 100, 100, 0.7)" 
+        transparent={true}
+        opacity={0.7}
       />
+      {isSelected && (
+        <lineSegments>
+          <edgesGeometry attach="geometry" args={[geometry]} />
+          <lineBasicMaterial attach="material" color="#ffff00" />
+        </lineSegments>
+      )}
     </mesh>
   );
 });

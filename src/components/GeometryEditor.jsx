@@ -217,6 +217,13 @@ const GeometryEditor = ({
       return;
     }
     
+    // Special handling for array properties like zSections
+    if (Array.isArray(value)) {
+      updatedObject[property] = value;
+      onUpdateGeometry(selectedGeometry, updatedObject);
+      return;
+    }
+    
     // Process numeric values
     let processedValue = value;
     if (typeof value === 'string' && value.match(/^-?\d*\.?\d*$/)) {
@@ -583,6 +590,191 @@ const GeometryEditor = ({
               fullWidth
               inputProps={{ step: 'any', min: 0 }}
             />
+          </>
+        )}
+        
+        {selectedObject.type === 'trapezoid' && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+              <TextField
+                label="dx1 (X at -z/2)"
+                type="number"
+                value={selectedObject.dx1 || 0}
+                onChange={(e) => handlePropertyChange('dx1', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+              <TextField
+                label="dx2 (X at +z/2)"
+                type="number"
+                value={selectedObject.dx2 || 0}
+                onChange={(e) => handlePropertyChange('dx2', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+              <TextField
+                label="dy1 (Y at -z/2)"
+                type="number"
+                value={selectedObject.dy1 || 0}
+                onChange={(e) => handlePropertyChange('dy1', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+              <TextField
+                label="dy2 (Y at +z/2)"
+                type="number"
+                value={selectedObject.dy2 || 0}
+                onChange={(e) => handlePropertyChange('dy2', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+            </Box>
+            <TextField
+              label="dz (Half-length in Z)"
+              type="number"
+              value={selectedObject.dz || 0}
+              onChange={(e) => handlePropertyChange('dz', e.target.value, false)}
+              size="small"
+              fullWidth
+              inputProps={{ step: 'any', min: 0 }}
+              sx={{ mb: 1 }}
+            />
+          </>
+        )}
+        
+        {selectedObject.type === 'ellipsoid' && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+              <TextField
+                label="X Radius"
+                type="number"
+                value={selectedObject.xRadius || 0}
+                onChange={(e) => handlePropertyChange('xRadius', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+              <TextField
+                label="Y Radius"
+                type="number"
+                value={selectedObject.yRadius || 0}
+                onChange={(e) => handlePropertyChange('yRadius', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+              <TextField
+                label="Z Radius"
+                type="number"
+                value={selectedObject.zRadius || 0}
+                onChange={(e) => handlePropertyChange('zRadius', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+            </Box>
+          </>
+        )}
+        
+        {selectedObject.type === 'torus' && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+              <TextField
+                label="Major Radius"
+                type="number"
+                value={selectedObject.majorRadius || 0}
+                onChange={(e) => handlePropertyChange('majorRadius', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+              <TextField
+                label="Minor Radius"
+                type="number"
+                value={selectedObject.minorRadius || 0}
+                onChange={(e) => handlePropertyChange('minorRadius', e.target.value, false)}
+                size="small"
+                inputProps={{ step: 'any', min: 0 }}
+              />
+            </Box>
+          </>
+        )}
+        
+        {selectedObject.type === 'polycone' && (
+          <>
+            <Typography variant="subtitle1" sx={{ mt: 2 }}>Z Sections</Typography>
+            <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+              Define the sections of the polycone along the z-axis
+            </Typography>
+            {selectedObject.zSections && selectedObject.zSections.map((section, index) => (
+              <Box key={`section-${index}`} sx={{ display: 'flex', gap: 1, mb: 1, border: '1px solid #eee', p: 1, borderRadius: '4px' }}>
+                <TextField
+                  label="Z Position"
+                  type="number"
+                  value={section.z || 0}
+                  onChange={(e) => {
+                    const newSections = [...selectedObject.zSections];
+                    newSections[index] = { ...newSections[index], z: parseFloat(e.target.value) || 0 };
+                    handlePropertyChange('zSections', newSections);
+                  }}
+                  size="small"
+                  inputProps={{ step: 'any' }}
+                />
+                <TextField
+                  label="Min Radius"
+                  type="number"
+                  value={section.rMin || 0}
+                  onChange={(e) => {
+                    const newSections = [...selectedObject.zSections];
+                    newSections[index] = { ...newSections[index], rMin: parseFloat(e.target.value) || 0 };
+                    handlePropertyChange('zSections', newSections);
+                  }}
+                  size="small"
+                  inputProps={{ step: 'any', min: 0 }}
+                />
+                <TextField
+                  label="Max Radius"
+                  type="number"
+                  value={section.rMax || 0}
+                  onChange={(e) => {
+                    const newSections = [...selectedObject.zSections];
+                    newSections[index] = { ...newSections[index], rMax: parseFloat(e.target.value) || 0 };
+                    handlePropertyChange('zSections', newSections);
+                  }}
+                  size="small"
+                  inputProps={{ step: 'any', min: 0 }}
+                />
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  size="small"
+                  onClick={() => {
+                    if (selectedObject.zSections.length > 2) {
+                      const newSections = [...selectedObject.zSections];
+                      newSections.splice(index, 1);
+                      handlePropertyChange('zSections', newSections);
+                    }
+                  }}
+                  disabled={selectedObject.zSections.length <= 2}
+                >
+                  Remove
+                </Button>
+              </Box>
+            ))}
+            <Button 
+              variant="outlined" 
+              size="small"
+              onClick={() => {
+                const newSections = [...(selectedObject.zSections || [])];
+                const lastZ = newSections.length > 0 ? newSections[newSections.length - 1].z + 5 : 0;
+                newSections.push({ z: lastZ, rMin: 0, rMax: 5 });
+                handlePropertyChange('zSections', newSections);
+              }}
+              sx={{ mb: 1 }}
+            >
+              Add Section
+            </Button>
           </>
         )}
         

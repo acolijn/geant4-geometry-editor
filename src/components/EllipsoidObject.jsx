@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import Ellipsoid from './shapes/Ellipsoid';
 
 // Ellipsoid Object Component
 const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
@@ -32,8 +31,15 @@ const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick }, ref) 
   const euler = new THREE.Euler();
   euler.setFromRotationMatrix(rotationMatrix);
 
+  // Create an ellipsoid geometry (scaled sphere)
+  const geometry = useMemo(() => {
+    const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+    sphereGeometry.scale(xRadius, yRadius, zRadius);
+    return sphereGeometry;
+  }, [xRadius, yRadius, zRadius]);
+
   return (
-    <mesh 
+    <mesh
       ref={ref}
       position={position}
       rotation={[euler.x, euler.y, euler.z]}
@@ -42,11 +48,18 @@ const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick }, ref) 
         if (onClick) onClick();
       }}
     >
-      <Ellipsoid 
-        size={[xRadius, yRadius, zRadius]} 
-        selected={isSelected}
-        color="rgba(100, 255, 255, 0.7)"
+      <primitive object={geometry} />
+      <meshStandardMaterial 
+        color="rgba(100, 255, 255, 0.7)" 
+        transparent={true}
+        opacity={0.7}
       />
+      {isSelected && (
+        <lineSegments>
+          <edgesGeometry attach="geometry" args={[geometry]} />
+          <lineBasicMaterial attach="material" color="#ffff00" />
+        </lineSegments>
+      )}
     </mesh>
   );
 });

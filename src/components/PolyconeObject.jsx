@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import Polycone from './shapes/Polycone';
 
 // Polycone Object Component
 const PolyconeObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
@@ -34,8 +33,50 @@ const PolyconeObject = React.forwardRef(({ object, isSelected, onClick }, ref) =
   const euler = new THREE.Euler();
   euler.setFromRotationMatrix(rotationMatrix);
 
+  // Create a custom polycone geometry with axis along z-direction
+  const geometry = useMemo(() => {
+    // Sort sections by z-coordinate
+    const sortedSections = [...zSections].sort((a, b) => a.z - b.z);
+    
+    if (sortedSections.length < 2) {
+      console.error('Polycone needs at least 2 z-sections');
+      return new THREE.BufferGeometry();
+    }
+    
+    // Create points for the lathe geometry
+    // The points are in the x-z plane (y=0), with z being the height/axis
+    const points = [];
+    
+    // Add points for each z-section (outer radius)
+    sortedSections.forEach(section => {
+      points.push(new THREE.Vector2(section.rMax, section.z));
+    });
+    
+    // Add points for each z-section in reverse order (inner radius)
+    // Only if we have inner radii (hollow polycone)
+    if (sortedSections.some(section => section.rMin > 0)) {
+      for (let i = sortedSections.length - 1; i >= 0; i--) {
+        const section = sortedSections[i];
+        if (section.rMin > 0) {
+          points.push(new THREE.Vector2(section.rMin, section.z));
+        }
+      }
+    }
+    
+    // Create the lathe geometry
+    // The lathe geometry rotates points around the y-axis in Three.js
+    // So we need to rotate our final geometry to align with z-axis
+    const segments = 32;
+    const latheGeometry = new THREE.LatheGeometry(points, segments);
+    
+    // Rotate the geometry to make the axis along z-direction
+    latheGeometry.rotateX(Math.PI / 2);
+    
+    return latheGeometry;
+  }, [zSections]);
+
   return (
-    <mesh 
+    <mesh
       ref={ref}
       position={position}
       rotation={[euler.x, euler.y, euler.z]}
@@ -44,11 +85,19 @@ const PolyconeObject = React.forwardRef(({ object, isSelected, onClick }, ref) =
         if (onClick) onClick();
       }}
     >
-      <Polycone 
-        zSections={zSections} 
-        selected={isSelected}
-        color="rgba(255, 200, 100, 0.7)"
+      <primitive object={geometry} />
+      <meshStandardMaterial 
+        color="rgba(255, 200, 100, 0.7)" 
+        transparent={true}
+        opacity={0.7}
+        side={THREE.DoubleSide}
       />
+      {isSelected && (
+        <lineSegments>
+          <edgesGeometry attach="geometry" args={[geometry]} />
+          <lineBasicMaterial attach="material" color="#ffff00" />
+        </lineSegments>
+      )}
     </mesh>
   );
 });

@@ -58,6 +58,12 @@ function CameraSetup({ setFrontViewCamera }) {
 
 // Simple Scene component with flat object structure
 function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd }) {
+  // Debug the selected geometry to help diagnose issues
+  React.useEffect(() => {
+    if (selectedGeometry) {
+      console.log(`Selected geometry: ${selectedGeometry}`);
+    }
+  }, [selectedGeometry]);
   // Create a map of volume names to their indices for easy lookup
   const volumeNameToIndex = {};
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
@@ -325,9 +331,13 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
     
     // Render all children of this parent
     return volumesByParent[parentKey].map(({ volume, key, index }) => {
-      let icon = '📦';
+      let icon = '📦'; // Default box icon
       if (volume.type === 'sphere') icon = '🔴';
       if (volume.type === 'cylinder') icon = '🧪';
+      if (volume.type === 'ellipsoid') icon = '🥚';
+      if (volume.type === 'torus') icon = '🍩';
+      if (volume.type === 'polycone') icon = '🏆';
+      if (volume.type === 'trapezoid') icon = '🔷';
       
       return (
         <React.Fragment key={key}>
@@ -406,6 +416,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   
   // Handle transform end
   const handleTransformEnd = (objectKey, updates, keepSelected = true) => {
+    console.log(`Transform end for ${objectKey}, keepSelected: ${keepSelected}`);
+    
     // Get the current object
     let currentObject;
     if (objectKey === 'world') {
@@ -466,9 +478,46 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       updatedObject.radius = updates.radius;
     }
     
-    // Call the update function with the keepSelected parameter - no setTimeout needed
+    // Update properties for ellipsoid
+    if (updatedObject.type === 'ellipsoid') {
+      if (updates.xRadius !== undefined) updatedObject.xRadius = updates.xRadius;
+      if (updates.yRadius !== undefined) updatedObject.yRadius = updates.yRadius;
+      if (updates.zRadius !== undefined) updatedObject.zRadius = updates.zRadius;
+    }
+    
+    // Update properties for torus
+    if (updatedObject.type === 'torus') {
+      if (updates.majorRadius !== undefined) updatedObject.majorRadius = updates.majorRadius;
+      if (updates.minorRadius !== undefined) updatedObject.minorRadius = updates.minorRadius;
+    }
+    
+    // Update properties for trapezoid
+    if (updatedObject.type === 'trapezoid') {
+      if (updates.dx1 !== undefined) updatedObject.dx1 = updates.dx1;
+      if (updates.dx2 !== undefined) updatedObject.dx2 = updates.dx2;
+      if (updates.dy1 !== undefined) updatedObject.dy1 = updates.dy1;
+      if (updates.dy2 !== undefined) updatedObject.dy2 = updates.dy2;
+      if (updates.dz !== undefined) updatedObject.dz = updates.dz;
+    }
+    
+    // Update properties for polycone
+    if (updatedObject.type === 'polycone' && updates.zSections) {
+      updatedObject.zSections = updates.zSections;
+    }
+    
+    // Call the update function with the keepSelected parameter
     // This ensures the state update happens synchronously
-    onUpdateGeometry(objectKey, updatedObject, keepSelected);
+    onUpdateGeometry(objectKey, updatedObject, true); // Always keep selected
+    
+    // Explicitly re-select the object to ensure it stays selected
+    // This is important for maintaining selection after moving
+    if (objectKey) {
+      // Small delay to ensure the update has been processed
+      setTimeout(() => {
+        console.log(`Explicitly selecting ${objectKey} to maintain selection`);
+        onSelect(objectKey);
+      }, 10);
+    }
     
     // If this is a parent object, we need to ensure the parent-child relationship is maintained
     // The group structure in the render function already ensures children move with parents visually
@@ -487,11 +536,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
           // in the Three.js scene graph, but we do need to maintain selection state
           geometries.volumes.forEach((volume, index) => {
             if (volume.mother_volume === parentVolume.name) {
-              // Ensure child volumes stay selected if they were previously selected
-              if (selectedGeometry === `volume-${index}`) {
-                // Direct selection without setTimeout to avoid race conditions
-                onSelect(`volume-${index}`);
-              }
+              // Just maintain the data model relationship
+              // No need to change selection
             }
           });
         }
