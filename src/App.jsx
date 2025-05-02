@@ -9,7 +9,9 @@ import {
   Tab,
   Container,
   ThemeProvider,
-  createTheme
+  createTheme,
+  Button,
+  Tooltip
 } from '@mui/material';
 import Viewer3D from './components/Viewer3D';
 import GeometryEditor from './components/GeometryEditor';
@@ -563,11 +565,15 @@ return (
             <Tab label="Materials" />
             <Tab label="JSON" />
           </Tabs>
-          <ProjectManager 
-            geometries={geometries} 
-            materials={materials} 
-            onLoadProject={handleLoadProject} 
-          />
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+            <ProjectManager 
+              geometries={geometries} 
+              materials={materials}
+              onLoadProject={handleLoadProject}
+              handleImportPartialFromAddNew={handleImportPartialFromAddNew}
+              compactMode={true}
+            />
+          </Box>
         </Toolbar>
       </AppBar>
       <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>

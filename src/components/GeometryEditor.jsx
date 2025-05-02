@@ -69,58 +69,122 @@ const GeometryEditor = ({
       descendantCount: exportData.descendants.length
     };
     
-    // DETAILED DEBUG: Log the main object properties
-    console.log('EXPORT - Main object details:', {
-      name: exportData.object.name,
-      type: exportData.object.type,
-      mother_volume: exportData.object.mother_volume,
-      position: exportData.object.position,
-      rotation: exportData.object.rotation,
-      size: exportData.object.size,  // For box
-      radius: exportData.object.radius, // For cylinder/sphere
-      height: exportData.object.height, // For cylinder
-      inner_radius: exportData.object.inner_radius, // For cylinder
-      innerRadius: exportData.object.innerRadius // For cylinder (alternate property name)
-    });
-    
-    // DETAILED DEBUG: Log each descendant
-    if (exportData.descendants.length > 0) {
-      exportData.descendants.forEach((desc, index) => {
-        console.log(`EXPORT - Descendant ${index + 1}:`, {
-          name: desc.name,
-          type: desc.type,
-          mother_volume: desc.mother_volume,
-          position: desc.position,
-          rotation: desc.rotation,
-          size: desc.size,  // For box
-          radius: desc.radius, // For cylinder/sphere
-          height: desc.height, // For cylinder
-          inner_radius: desc.inner_radius, // For cylinder
-          innerRadius: desc.innerRadius // For cylinder (alternate property name)
-        });
+    // Open the save object dialog
+    // We need to check if the ProjectManager component is available
+    const openSaveObjectDialog = () => {
+      // Dispatch a custom event to notify ProjectManager to open the save object dialog
+      const event = new CustomEvent('saveObject', { 
+        detail: { objectData: exportData }
       });
-    }
+      document.dispatchEvent(event);
+    };
     
-    // Create a JSON file and trigger download
-    const jsonData = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    // Show a dialog to ask the user if they want to save to the structured directory or download
+    const dialogContainer = document.createElement('div');
+    dialogContainer.style.position = 'fixed';
+    dialogContainer.style.top = '0';
+    dialogContainer.style.left = '0';
+    dialogContainer.style.width = '100%';
+    dialogContainer.style.height = '100%';
+    dialogContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    dialogContainer.style.display = 'flex';
+    dialogContainer.style.justifyContent = 'center';
+    dialogContainer.style.alignItems = 'center';
+    dialogContainer.style.zIndex = '9999';
     
-    // Create a temporary link and trigger the download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${exportData.object.name}_with_descendants.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const dialogContent = document.createElement('div');
+    dialogContent.style.backgroundColor = 'white';
+    dialogContent.style.padding = '20px';
+    dialogContent.style.borderRadius = '8px';
+    dialogContent.style.maxWidth = '400px';
+    dialogContent.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
     
-    // Show alert with export information
-    setImportAlert({
-      show: true,
-      message: `Exported ${exportData.object.name} with ${exportData.descendants.length} descendants. Check browser console for details.`,
-      severity: 'info'
+    const title = document.createElement('h3');
+    title.textContent = 'Save Object';
+    title.style.marginTop = '0';
+    
+    const message = document.createElement('p');
+    message.textContent = `How would you like to save "${exportData.object.name}" with ${exportData.descendants.length} descendants?`;
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '20px';
+    buttonContainer.style.gap = '10px';
+    
+    const saveToStructureButton = document.createElement('button');
+    saveToStructureButton.textContent = 'Save to Structure';
+    saveToStructureButton.style.padding = '8px 16px';
+    saveToStructureButton.style.backgroundColor = '#1976d2';
+    saveToStructureButton.style.color = 'white';
+    saveToStructureButton.style.border = 'none';
+    saveToStructureButton.style.borderRadius = '4px';
+    saveToStructureButton.style.cursor = 'pointer';
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = 'Download File';
+    downloadButton.style.padding = '8px 16px';
+    downloadButton.style.backgroundColor = '#f5f5f5';
+    downloadButton.style.color = '#333';
+    downloadButton.style.border = '1px solid #ccc';
+    downloadButton.style.borderRadius = '4px';
+    downloadButton.style.cursor = 'pointer';
+    
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.style.padding = '8px 16px';
+    cancelButton.style.backgroundColor = '#f5f5f5';
+    cancelButton.style.color = '#333';
+    cancelButton.style.border = '1px solid #ccc';
+    cancelButton.style.borderRadius = '4px';
+    cancelButton.style.cursor = 'pointer';
+    
+    // Add event listeners
+    saveToStructureButton.addEventListener('click', () => {
+      document.body.removeChild(dialogContainer);
+      openSaveObjectDialog();
     });
+    
+    downloadButton.addEventListener('click', () => {
+      document.body.removeChild(dialogContainer);
+      
+      // Create a JSON file and trigger download
+      const jsonData = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create a temporary link and trigger the download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${exportData.object.name}_with_descendants.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Show alert with export information
+      setImportAlert({
+        show: true,
+        message: `Downloaded ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
+        severity: 'info'
+      });
+    });
+    
+    cancelButton.addEventListener('click', () => {
+      document.body.removeChild(dialogContainer);
+    });
+    
+    // Assemble the dialog
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(downloadButton);
+    buttonContainer.appendChild(saveToStructureButton);
+    
+    dialogContent.appendChild(title);
+    dialogContent.appendChild(message);
+    dialogContent.appendChild(buttonContainer);
+    
+    dialogContainer.appendChild(dialogContent);
+    document.body.appendChild(dialogContainer);
     
     // Create a global variable to make the export data accessible in the console
     window.lastExportedObject = exportData;
