@@ -233,7 +233,12 @@ export default function TransformableObject({
     selected: isSelected,
     onClick: (e) => {
       e.stopPropagation();
-      onSelect();
+      // Only call onSelect if the object is not marked as non-selectable
+      if (!object.isNonSelectable) {
+        onSelect();
+      } else {
+        console.log(`${object.name || object.type} is non-selectable`);
+      }
     }
   };
 
@@ -296,7 +301,8 @@ export default function TransformableObject({
     <>
       {renderObject()}
       
-      {isSelected && groupRef.current && (
+      {/* Only show transform controls if the object is selected AND not marked as non-movable */}
+      {isSelected && groupRef.current && !object.isNonMovable && (
         <TransformControls
           ref={transformRef}
           object={groupRef.current}

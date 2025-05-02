@@ -254,9 +254,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       <CoordinateSystem />
       <CameraSetup setFrontViewCamera={setFrontViewCamera} />
       
-      {/* World volume */}
+      {/* World volume - selectable but not movable */}
       <TransformableObject 
-        object={geometries.world}
+        object={{...geometries.world, isNonMovable: true}}
         objectKey="world"
         isSelected={selectedGeometry === 'world'}
         transformMode={transformMode}
@@ -342,7 +342,11 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
       return (
         <React.Fragment key={key}>
           <div 
-            onClick={() => onSelect(key)}
+            onClick={() => {
+              // If this object is already selected, unselect it by setting selection to null
+              // Otherwise, select this object
+              onSelect(selectedGeometry === key ? null : key);
+            }}
             style={{
               padding: '8px',
               backgroundColor: selectedGeometry === key ? '#1976d2' : '#fff',
@@ -368,9 +372,12 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
       <h3 style={{ margin: '0 0 10px 0' }}>Geometry Tree</h3>
       <div style={{ marginBottom: '5px' }}>
-        {/* World volume */}
+        {/* World volume - selectable but not movable */}
         <div 
-          onClick={() => onSelect('world')}
+          onClick={() => {
+            // Allow selecting/unselecting World volume in the tree
+            onSelect(selectedGeometry === 'world' ? null : 'world');
+          }}
           style={{
             padding: '8px',
             backgroundColor: selectedGeometry === 'world' ? '#1976d2' : '#fff',
@@ -384,6 +391,7 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
         >
           <span style={{ marginRight: '5px' }}>🌐</span>
           <strong>World</strong>
+          <span style={{ marginLeft: '5px', fontSize: '0.8em', color: selectedGeometry === 'world' ? '#ddd' : '#777' }}></span>
         </div>
         
         {/* Render volumes with World as parent and their children recursively */}
@@ -414,9 +422,16 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
     }
   };
   
-  // Handle transform end
+  // Handle transform end - completely rewritten to fix selection issues
   const handleTransformEnd = (objectKey, updates, keepSelected = true) => {
     console.log(`Transform end for ${objectKey}, keepSelected: ${keepSelected}`);
+    
+    // CRITICAL: Force selection of the object being transformed
+    // This must happen BEFORE any geometry updates to ensure it takes effect
+    if (keepSelected && objectKey !== selectedGeometry) {
+      console.log(`Forcing selection to ${objectKey} before update`);
+      onSelect(objectKey);
+    }
     
     // Get the current object
     let currentObject;
@@ -462,15 +477,9 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
     
     // Update radius and height for cylinder
     if (updatedObject.type === 'cylinder') {
-      if (updates.radius !== undefined) {
-        updatedObject.radius = updates.radius;
-      }
-      if (updates.height !== undefined) {
-        updatedObject.height = updates.height;
-      }
-      if (updates.innerRadius !== undefined) {
-        updatedObject.innerRadius = updates.innerRadius;
-      }
+      if (updates.radius !== undefined) updatedObject.radius = updates.radius;
+      if (updates.height !== undefined) updatedObject.height = updates.height;
+      if (updates.innerRadius !== undefined) updatedObject.innerRadius = updates.innerRadius;
     }
     
     // Update radius for sphere
@@ -505,23 +514,21 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       updatedObject.zSections = updates.zSections;
     }
     
-    // Call the update function with the keepSelected parameter
-    // This ensures the state update happens synchronously
-    onUpdateGeometry(objectKey, updatedObject, true); // Always keep selected
+    // Update the geometry WITHOUT changing selection
+    // The third parameter (false) is critical - it tells onUpdateGeometry not to change selection
+    onUpdateGeometry(objectKey, updatedObject, false);
     
-    // Explicitly re-select the object to ensure it stays selected
-    // This is important for maintaining selection after moving
-    if (objectKey) {
-      // Small delay to ensure the update has been processed
-      setTimeout(() => {
-        console.log(`Explicitly selecting ${objectKey} to maintain selection`);
+    // CRITICAL: Force selection of the object again AFTER the update
+    // This ensures it stays selected even if something in the update process changed it
+    if (keepSelected) {
+      // Use requestAnimationFrame to ensure this happens after the current render cycle
+      requestAnimationFrame(() => {
+        console.log(`Forcing selection to ${objectKey} after update`);
         onSelect(objectKey);
-      }, 10);
+      });
     }
     
-    // If this is a parent object, we need to ensure the parent-child relationship is maintained
-    // The group structure in the render function already ensures children move with parents visually
-    // This section handles the data model updates
+    // If this is a parent object, handle parent-child relationships
     if (updates.position || updates.rotation) {
       if (objectKey === 'world') {
         // World volume updates don't need special handling for children
@@ -536,8 +543,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
           // in the Three.js scene graph, but we do need to maintain selection state
           geometries.volumes.forEach((volume, index) => {
             if (volume.mother_volume === parentVolume.name) {
-              // Just maintain the data model relationship
-              // No need to change selection
+              // Just maintain the data model relationships
+              // No need to change selection for child volumes
             }
           });
         }

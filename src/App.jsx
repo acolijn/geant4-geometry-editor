@@ -120,6 +120,9 @@ function App() {
   
   // Handle updating a geometry
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true) => {
+    // Store the current selection before any updates
+    const currentSelection = selectedGeometry;
+    
     // Create a new state update that includes both geometry and selection changes
     // to ensure they happen atomically and prevent flickering/jumping
     const updateState = () => {
@@ -173,15 +176,21 @@ function App() {
           };
         });
       }
-      
-      // Update selection in the same render cycle if needed
-      if (keepSelected) {
-        setSelectedGeometry(id);
-      }
     };
     
     // Execute the state update
     updateState();
+    
+    // CRITICAL: When keepSelected is false, we should NOT change the selection at all
+    // This allows the Viewer3D component to manage selection explicitly
+    if (keepSelected) {
+      // Only change selection when explicitly requested
+      setSelectedGeometry(id);
+      console.log(`Setting selection to ${id} as requested`);
+    } else {
+      // When keepSelected is false, maintain the current selection
+      console.log(`Keeping current selection (${currentSelection}) as requested`);
+    }
   };
   
   // Generate a unique name for a new geometry object
@@ -217,13 +226,23 @@ function App() {
     // Log the geometry being added
     console.log('Adding geometry:', newGeometry);
     
+    // Get the index that the new volume will have
+    const newVolumeIndex = geometries.volumes.length;
+    const newVolumeKey = `volume-${newVolumeIndex}`;
+    
+    // Update geometries with the new object
     setGeometries({
       ...geometries,
       volumes: [...geometries.volumes, newGeometry]
     });
     
     // Select the newly added geometry
-    setSelectedGeometry(`volume-${geometries.volumes.length}`);
+    // Use a small timeout to ensure the geometry is added to the DOM before selecting
+    // This ensures the transform controls appear immediately
+    setTimeout(() => {
+      console.log(`Selecting newly created object: ${newVolumeKey}`);
+      setSelectedGeometry(newVolumeKey);
+    }, 50);
     
     // Return the name of the added geometry (useful for tracking)
     return newGeometry.name;
