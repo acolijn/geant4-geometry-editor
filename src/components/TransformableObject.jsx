@@ -233,11 +233,12 @@ export default function TransformableObject({
     selected: isSelected,
     onClick: (e) => {
       e.stopPropagation();
-      // Only call onSelect if the object is not marked as non-selectable
-      if (!object.isNonSelectable) {
-        onSelect();
+      // Don't select the World volume by mouse clicking in the 3D view
+      // but allow other objects to be selected
+      if (object.name === 'World' || object.isNonSelectable) {
+        console.log(`${object.name || object.type} is not selectable by mouse clicking`);
       } else {
-        console.log(`${object.name || object.type} is non-selectable`);
+        onSelect();
       }
     }
   };

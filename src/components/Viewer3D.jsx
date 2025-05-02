@@ -254,15 +254,28 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       <CoordinateSystem />
       <CameraSetup setFrontViewCamera={setFrontViewCamera} />
       
-      {/* World volume - selectable but not movable */}
-      <TransformableObject 
-        object={{...geometries.world, isNonMovable: true}}
-        objectKey="world"
-        isSelected={selectedGeometry === 'world'}
-        transformMode={transformMode}
-        onSelect={() => onSelect('world')}
-        onTransformEnd={onTransformEnd}
-      />
+      {/* World volume - rendered as a non-interactive wireframe */}
+      <mesh
+        visible
+        userData={{ isWorldVolume: true }}
+        scale={[geometries.world.size?.x || 100, geometries.world.size?.y || 100, geometries.world.size?.z || 100]}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial color="#aaaaaa" wireframe={true} transparent={true} opacity={0.3} />
+      </mesh>
+      
+      {/* Hidden TransformableObject for World to maintain data model, but not interactive */}
+      {selectedGeometry === 'world' && (
+        <TransformableObject 
+          object={{...geometries.world, isNonMovable: true, isNonSelectable: true}}
+          objectKey="world"
+          isSelected={selectedGeometry === 'world'}
+          transformMode={transformMode}
+          onSelect={() => {/* No-op */}}
+          onTransformEnd={onTransformEnd}
+          visible={false}
+        />
+      )}
       
       {/* Render all volumes in a flat structure */}
       {renderVolumes()}
