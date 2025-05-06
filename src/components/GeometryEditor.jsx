@@ -447,7 +447,8 @@ const GeometryEditor = ({
     // For basic geometries
     const newGeometry = {
       type: newGeometryType,
-      name: `New${newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1)}`,
+      // Special naming for PMT objects
+      name: newGeometryType.toLowerCase() === 'pmt' ? 'PMT' : `New${newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1)}`,
       material: 'G4_AIR',
       position: { x: 0, y: 0, z: 0, unit: 'cm' },
       rotation: { x: 0, y: 0, z: 0, unit: 'deg' },

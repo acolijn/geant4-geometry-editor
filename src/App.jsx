@@ -140,15 +140,20 @@ function App() {
     // Store the current selection before any updates
     const currentSelection = selectedGeometry;
     
-    // For live updates during dragging, we need to handle them differently
-    // to ensure smooth real-time updates of parent-child relationships
-    const internalPropertiesChanged = !isLiveUpdate && updatedObject._sourceId;
+    // We only want to show the update dialog when explicitly exporting objects,
+    // not during regular movements or transformations
     
-    // Check if this is an imported object with a source ID that needs special handling
+    // Skip the update dialog check for:
+    // 1. Live updates during dragging (isLiveUpdate = true)
+    // 2. Regular position/rotation updates (these are handled separately during export)
+    // 3. Any updates that aren't explicitly marked as needing instance updates
+    
+    // The sourceId check is maintained for when we explicitly want to update instances
     const sourceId = updatedObject._sourceId;
+    const shouldCheckForInstanceUpdates = false; // Set to false to disable automatic instance updates
     
-    // If this is an instance with internal property changes (and not a live update), show the update dialog
-    if (sourceId && internalPropertiesChanged) {
+    // Only show update dialog in very specific circumstances when explicitly requested
+    if (sourceId && shouldCheckForInstanceUpdates && !isLiveUpdate) {
       // Get all related instances (excluding the current one)
       const relatedInstances = instanceTracker.getRelatedInstances(sourceId, id);
       
@@ -238,25 +243,47 @@ function App() {
   
   // Generate a unique name for a new geometry object
   const generateUniqueName = (baseType) => {
-    // Capitalize the first letter of the type
-    const typeName = baseType.charAt(0).toUpperCase() + baseType.slice(1);
-    const prefix = `New${typeName}_`;
-    
-    // Get all existing names
-    const existingNames = [
-      geometries.world.name,
-      ...geometries.volumes.map(vol => vol.name)
-    ];
-    
-    // Find the next available number
-    let counter = 0;
-    let newName;
-    do {
-      newName = `${prefix}${counter}`;
-      counter++;
-    } while (existingNames.includes(newName));
-    
-    return newName;
+    // Special case for PMT objects
+    if (baseType.toLowerCase() === 'pmt') {
+      const prefix = 'PMT_';
+      
+      // Get all existing names
+      const existingNames = [
+        geometries.world.name,
+        ...geometries.volumes.map(vol => vol.name)
+      ];
+      
+      // Find the next available number
+      let counter = 0;
+      let newName;
+      do {
+        newName = `${prefix}${counter}`;
+        counter++;
+      } while (existingNames.includes(newName));
+      
+      return newName;
+    } else {
+      // For other object types, use the original naming convention
+      // Capitalize the first letter of the type
+      const typeName = baseType.charAt(0).toUpperCase() + baseType.slice(1);
+      const prefix = `New${typeName}_`;
+      
+      // Get all existing names
+      const existingNames = [
+        geometries.world.name,
+        ...geometries.volumes.map(vol => vol.name)
+      ];
+      
+      // Find the next available number
+      let counter = 0;
+      let newName;
+      do {
+        newName = `${prefix}${counter}`;
+        counter++;
+      } while (existingNames.includes(newName));
+      
+      return newName;
+    }
   };
   
   // Handle adding a new geometry
@@ -324,6 +351,9 @@ function App() {
       console.log(`IMPORT - Generated new source ID: ${mainObject._sourceId}`);
     }
     
+    // Store the original name for special handling of PMT objects
+    const isPMTObject = originalMainName === 'PMT';
+    
     // Set the mother volume
     mainObject.mother_volume = motherVolume;
     
@@ -352,7 +382,9 @@ function App() {
     
     // Check if the name already exists and generate a unique name if needed
     if (existingNames.includes(originalMainName)) {
-      mainObject.name = generateUniqueName(mainObject.type);
+      // If this is a PMT object, use 'pmt' as the type for naming, otherwise use the actual type
+      const typeForNaming = isPMTObject ? 'pmt' : mainObject.type;
+      mainObject.name = generateUniqueName(typeForNaming);
       nameMapping[originalMainName] = mainObject.name;
       console.log(`IMPORT - Renamed main object from ${originalMainName} to ${mainObject.name}`);
     }
@@ -405,6 +437,9 @@ function App() {
           processedDesc.name = generateUniqueName(processedDesc.type);
           nameMapping[originalName] = processedDesc.name;
         }
+        
+        // Add this name to existingNames to avoid duplicates in subsequent descendants
+        existingNames.push(processedDesc.name);
         
         return processedDesc;
       });
