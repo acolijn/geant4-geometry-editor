@@ -102,39 +102,15 @@ export default function TransformableObject({
       const group = groupRef.current;
       if (!group) return;
       
-      // Debug the transformation
-      console.log(`Transform change for ${objectKey} (${object.type})`, {
-        position: [group.position.x, group.position.y, group.position.z],
-        rotation: [radToDeg(group.rotation.x), radToDeg(group.rotation.y), radToDeg(group.rotation.z)]
-      });
+      // During dragging, we only update the visual representation
+      // We don't send updates to the parent component to avoid coordinate transformation issues
+      // The actual update will happen in handleMouseUp when dragging is complete
       
-      // Calculate the delta from the original position
-      const originalPosition = lastPositionRef.current?.position || { x: 0, y: 0, z: 0 };
-      
-      // Get current world position from the group
-      const currentPosition = {
-        x: group.position.x,
-        y: group.position.y,
-        z: group.position.z,
-        unit: object.position?.unit || 'cm'
-      };
-      
-      // Convert world rotation to degrees for the data model
-      const currentRotation = {
-        x: radToDeg(group.rotation.x),
-        y: radToDeg(group.rotation.y),
-        z: radToDeg(group.rotation.z),
-        unit: object.rotation?.unit || 'deg'
-      };
-      
-      // For objects with a parent, we need to convert world position to local position
-      // This is handled by the parent component that calculates world positions
-      
-      // Send live updates to parent - use the current world position directly
-      onTransformEnd(objectKey, { 
-        position: currentPosition, 
-        rotation: currentRotation 
-      });
+      // Debug the transformation (for development purposes only)
+      // console.log(`Transform change for ${objectKey} (${object.type})`, {
+      //   position: [group.position.x, group.position.y, group.position.z],
+      //   rotation: [radToDeg(group.rotation.x), radToDeg(group.rotation.y), radToDeg(group.rotation.z)]
+      // });
     };
 
     // Start dragging
