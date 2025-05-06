@@ -349,6 +349,8 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     
     const volume = geometries.volumes[volumeIndex];
     const isMotherVolume = volumesByParent[objKey] && volumesByParent[objKey].length > 0;
+    const isDaughterObject = volume.mother_volume && volume.mother_volume !== 'World';
+    const isIntermediateObject = isMotherVolume && isDaughterObject;
     
     // Handle the start of dragging
     if (isLiveUpdate && !dragStateRef.current.isDragging) {
@@ -390,10 +392,19 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       // During dragging
       if (dragStateRef.current.currentDragKey === objKey) {
         // This is the object being directly dragged
-        if (isMotherVolume) {
+        // Check if this is an intermediate object (both a mother and a daughter)
+        if (isIntermediateObject) {
+          // For intermediate objects, update continuously during dragging
+          // This prevents the jumping behavior when the mouse stops moving
+          onTransformEnd(objKey, localProps, true);
+        }
+        // For top-level mother volumes (direct children of World)
+        else if (isMotherVolume) {
           // For mother volumes, we update the state immediately so children move along with it
           onTransformEnd(objKey, localProps, keepSelected);
-        } else {
+        } 
+        // For leaf objects (no children)
+        else {
           // For daughter objects being dragged directly, we don't update the state
           // to avoid coordinate transformation issues - just update the visual representation
           // The actual state update will happen in handleMouseUp
