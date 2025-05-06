@@ -36,7 +36,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import CategoryIcon from '@mui/icons-material/Category';
 import fileSystemManager from '../utils/FileSystemManager';
-import localStorageManager from '../utils/LocalStorageManager';
+// Local storage manager is no longer used
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
 
@@ -211,32 +211,6 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
     } 
   };
   
-  // Initialize localStorage as the storage system
-  const initializeLocalStorage = async () => {
-    try {
-      const success = await localStorageManager.initialize();
-      setStorageManager(localStorageManager);
-      setStorageMode('localstorage');
-      setIsInitialized(true);
-      loadSavedProjectsList();
-      loadCategories();
-      setAlert({
-        open: true,
-        message: 'Using browser storage (localStorage). Your data is saved in your browser.',
-        severity: 'info'
-      });
-      setInitDialogOpen(false);
-      return success;
-    } catch (error) {
-      console.error('Error initializing localStorage:', error);
-      setAlert({
-        open: true,
-        message: 'Error initializing browser storage: ' + error.message,
-        severity: 'error'
-      });
-      return false;
-    }
-  };
 
   // Load the list of saved projects
   const loadSavedProjectsList = async () => {
@@ -773,25 +747,16 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
               size="small"
               startIcon={<AddIcon />}
             >
-              Object
+              Select Directory
             </Button>
-          </Tooltip>
-          
-          {!isInitialized && (
-            <Tooltip title="Initialize Storage">
-              <IconButton
-                color="warning"
-                onClick={() => setInitDialogOpen(true)}
-                size="small"
-              >
-                <CreateNewFolderIcon />
-              </IconButton>
-            </Tooltip>
-          )}
+          </Box>
         </Box>
         
-        {/* Storage Initialization Dialog */}
-        <Dialog open={initDialogOpen} onClose={() => setInitDialogOpen(false)}>
+        {isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress size={24} />
+            <Typography variant="body2" sx={{ ml: 2 }}>
+              Initializing storage system...
           <DialogTitle>Select Working Directory</DialogTitle>
           <DialogContent>
             <Typography variant="body1" paragraph>
@@ -799,7 +764,6 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
             </Typography>
             
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* File System Option */}
               <Box 
                 sx={{ 
                   border: '1px solid', 

@@ -190,7 +190,10 @@ export default function TransformableObject({
           position: finalPosition,
           rotation: finalRotation,
           originalPosition: object.position,
-          originalRotation: object.rotation
+          originalRotation: object.rotation,
+          worldPosition: object.calculatedWorldPosition,
+          worldRotation: object.calculatedWorldRotation,
+          motherVolume: object.mother_volume
         });
         
         // Send final update to parent with world coordinates

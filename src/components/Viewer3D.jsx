@@ -165,12 +165,35 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     const localVector = new THREE.Vector3(localPos[0], localPos[1], localPos[2]);
     localVector.applyMatrix4(parentMatrix);
     
-    // Combine rotations (add parent and local rotations)
-    // Note: This is a simplification - proper rotation combination would use quaternions
+    // Combine rotations using quaternions for proper rotation composition
+    // This is the correct way to handle nested rotations in 3D space
+    const parentQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(parentWorld.rotation[0]),
+        THREE.MathUtils.degToRad(parentWorld.rotation[1]),
+        THREE.MathUtils.degToRad(parentWorld.rotation[2]),
+        'XYZ'
+      )
+    );
+    
+    const localQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(localRot[0]),
+        THREE.MathUtils.degToRad(localRot[1]),
+        THREE.MathUtils.degToRad(localRot[2]),
+        'XYZ'
+      )
+    );
+    
+    // Multiply quaternions to combine rotations (order matters)
+    const combinedQuat = parentQuat.multiply(localQuat);
+    
+    // Convert back to Euler angles in degrees
+    const combinedEuler = new THREE.Euler().setFromQuaternion(combinedQuat, 'XYZ');
     const combinedRotation = [
-      parentWorld.rotation[0] + localRot[0],
-      parentWorld.rotation[1] + localRot[1],
-      parentWorld.rotation[2] + localRot[2]
+      THREE.MathUtils.radToDeg(combinedEuler.x),
+      THREE.MathUtils.radToDeg(combinedEuler.y),
+      THREE.MathUtils.radToDeg(combinedEuler.z)
     ];
     
     return {
@@ -179,10 +202,160 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     };
   };
   
+  // Function to convert world coordinates back to local coordinates
+  const worldToLocalCoordinates = (volume, worldPos, worldRot) => {
+    // For direct children of World, the local coordinates are simply the world coordinates
+    if (!volume.mother_volume || volume.mother_volume === 'World') {
+      return {
+        position: {
+          x: worldPos.x,
+          y: worldPos.y,
+          z: worldPos.z,
+          unit: volume.position?.unit || 'cm'
+        },
+        rotation: {
+          x: worldRot.x,
+          y: worldRot.y,
+          z: worldRot.z,
+          unit: volume.rotation?.unit || 'deg'
+        }
+      };
+    }
+    
+    // Find parent volume
+    const parentIndex = volumeNameToIndex[volume.mother_volume];
+    if (parentIndex === undefined) {
+      console.error(`Parent volume not found: ${volume.mother_volume}`);
+      // Fallback to world coordinates if parent not found
+      return {
+        position: {
+          x: worldPos.x,
+          y: worldPos.y,
+          z: worldPos.z,
+          unit: volume.position?.unit || 'cm'
+        },
+        rotation: {
+          x: worldRot.x,
+          y: worldRot.y,
+          z: worldRot.z,
+          unit: volume.rotation?.unit || 'deg'
+        }
+      };
+    }
+    
+    const parentVolume = geometries.volumes[parentIndex];
+    
+    // Get parent's world position
+    const parentWorld = calculateWorldPosition(parentVolume);
+    
+    console.log(`Converting world to local for ${volume.name || 'unnamed volume'}:`);
+    console.log('  Parent world position:', parentWorld.position);
+    console.log('  Child world position:', [worldPos.x, worldPos.y, worldPos.z]);
+    
+    // First, handle the position transformation
+    // Simply subtract the parent's world position from the child's world position
+    // This gives us the relative position in world space
+    const relativeX = worldPos.x - parentWorld.position[0];
+    const relativeY = worldPos.y - parentWorld.position[1];
+    const relativeZ = worldPos.z - parentWorld.position[2];
+    
+    console.log('  Relative position (before rotation):', [relativeX, relativeY, relativeZ]);
+    
+    // Now we need to account for the parent's rotation
+    // Create a rotation matrix for the parent's rotation
+    const parentRotX = THREE.MathUtils.degToRad(parentWorld.rotation[0]);
+    const parentRotY = THREE.MathUtils.degToRad(parentWorld.rotation[1]);
+    const parentRotZ = THREE.MathUtils.degToRad(parentWorld.rotation[2]);
+    
+    // Create rotation matrices for each axis
+    const rotMatrixX = new THREE.Matrix4().makeRotationX(parentRotX);
+    const rotMatrixY = new THREE.Matrix4().makeRotationY(parentRotY);
+    const rotMatrixZ = new THREE.Matrix4().makeRotationZ(parentRotZ);
+    
+    // Combine them in the correct order (X, then Y, then Z)
+    const parentRotationMatrix = new THREE.Matrix4().identity();
+    parentRotationMatrix.multiply(rotMatrixX);
+    parentRotationMatrix.multiply(rotMatrixY);
+    parentRotationMatrix.multiply(rotMatrixZ);
+    
+    // Get the inverse of this rotation matrix
+    const inverseRotationMatrix = parentRotationMatrix.clone().invert();
+    
+    // Apply the inverse rotation to the relative position
+    const relativeVector = new THREE.Vector3(relativeX, relativeY, relativeZ);
+    relativeVector.applyMatrix4(inverseRotationMatrix);
+    
+    console.log('  Final local position:', [relativeVector.x, relativeVector.y, relativeVector.z]);
+    
+    // Now handle the rotation transformation
+    // Create quaternions for the world rotation and parent rotation
+    const worldQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(
+        THREE.MathUtils.degToRad(worldRot.x),
+        THREE.MathUtils.degToRad(worldRot.y),
+        THREE.MathUtils.degToRad(worldRot.z),
+        'XYZ'
+      )
+    );
+    
+    const parentQuat = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(parentRotX, parentRotY, parentRotZ, 'XYZ')
+    );
+    
+    // Get the inverse of the parent's rotation
+    const inverseParentQuat = parentQuat.clone().invert();
+    
+    // Multiply the world rotation by the inverse parent rotation
+    // This gives us the local rotation
+    const localQuat = worldQuat.clone();
+    localQuat.premultiply(inverseParentQuat);
+    
+    // Convert back to Euler angles
+    const localEuler = new THREE.Euler().setFromQuaternion(localQuat, 'XYZ');
+    const localRotX = THREE.MathUtils.radToDeg(localEuler.x);
+    const localRotY = THREE.MathUtils.radToDeg(localEuler.y);
+    const localRotZ = THREE.MathUtils.radToDeg(localEuler.z);
+    
+    console.log('  Final local rotation:', [localRotX, localRotY, localRotZ]);
+    
+    return {
+      position: {
+        x: relativeVector.x,
+        y: relativeVector.y,
+        z: relativeVector.z,
+        unit: volume.position?.unit || 'cm'
+      },
+      rotation: {
+        x: localRotX,
+        y: localRotY,
+        z: localRotZ,
+        unit: volume.rotation?.unit || 'deg'
+      }
+    };
+  };
+  
   // Function to handle transform updates for a volume and propagate to children
   const handleVolumeTransform = (objKey, updatedProps) => {
-    // Update the volume's properties
-    onTransformEnd(objKey, updatedProps);
+    // If this is the world or a direct child of world, use world coordinates directly
+    if (objKey === 'world') {
+      onTransformEnd(objKey, updatedProps);
+      return;
+    }
+    
+    // Get the volume index from the key
+    const volumeIndex = parseInt(objKey.replace('volume-', ''));
+    if (isNaN(volumeIndex) || !geometries.volumes[volumeIndex]) {
+      console.error(`Invalid volume key: ${objKey}`);
+      return;
+    }
+    
+    const volume = geometries.volumes[volumeIndex];
+    
+    // Convert world coordinates to local coordinates
+    const localProps = worldToLocalCoordinates(volume, updatedProps.position, updatedProps.rotation);
+    
+    // Update the volume's properties with local coordinates
+    onTransformEnd(objKey, localProps, true);
     
     // If this is a mother volume, we need to update all children
     if (volumesByParent[objKey] && volumesByParent[objKey].length > 0) {
