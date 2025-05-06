@@ -136,14 +136,18 @@ function App() {
   }, [geometries, materials]);
   
   // Handle updating a geometry
-  const handleUpdateGeometry = (id, updatedObject, keepSelected = true, internalPropertiesChanged = false) => {
+  const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false) => {
     // Store the current selection before any updates
     const currentSelection = selectedGeometry;
     
-    // Check if this is an imported object with a source ID
+    // For live updates during dragging, we need to handle them differently
+    // to ensure smooth real-time updates of parent-child relationships
+    const internalPropertiesChanged = !isLiveUpdate && updatedObject._sourceId;
+    
+    // Check if this is an imported object with a source ID that needs special handling
     const sourceId = updatedObject._sourceId;
     
-    // If this is an instance with internal property changes, show the update dialog
+    // If this is an instance with internal property changes (and not a live update), show the update dialog
     if (sourceId && internalPropertiesChanged) {
       // Get all related instances (excluding the current one)
       const relatedInstances = instanceTracker.getRelatedInstances(sourceId, id);

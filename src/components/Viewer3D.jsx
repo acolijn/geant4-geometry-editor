@@ -324,11 +324,19 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     };
   };
   
+  // Store the current drag state to handle live updates properly
+  const dragStateRef = useRef({
+    isDragging: false,
+    currentDragKey: null,
+    isMotherVolume: false,
+    originalPositions: {}
+  });
+  
   // Function to handle transform updates for a volume and propagate to children
-  const handleVolumeTransform = (objKey, updatedProps) => {
-    // If this is the world or a direct child of world, use world coordinates directly
+  const handleVolumeTransform = (objKey, updatedProps, keepSelected = false, isLiveUpdate = false) => {
+    // If this is the world volume, use world coordinates directly
     if (objKey === 'world') {
-      onTransformEnd(objKey, updatedProps);
+      onTransformEnd(objKey, updatedProps, keepSelected);
       return;
     }
     
@@ -340,17 +348,68 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     }
     
     const volume = geometries.volumes[volumeIndex];
+    const isMotherVolume = volumesByParent[objKey] && volumesByParent[objKey].length > 0;
+    
+    // Handle the start of dragging
+    if (isLiveUpdate && !dragStateRef.current.isDragging) {
+      // Start of a new drag operation
+      dragStateRef.current = {
+        isDragging: true,
+        currentDragKey: objKey,
+        isMotherVolume: isMotherVolume,
+        originalPositions: {}
+      };
+      
+      // Store original positions of all volumes for reference
+      if (isMotherVolume) {
+        // For mother volumes, store the original positions of all children
+        const storeChildPositions = (parentKey) => {
+          if (volumesByParent[parentKey]) {
+            volumesByParent[parentKey].forEach(child => {
+              const childVolume = geometries.volumes[child.index];
+              dragStateRef.current.originalPositions[child.key] = {
+                position: { ...childVolume.position },
+                rotation: { ...childVolume.rotation }
+              };
+              
+              // Recursively store positions for grandchildren
+              storeChildPositions(child.key);
+            });
+          }
+        };
+        
+        storeChildPositions(objKey);
+      }
+    }
     
     // Convert world coordinates to local coordinates
     const localProps = worldToLocalCoordinates(volume, updatedProps.position, updatedProps.rotation);
     
-    // Update the volume's properties with local coordinates
-    onTransformEnd(objKey, localProps, true);
-    
-    // If this is a mother volume, we need to update all children
-    if (volumesByParent[objKey] && volumesByParent[objKey].length > 0) {
-      // We don't need to do anything here because the children will be re-rendered
-      // with their new calculated world positions when the state updates
+    // Different handling based on whether this is a live update during dragging
+    if (isLiveUpdate) {
+      // During dragging
+      if (dragStateRef.current.currentDragKey === objKey) {
+        // This is the object being directly dragged
+        if (isMotherVolume) {
+          // For mother volumes, we update the state immediately so children move along with it
+          onTransformEnd(objKey, localProps, keepSelected);
+        } else {
+          // For daughter objects being dragged directly, we don't update the state
+          // to avoid coordinate transformation issues - just update the visual representation
+          // The actual state update will happen in handleMouseUp
+        }
+      }
+    } else {
+      // Final update when dragging ends
+      onTransformEnd(objKey, localProps, keepSelected);
+      
+      // Reset drag state
+      dragStateRef.current = {
+        isDragging: false,
+        currentDragKey: null,
+        isMotherVolume: false,
+        originalPositions: {}
+      };
     }
   };
   
@@ -404,7 +463,7 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
           isMotherVolume={isMotherVolume}
           worldPosition={worldTransform.position}
           worldRotation={[euler.x, euler.y, euler.z]}
-          onTransformEnd={(objKey, updatedProps) => handleVolumeTransform(objKey, updatedProps)}
+          onTransformEnd={(objKey, updatedProps, keepSelected, isLiveUpdate) => handleVolumeTransform(objKey, updatedProps, keepSelected, isLiveUpdate)}
         />
       );
     });

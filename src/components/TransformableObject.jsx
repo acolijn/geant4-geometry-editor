@@ -102,9 +102,32 @@ export default function TransformableObject({
       const group = groupRef.current;
       if (!group) return;
       
-      // During dragging, we only update the visual representation
-      // We don't send updates to the parent component to avoid coordinate transformation issues
-      // The actual update will happen in handleMouseUp when dragging is complete
+      // For all objects, we need to send position updates during dragging
+      // The Viewer3D component will decide how to handle them based on whether
+      // this is a mother volume or a daughter object
+      
+      // Get current world position from the group
+      const currentPosition = {
+        x: group.position.x,
+        y: group.position.y,
+        z: group.position.z,
+        unit: object.position?.unit || 'cm'
+      };
+      
+      // Convert world rotation to degrees for the data model
+      const currentRotation = {
+        x: radToDeg(group.rotation.x),
+        y: radToDeg(group.rotation.y),
+        z: radToDeg(group.rotation.z),
+        unit: object.rotation?.unit || 'deg'
+      };
+      
+      // Send live updates to the Viewer3D component
+      // The Viewer3D component will handle mother volumes and daughter objects differently
+      onTransformEnd(objectKey, { 
+        position: currentPosition, 
+        rotation: currentRotation 
+      }, false, true); // Pass true as the fourth parameter to indicate this is a live update
       
       // Debug the transformation (for development purposes only)
       // console.log(`Transform change for ${objectKey} (${object.type})`, {
@@ -175,10 +198,11 @@ export default function TransformableObject({
         // Send final update to parent with world coordinates
         // The parent component will handle converting to local coordinates if needed
         // Pass true as the third parameter to ensure the object stays selected
+        // Pass false as the fourth parameter to indicate this is a final update, not a live update
         onTransformEnd(objectKey, { 
           position: finalPosition, 
           rotation: finalRotation 
-        }, true);
+        }, true, false);
       }
       
       // Reset drag state
