@@ -515,15 +515,58 @@ function App() {
   const handleRemoveGeometry = (id) => {
     if (id.startsWith('volume-')) {
       const index = parseInt(id.split('-')[1]);
-      const updatedVolumes = [...geometries.volumes];
-      updatedVolumes.splice(index, 1);
+      const volumeToRemove = geometries.volumes[index];
       
+      if (!volumeToRemove) {
+        console.error(`Volume at index ${index} not found`);
+        return;
+      }
+      
+      // Create a map of volume names to their indices for easy lookup
+      const volumeNameToIndex = {};
+      geometries.volumes.forEach((volume, idx) => {
+        if (volume.name) {
+          volumeNameToIndex[volume.name] = idx;
+        }
+      });
+      
+      // Function to recursively find all descendants of a volume
+      const findDescendants = (volumeName, descendantIndices = []) => {
+        geometries.volumes.forEach((volume, idx) => {
+          if (volume.mother_volume === volumeName) {
+            descendantIndices.push(idx);
+            // Recursively find descendants of this volume
+            findDescendants(volume.name, descendantIndices);
+          }
+        });
+        return descendantIndices;
+      };
+      
+      // Find all descendants of the volume to remove
+      const descendantIndices = findDescendants(volumeToRemove.name);
+      
+      // Sort indices in descending order to avoid shifting issues when removing
+      const indicesToRemove = [index, ...descendantIndices].sort((a, b) => b - a);
+      
+      // Create a copy of the volumes array
+      const updatedVolumes = [...geometries.volumes];
+      
+      // Remove the volumes in descending index order
+      indicesToRemove.forEach(idx => {
+        updatedVolumes.splice(idx, 1);
+      });
+      
+      // Update the geometries state
       setGeometries({
         ...geometries,
         volumes: updatedVolumes
       });
       
+      // Clear the selection
       setSelectedGeometry(null);
+      
+      // Log the operation for debugging
+      console.log(`Removed volume ${volumeToRemove.name} and ${descendantIndices.length} descendants`);
     }
   };
   
