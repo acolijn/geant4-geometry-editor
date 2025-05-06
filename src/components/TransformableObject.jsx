@@ -130,9 +130,9 @@ export default function TransformableObject({
       onTransformEnd(objectKey, { 
         position: currentPosition, 
         rotation: currentRotation,
-        // Add a flag for intermediate objects to ensure proper handling
+        // Flag intermediate objects for special handling
         _isIntermediateObject: isIntermediateObject
-      }, isIntermediateObject, true); // For intermediate objects, keep selected to prevent jumps
+      }, isIntermediateObject, true); // Keep intermediate objects selected during dragging
       
       // Debug the transformation (for development purposes only)
       // console.log(`Transform change for ${objectKey} (${object.type})`, {

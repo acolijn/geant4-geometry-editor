@@ -74,122 +74,171 @@ const GeometryEditor = ({
       descendantCount: exportData.descendants.length
     };
     
-    // Open the save object dialog
-    // We need to check if the ProjectManager component is available
-    const openSaveObjectDialog = () => {
-      // Dispatch a custom event to notify ProjectManager to open the save object dialog
-      const event = new CustomEvent('saveObject', { 
-        detail: { objectData: exportData }
+    // Create a file input element to trigger the native file dialog
+    const saveFileInput = document.createElement('input');
+    saveFileInput.type = 'file';
+    saveFileInput.style.display = 'none';
+    saveFileInput.setAttribute('nwsaveas', `${exportData.object.name}.json`); // For NW.js
+    saveFileInput.setAttribute('webkitdirectory', ''); // For directory selection
+    saveFileInput.setAttribute('directory', ''); // For directory selection
+    
+    // Create a JSON file for saving
+    const jsonData = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    
+    // Use the showSaveFilePicker API if available (modern browsers)
+    if (window.showSaveFilePicker) {
+      const saveFile = async () => {
+        try {
+          // Configure the file picker
+          const opts = {
+            suggestedName: `${exportData.object.name}.json`,
+            types: [{
+              description: 'JSON Files',
+              accept: { 'application/json': ['.json'] }
+            }],
+            excludeAcceptAllOption: false
+          };
+          
+          // Show the file picker
+          const fileHandle = await window.showSaveFilePicker(opts);
+          
+          // Get a writable stream and write the file
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          
+          // Show success message
+          setImportAlert({
+            show: true,
+            message: `Saved ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
+            severity: 'success'
+          });
+        } catch (err) {
+          // User probably canceled the save dialog
+          if (err.name !== 'AbortError') {
+            console.error('Error saving file:', err);
+            setImportAlert({
+              show: true,
+              message: `Error saving file: ${err.message}`,
+              severity: 'error'
+            });
+          }
+        }
+      };
+      
+      saveFile();
+    } else {
+      // Fallback for browsers that don't support the File System Access API
+      // Show a dialog to ask the user how they want to save
+      const dialogContainer = document.createElement('div');
+      dialogContainer.style.position = 'fixed';
+      dialogContainer.style.top = '0';
+      dialogContainer.style.left = '0';
+      dialogContainer.style.width = '100%';
+      dialogContainer.style.height = '100%';
+      dialogContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      dialogContainer.style.display = 'flex';
+      dialogContainer.style.justifyContent = 'center';
+      dialogContainer.style.alignItems = 'center';
+      dialogContainer.style.zIndex = '9999';
+      
+      const dialogContent = document.createElement('div');
+      dialogContent.style.backgroundColor = 'white';
+      dialogContent.style.padding = '20px';
+      dialogContent.style.borderRadius = '8px';
+      dialogContent.style.maxWidth = '400px';
+      dialogContent.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+      
+      const title = document.createElement('h3');
+      title.textContent = 'Save Object';
+      title.style.marginTop = '0';
+      
+      const message = document.createElement('p');
+      message.textContent = `How would you like to save "${exportData.object.name}" with ${exportData.descendants.length} descendants?`;
+      
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.justifyContent = 'flex-end';
+      buttonContainer.style.marginTop = '20px';
+      buttonContainer.style.gap = '10px';
+      
+      const saveToStructureButton = document.createElement('button');
+      saveToStructureButton.textContent = 'Save to Structure';
+      saveToStructureButton.style.padding = '8px 16px';
+      saveToStructureButton.style.backgroundColor = '#1976d2';
+      saveToStructureButton.style.color = 'white';
+      saveToStructureButton.style.border = 'none';
+      saveToStructureButton.style.borderRadius = '4px';
+      saveToStructureButton.style.cursor = 'pointer';
+      
+      const downloadButton = document.createElement('button');
+      downloadButton.textContent = 'Download File';
+      downloadButton.style.padding = '8px 16px';
+      downloadButton.style.backgroundColor = '#f5f5f5';
+      downloadButton.style.color = '#333';
+      downloadButton.style.border = '1px solid #ccc';
+      downloadButton.style.borderRadius = '4px';
+      downloadButton.style.cursor = 'pointer';
+      
+      const cancelButton = document.createElement('button');
+      cancelButton.textContent = 'Cancel';
+      cancelButton.style.padding = '8px 16px';
+      cancelButton.style.backgroundColor = '#f5f5f5';
+      cancelButton.style.color = '#333';
+      cancelButton.style.border = '1px solid #ccc';
+      cancelButton.style.borderRadius = '4px';
+      cancelButton.style.cursor = 'pointer';
+      
+      // Add event listeners
+      saveToStructureButton.addEventListener('click', () => {
+        document.body.removeChild(dialogContainer);
+        // Dispatch a custom event to notify ProjectManager to open the save object dialog
+        const event = new CustomEvent('saveObject', { 
+          detail: { objectData: exportData }
+        });
+        document.dispatchEvent(event);
       });
-      document.dispatchEvent(event);
-    };
-    
-    // Show a dialog to ask the user if they want to save to the structured directory or download
-    const dialogContainer = document.createElement('div');
-    dialogContainer.style.position = 'fixed';
-    dialogContainer.style.top = '0';
-    dialogContainer.style.left = '0';
-    dialogContainer.style.width = '100%';
-    dialogContainer.style.height = '100%';
-    dialogContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    dialogContainer.style.display = 'flex';
-    dialogContainer.style.justifyContent = 'center';
-    dialogContainer.style.alignItems = 'center';
-    dialogContainer.style.zIndex = '9999';
-    
-    const dialogContent = document.createElement('div');
-    dialogContent.style.backgroundColor = 'white';
-    dialogContent.style.padding = '20px';
-    dialogContent.style.borderRadius = '8px';
-    dialogContent.style.maxWidth = '400px';
-    dialogContent.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-    
-    const title = document.createElement('h3');
-    title.textContent = 'Save Object';
-    title.style.marginTop = '0';
-    
-    const message = document.createElement('p');
-    message.textContent = `How would you like to save "${exportData.object.name}" with ${exportData.descendants.length} descendants?`;
-    
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '20px';
-    buttonContainer.style.gap = '10px';
-    
-    const saveToStructureButton = document.createElement('button');
-    saveToStructureButton.textContent = 'Save to Structure';
-    saveToStructureButton.style.padding = '8px 16px';
-    saveToStructureButton.style.backgroundColor = '#1976d2';
-    saveToStructureButton.style.color = 'white';
-    saveToStructureButton.style.border = 'none';
-    saveToStructureButton.style.borderRadius = '4px';
-    saveToStructureButton.style.cursor = 'pointer';
-    
-    const downloadButton = document.createElement('button');
-    downloadButton.textContent = 'Download File';
-    downloadButton.style.padding = '8px 16px';
-    downloadButton.style.backgroundColor = '#f5f5f5';
-    downloadButton.style.color = '#333';
-    downloadButton.style.border = '1px solid #ccc';
-    downloadButton.style.borderRadius = '4px';
-    downloadButton.style.cursor = 'pointer';
-    
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-    cancelButton.style.padding = '8px 16px';
-    cancelButton.style.backgroundColor = '#f5f5f5';
-    cancelButton.style.color = '#333';
-    cancelButton.style.border = '1px solid #ccc';
-    cancelButton.style.borderRadius = '4px';
-    cancelButton.style.cursor = 'pointer';
-    
-    // Add event listeners
-    saveToStructureButton.addEventListener('click', () => {
-      document.body.removeChild(dialogContainer);
-      openSaveObjectDialog();
-    });
-    
-    downloadButton.addEventListener('click', () => {
-      document.body.removeChild(dialogContainer);
       
-      // Create a JSON file and trigger download
-      const jsonData = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      // Create a temporary link and trigger the download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${exportData.object.name}_with_descendants.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      // Show alert with export information
-      setImportAlert({
-        show: true,
-        message: `Downloaded ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
-        severity: 'info'
+      downloadButton.addEventListener('click', () => {
+        document.body.removeChild(dialogContainer);
+        
+        // Create a JSON file and trigger download
+        const url = URL.createObjectURL(blob);
+        
+        // Create a temporary link and trigger the download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${exportData.object.name}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Show alert with export information
+        setImportAlert({
+          show: true,
+          message: `Downloaded ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
+          severity: 'info'
+        });
       });
-    });
-    
-    cancelButton.addEventListener('click', () => {
-      document.body.removeChild(dialogContainer);
-    });
-    
-    // Assemble the dialog
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(downloadButton);
-    buttonContainer.appendChild(saveToStructureButton);
-    
-    dialogContent.appendChild(title);
-    dialogContent.appendChild(message);
-    dialogContent.appendChild(buttonContainer);
-    
-    dialogContainer.appendChild(dialogContent);
-    document.body.appendChild(dialogContainer);
+      
+      cancelButton.addEventListener('click', () => {
+        document.body.removeChild(dialogContainer);
+      });
+      
+      // Assemble the dialog
+      buttonContainer.appendChild(cancelButton);
+      buttonContainer.appendChild(downloadButton);
+      buttonContainer.appendChild(saveToStructureButton);
+      
+      dialogContent.appendChild(title);
+      dialogContent.appendChild(message);
+      dialogContent.appendChild(buttonContainer);
+      
+      dialogContainer.appendChild(dialogContent);
+      document.body.appendChild(dialogContainer);
+    }
     
     // Create a global variable to make the export data accessible in the console
     window.lastExportedObject = exportData;
@@ -535,7 +584,7 @@ const GeometryEditor = ({
             style: { minWidth: '200px' }
           }}
         >
-          <MenuItem onClick={handleExportObject}>Export Object with Descendants</MenuItem>
+          <MenuItem onClick={handleExportObject}>Save Object</MenuItem>
         </Menu>
         
         <TextField
