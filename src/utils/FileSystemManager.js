@@ -6,11 +6,7 @@
 // Default base directory structure
 const DEFAULT_STRUCTURE = {
   projects: {},
-  objects: {
-    detectors: {},
-    shielding: {},
-    common: {}
-  },
+  objects: {},
   templates: {}
 };
 
@@ -19,6 +15,7 @@ class FileSystemManager {
     this.baseDirectory = null;
     this.directoryHandle = null;
     this.initialized = false;
+    this.lastUsedDirectory = null; // Track the last used directory for file operations
   }
 
   /**
@@ -263,21 +260,19 @@ class FileSystemManager {
    * Save an object to the file system
    * @param {string} name - Object name
    * @param {Object} object - Object data
-   * @param {string} category - Category (detectors, shielding, common)
    * @returns {Promise<boolean>} Whether the save was successful
    */
-  async saveObject(name, object, category = 'common') {
+  async saveObject(name, object) {
     if (!this.initialized) {
       throw new Error('FileSystemManager not initialized');
     }
 
     try {
-      // Ensure the category exists
+      // Get the objects directory (no subdirectories)
       const objectsDir = await this.baseDirectory.getDirectoryHandle('objects', { create: true });
-      const categoryDir = await objectsDir.getDirectoryHandle(category, { create: true });
-
-      // Save object
-      const objectFile = await categoryDir.getFileHandle(`${name}.json`, { create: true });
+      
+      // Save object directly to the objects directory
+      const objectFile = await objectsDir.getFileHandle(`${name}.json`, { create: true });
       const objectWriter = await objectFile.createWritable();
       await objectWriter.write(JSON.stringify(object, null, 2));
       await objectWriter.close();
@@ -292,35 +287,32 @@ class FileSystemManager {
   /**
    * Load an object from the file system
    * @param {string} name - Object name
-   * @param {string} category - Category (detectors, shielding, common)
    * @returns {Promise<Object|null>} Object data or null if not found
    */
-  async loadObject(name, category = 'common') {
+  async loadObject(name) {
     if (!this.initialized) {
       throw new Error('FileSystemManager not initialized');
     }
 
     try {
-      // Get object file
+      // Get object file directly from the objects directory
       const objectsDir = await this.baseDirectory.getDirectoryHandle('objects');
-      const categoryDir = await objectsDir.getDirectoryHandle(category);
-      const objectFile = await categoryDir.getFileHandle(`${name}.json`);
+      const objectFile = await objectsDir.getFileHandle(`${name}.json`);
       
       // Load object data
       const objectContents = await (await objectFile.getFile()).text();
       return JSON.parse(objectContents);
     } catch (error) {
-      console.error(`Failed to load object ${name} from ${category}:`, error);
+      console.error(`Failed to load object ${name}:`, error);
       return null;
     }
   }
 
   /**
-   * List all objects in a category
-   * @param {string} category - Category (detectors, shielding, common)
+   * List all objects in the objects directory
    * @returns {Promise<Array>} List of object names
    */
-  async listObjects(category = 'common') {
+  async listObjects() {
     if (!this.initialized) {
       throw new Error('FileSystemManager not initialized');
     }
@@ -328,10 +320,9 @@ class FileSystemManager {
     try {
       const objects = [];
       const objectsDir = await this.baseDirectory.getDirectoryHandle('objects');
-      const categoryDir = await objectsDir.getDirectoryHandle(category);
       
-      // Iterate through object files
-      for await (const [name, handle] of categoryDir.entries()) {
+      // Iterate through object files directly in the objects directory
+      for await (const [name, handle] of objectsDir.entries()) {
         if (handle.kind === 'file' && name.endsWith('.json')) {
           objects.push(name.replace('.json', ''));
         }
@@ -339,57 +330,105 @@ class FileSystemManager {
       
       return objects;
     } catch (error) {
-      console.error(`Failed to list objects in ${category}:`, error);
+      console.error('Failed to list objects:', error);
       return [];
     }
   }
 
   /**
-   * List all categories
-   * @returns {Promise<Array>} List of category names
+   * Open a file picker dialog in the current directory
+   * @param {Object} options - Options for the file picker
+   * @returns {Promise<FileSystemFileHandle>} The selected file handle
    */
-  async listCategories() {
+  async openFilePicker(options = {}) {
     if (!this.initialized) {
       throw new Error('FileSystemManager not initialized');
     }
-
-    try {
-      const categories = [];
-      const objectsDir = await this.baseDirectory.getDirectoryHandle('objects');
-      
-      // Iterate through category directories
-      for await (const [name, handle] of objectsDir.entries()) {
-        if (handle.kind === 'directory') {
-          categories.push(name);
+    
+    // Default options for JSON files
+    const defaultOptions = {
+      types: [{
+        description: 'JSON Files',
+        accept: {
+          'application/json': ['.json']
         }
+      }],
+      multiple: false
+    };
+    
+    // Merge default options with provided options
+    const pickerOptions = { ...defaultOptions, ...options };
+    
+    try {
+      // Try to use the current directory as the starting point
+      if (this.directoryHandle) {
+        pickerOptions.startIn = this.directoryHandle;
       }
       
-      return categories;
+      const [fileHandle] = await window.showOpenFilePicker(pickerOptions);
+      
+      // Store the parent directory for future use
+      try {
+        this.lastUsedDirectory = await fileHandle.getParentDirectory();
+        console.log('Set last used directory:', this.lastUsedDirectory);
+      } catch (e) {
+        console.warn('Could not get parent directory:', e);
+      }
+      
+      return fileHandle;
     } catch (error) {
-      console.error('Failed to list categories:', error);
-      return [];
+      console.error('Error opening file picker:', error);
+      throw error;
     }
   }
-
+  
   /**
-   * Create a new category
-   * @param {string} name - Category name
-   * @returns {Promise<boolean>} Whether the creation was successful
+   * Read a JSON file using the file picker, starting in the objects directory
+   * @returns {Promise<Object>} The parsed JSON content
    */
-  async createCategory(name) {
-    if (!this.initialized) {
-      throw new Error('FileSystemManager not initialized');
-    }
-
+  async readJsonFile() {
     try {
-      const objectsDir = await this.baseDirectory.getDirectoryHandle('objects', { create: true });
-      await objectsDir.getDirectoryHandle(name, { create: true });
-      return true;
+      if (!this.initialized) {
+        throw new Error('FileSystemManager not initialized');
+      }
+      
+      // Try to get the objects directory
+      let objectsDir;
+      try {
+        objectsDir = await this.baseDirectory.getDirectoryHandle('objects', { create: true });
+        console.log('Using objects directory for file picker');
+      } catch (error) {
+        console.warn('Could not access objects directory, using base directory instead:', error);
+        objectsDir = this.baseDirectory;
+      }
+      
+      // Open the file picker to select a JSON file, starting in the objects directory
+      const pickerOptions = {
+        types: [{
+          description: 'JSON Files',
+          accept: {
+            'application/json': ['.json']
+          }
+        }],
+        multiple: false,
+        startIn: objectsDir
+      };
+      
+      const [fileHandle] = await window.showOpenFilePicker(pickerOptions);
+      
+      // Read the file content
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      
+      // Parse and return the JSON content
+      return JSON.parse(content);
     } catch (error) {
-      console.error(`Failed to create category ${name}:`, error);
-      return false;
+      console.error('Error reading JSON file:', error);
+      throw error;
     }
   }
+  
+  // Note: Category-related methods have been removed as we're using a flat structure
 }
 
 // Export a singleton instance

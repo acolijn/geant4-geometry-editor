@@ -18,7 +18,13 @@ import GeometryEditor from './components/GeometryEditor';
 import MaterialsEditor from './components/MaterialsEditor';
 import JsonViewer from './components/JsonViewer';
 import ProjectManager from './components/ProjectManager';
-import './App.css'; 
+import { instanceTracker } from './utils/InstanceTracker';
+import UpdateInstancesDialog from './components/UpdateInstancesDialog';
+import InstanceUpdater from './components/InstanceUpdater';
+import './App.css';
+
+// Make instanceTracker globally available for debugging
+window.instanceTracker = instanceTracker; 
 
 // Create a theme
 const theme = createTheme({
@@ -105,6 +111,17 @@ function App() {
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   
+  // State for the update instances dialog
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [updateDialogData, setUpdateDialogData] = useState({
+    sourceId: '',
+    instanceId: '',
+    objectName: '',
+    instanceCount: 0,
+    modifiedObject: null
+  });
+  const [updateLoading, setUpdateLoading] = useState(false);
+  
   // We'll no longer automatically load from localStorage on initial load
   // This ensures we always start with the default empty world
   
@@ -119,9 +136,31 @@ function App() {
   }, [geometries, materials]);
   
   // Handle updating a geometry
-  const handleUpdateGeometry = (id, updatedObject, keepSelected = true) => {
+  const handleUpdateGeometry = (id, updatedObject, keepSelected = true, internalPropertiesChanged = false) => {
     // Store the current selection before any updates
     const currentSelection = selectedGeometry;
+    
+    // Check if this is an imported object with a source ID
+    const sourceId = updatedObject._sourceId;
+    
+    // If this is an instance with internal property changes, show the update dialog
+    if (sourceId && internalPropertiesChanged) {
+      // Get all related instances (excluding the current one)
+      const relatedInstances = instanceTracker.getRelatedInstances(sourceId, id);
+      
+      if (relatedInstances.length > 0) {
+        // Show the update dialog if there are related instances
+        setUpdateDialogData({
+          sourceId,
+          instanceId: id,
+          objectName: updatedObject.name,
+          instanceCount: relatedInstances.length,
+          modifiedObject: updatedObject
+        });
+        setUpdateDialogOpen(true);
+        return;
+      }
+    }
     
     // Create a new state update that includes both geometry and selection changes
     // to ensure they happen atomically and prevent flickering/jumping
@@ -275,6 +314,12 @@ function App() {
     const mainObject = { ...content.object };
     const originalMainName = mainObject.name;
     
+    // Generate a source ID for instance tracking if not already present
+    if (!mainObject._sourceId) {
+      mainObject._sourceId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`IMPORT - Generated new source ID: ${mainObject._sourceId}`);
+    }
+    
     // Set the mother volume
     mainObject.mother_volume = motherVolume;
     
@@ -316,7 +361,12 @@ function App() {
     const addedMainName = mainObject.name;
     const mainObjectIndex = updatedGeometries.volumes.length - 1;
     
+    // Register the main object with the instance tracker
+    const mainObjectId = `volume-${mainObjectIndex}`;
+    instanceTracker.registerInstance(mainObject._sourceId, mainObjectId, mainObjectIndex);
+    
     console.log(`IMPORT - Added main object with name: ${addedMainName} at index: ${mainObjectIndex}`);
+    console.log(`IMPORT - Registered instance with ID: ${mainObjectId} for source: ${mainObject._sourceId}`);
     
     // Process descendants
     if (content.descendants.length > 0) {
@@ -375,7 +425,19 @@ function App() {
       // Add all descendants to the volumes array
       finalDescendants.forEach((desc, index) => {
         console.log(`IMPORT - Adding descendant ${index + 1}/${finalDescendants.length}:`, desc);
+        
+        // Add the descendant to the volumes array
         updatedGeometries.volumes.push(desc);
+        
+        // Get the index of the descendant in the volumes array
+        const descendantIndex = updatedGeometries.volumes.length - 1;
+        
+        // If the descendant has a source ID, register it with the instance tracker
+        if (desc._sourceId) {
+          const descendantId = `volume-${descendantIndex}`;
+          instanceTracker.registerInstance(desc._sourceId, descendantId, descendantIndex);
+          console.log(`IMPORT - Registered descendant with ID: ${descendantId} for source: ${desc._sourceId}`);
+        }
       });
       
       // CRITICAL FIX: Update the geometries state with the complete updated structure
@@ -661,8 +723,51 @@ return (
           )}
         </Box>
       </Box>
+      
+      {/* Instance Updater Component */}
+      <InstanceUpdater 
+        geometries={geometries}
+        setGeometries={setGeometries}
+      />
+      
+      {/* Update Instances Dialog */}
+      <UpdateInstancesDialog 
+        open={updateDialogOpen}
+        onClose={() => setUpdateDialogOpen(false)}
+        onUpdateAll={handleUpdateAllInstances}
+        instanceCount={updateDialogData.instanceCount}
+        objectName={updateDialogData.objectName}
+        isLoading={updateLoading}
+      />
     </ThemeProvider>
   );
+  
+  // Function to update all instances of an object
+  function handleUpdateAllInstances() {
+    // Set loading state
+    setUpdateLoading(true);
+    
+    try {
+      // Get the data from the dialog
+      const { sourceId, instanceId, modifiedObject } = updateDialogData;
+      
+      console.log('Updating all instances of:', sourceId);
+      console.log('Modified object:', modifiedObject);
+      
+      // Use the global update function
+      const result = window.updateAllInstances(sourceId, modifiedObject);
+      console.log('Update result:', result);
+      
+      // Close the dialog after a short delay to show the loading state
+      setTimeout(() => {
+        setUpdateDialogOpen(false);
+        setUpdateLoading(false);
+      }, 500);
+    } catch (error) {
+      console.error('Error updating instances:', error);
+      setUpdateLoading(false);
+    }
+  }
 }
 
 export default App;

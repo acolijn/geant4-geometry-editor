@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import fileSystemManager from '../utils/FileSystemManager';
 import { 
   Box, 
   Paper, 
@@ -986,7 +987,70 @@ const GeometryEditor = ({
     return newName;
   };
   
-  // Handle importing an object JSON file
+  // Handle importing an object JSON file using the FileSystemManager
+  const handleImportFromFileSystem = async () => {
+    try {
+      // Check if FileSystemManager is initialized
+      if (!fileSystemManager.initialized) {
+        setImportAlert({
+          show: true,
+          message: 'Please initialize the file system from the top menu first.',
+          severity: 'warning'
+        });
+        return;
+      }
+      
+      // Use the FileSystemManager to read a JSON file from the selected directory
+      const content = await fileSystemManager.readJsonFile();
+      
+      // Log the imported content for debugging
+      console.log('Imported JSON content using FileSystemManager:', content);
+      
+      // Validate the object JSON format
+      if (content.object && Array.isArray(content.descendants)) {
+        // Use the new dedicated import function from App.jsx
+        const result = handleImportPartialFromAddNew(content, newMotherVolume);
+        
+        if (result.success) {
+          setImportAlert({
+            show: true,
+            message: result.message,
+            severity: 'success'
+          });
+          
+          // Auto-switch to the Properties tab to see the imported object
+          setTabValue(0);
+        } else {
+          setImportAlert({
+            show: true,
+            message: result.message,
+            severity: 'error'
+          });
+        }
+      } else {
+        setImportAlert({
+          show: true,
+          message: 'Invalid object format. The file must contain an "object" and "descendants" array.',
+          severity: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error importing from file system:', error);
+      
+      // Don't show error for user cancellation
+      if (error.name === 'AbortError') {
+        return;
+      }
+      
+      setImportAlert({
+        show: true,
+        message: `Error importing file: ${error.message}`,
+        severity: 'error'
+      });
+    }
+  };
+  
+  // Handle importing an object JSON file using the standard file input
   const handleImportObjectFile = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -1073,18 +1137,12 @@ const GeometryEditor = ({
           <Typography variant="subtitle1">Import Existing Object</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
-              variant="outlined"
-              component="label"
+              variant="contained"
+              color="primary"
+              onClick={handleImportFromFileSystem}
               sx={{ flexGrow: 1 }}
             >
               Select Object JSON File
-              <input
-                type="file"
-                hidden
-                accept=".json"
-                ref={fileInputRef}
-                onChange={handleImportObjectFile}
-              />
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary">
