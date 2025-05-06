@@ -393,10 +393,20 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       if (dragStateRef.current.currentDragKey === objKey) {
         // This is the object being directly dragged
         // Check if this is an intermediate object (both a mother and a daughter)
-        if (isIntermediateObject) {
-          // For intermediate objects, update continuously during dragging
+        // Either from our calculation or from the flag sent by TransformableObject
+        if (isIntermediateObject || updatedProps._isIntermediateObject) {
+          // For intermediate objects, we need to use the world coordinates directly
           // This prevents the jumping behavior when the mouse stops moving
-          onTransformEnd(objKey, localProps, true);
+          const worldProps = {
+            position: updatedProps.position,
+            rotation: updatedProps.rotation
+          };
+          
+          // Mark this as using world coordinates for proper handling on mouse release
+          worldProps._usingWorldCoordinates = true;
+          
+          // Update state with world coordinates for smooth dragging
+          onTransformEnd(objKey, worldProps, true, true);
         }
         // For top-level mother volumes (direct children of World)
         else if (isMotherVolume) {
@@ -412,7 +422,77 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       }
     } else {
       // Final update when dragging ends
-      onTransformEnd(objKey, localProps, keepSelected);
+      
+      // Special handling for intermediate objects when dragging ends
+      if (isIntermediateObject) {
+        // For intermediate objects, we need to properly convert from world to local coordinates
+        // Find the parent volume
+        const parentIndex = volumeNameToIndex[volume.mother_volume];
+        if (parentIndex !== undefined) {
+          const parentVolume = geometries.volumes[parentIndex];
+          
+          // Get parent's world position
+          const parentWorld = calculateWorldPosition(parentVolume);
+          
+          // Create vectors for world positions
+          const parentWorldPos = new THREE.Vector3(
+            parentWorld.position[0],
+            parentWorld.position[1],
+            parentWorld.position[2]
+          );
+          
+          // Get the current world position of the object being dragged
+          const objectWorldPos = new THREE.Vector3(
+            updatedProps.position.x,
+            updatedProps.position.y,
+            updatedProps.position.z
+          );
+          
+          // Calculate the local position relative to the parent
+          // This is the vector from the parent to the object in world space
+          const localPos = new THREE.Vector3().subVectors(objectWorldPos, parentWorldPos);
+          
+          // If the parent has rotation, we need to account for that
+          if (parentWorld.rotation[0] !== 0 || parentWorld.rotation[1] !== 0 || parentWorld.rotation[2] !== 0) {
+            // Create a rotation matrix for the parent's rotation
+            const parentRotX = THREE.MathUtils.degToRad(parentWorld.rotation[0]);
+            const parentRotY = THREE.MathUtils.degToRad(parentWorld.rotation[1]);
+            const parentRotZ = THREE.MathUtils.degToRad(parentWorld.rotation[2]);
+            
+            // Create a rotation matrix in the correct sequence (X, Y, Z)
+            const parentRotMatrix = new THREE.Matrix4();
+            parentRotMatrix.makeRotationX(parentRotX);
+            parentRotMatrix.multiply(new THREE.Matrix4().makeRotationY(parentRotY));
+            parentRotMatrix.multiply(new THREE.Matrix4().makeRotationZ(parentRotZ));
+            
+            // Get the inverse of the parent's rotation matrix
+            const inverseParentRotMatrix = parentRotMatrix.clone().invert();
+            
+            // Apply the inverse rotation to the local position
+            localPos.applyMatrix4(inverseParentRotMatrix);
+          }
+          
+          // Create the final local coordinates
+          const finalLocalProps = {
+            position: {
+              x: localPos.x,
+              y: localPos.y,
+              z: localPos.z,
+              unit: volume.position?.unit || 'cm'
+            },
+            rotation: localProps.rotation // Use the rotation from the standard conversion
+          };
+          
+          // Update with the correctly calculated local coordinates
+          onTransformEnd(objKey, finalLocalProps, keepSelected);
+        } else {
+          // Fallback to standard local coordinates if parent not found
+          onTransformEnd(objKey, localProps, keepSelected);
+        }
+      } else {
+        // For non-intermediate objects, use the standard local coordinates
+        onTransformEnd(objKey, localProps, keepSelected);
+      }
       
       // Reset drag state
       dragStateRef.current = {

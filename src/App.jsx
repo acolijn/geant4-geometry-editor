@@ -207,7 +207,19 @@ function App() {
         
         setGeometries(prevGeometries => {
           const updatedVolumes = [...prevGeometries.volumes];
-          updatedVolumes[index] = updatedObject;
+          
+          // Check if this is an intermediate object using world coordinates
+          if (updatedObject._usingWorldCoordinates) {
+            // For intermediate objects using world coordinates, we need to handle them differently
+            // Remove the special flag before storing in state
+            const { _usingWorldCoordinates, _isIntermediateObject, ...cleanObject } = updatedObject;
+            updatedVolumes[index] = cleanObject;
+          } else {
+            // Normal update for regular objects
+            // Remove any special flags if present
+            const { _isIntermediateObject, ...cleanObject } = updatedObject;
+            updatedVolumes[index] = cleanObject;
+          }
           
           // If name changed, update all daughter volumes that reference this as mother
           if (oldName !== newName) {

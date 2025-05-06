@@ -122,12 +122,17 @@ export default function TransformableObject({
         unit: object.rotation?.unit || 'deg'
       };
       
+      // Check if this is an intermediate object (both a mother and a daughter)
+      const isIntermediateObject = isMotherVolume && (motherVolume && motherVolume !== 'World');
+      
       // Send live updates to the Viewer3D component
       // The Viewer3D component will handle mother volumes and daughter objects differently
       onTransformEnd(objectKey, { 
         position: currentPosition, 
-        rotation: currentRotation 
-      }, false, true); // Pass true as the fourth parameter to indicate this is a live update
+        rotation: currentRotation,
+        // Add a flag for intermediate objects to ensure proper handling
+        _isIntermediateObject: isIntermediateObject
+      }, isIntermediateObject, true); // For intermediate objects, keep selected to prevent jumps
       
       // Debug the transformation (for development purposes only)
       // console.log(`Transform change for ${objectKey} (${object.type})`, {
