@@ -507,6 +507,20 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
 
 // GeometryTree component for the left panel
 const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
+  // State to track expanded nodes - initially only World is expanded
+  const [expandedNodes, setExpandedNodes] = useState({ world: true });
+  
+  // Function to toggle node expansion
+  const toggleNodeExpansion = (nodeKey, event) => {
+    // Stop the click event from bubbling up to the parent div
+    // which would trigger selection
+    event.stopPropagation();
+    
+    setExpandedNodes(prev => ({
+      ...prev,
+      [nodeKey]: !prev[nodeKey]
+    }));
+  };
   // Create a map of volume names to their indices for easy lookup
   const volumeNameToIndex = {};
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
@@ -574,6 +588,9 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
       if (volume.type === 'polycone') icon = '🏆';
       if (volume.type === 'trapezoid') icon = '🔷';
       
+      // Check if this node has children
+      const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
+      
       return (
         <React.Fragment key={key}>
           <div 
@@ -594,10 +611,29 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
               alignItems: 'center'
             }}
           >
+            {/* Expand/collapse icon - only show if node has children */}
+            {hasChildren && (
+              <span 
+                onClick={(e) => toggleNodeExpansion(key, e)} 
+                style={{ 
+                  marginRight: '5px', 
+                  cursor: 'pointer',
+                  color: selectedGeometry === key ? '#fff' : '#555',
+                  fontSize: '14px',
+                  width: '16px',
+                  textAlign: 'center'
+                }}
+              >
+                {expandedNodes[key] ? '▼' : '►'}
+              </span>
+            )}
+            {/* If no children, add spacing to align with nodes that have the toggle */}
+            {!hasChildren && <span style={{ width: '16px', marginRight: '5px' }}></span>}
             <span style={{ marginRight: '5px' }}>{icon}</span>
             {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
           </div>
-          {renderVolumeTree(key, level + 1)}
+          {/* Only render children if node is expanded */}
+          {expandedNodes[key] && renderVolumeTree(key, level + 1)}
         </React.Fragment>
       );
     });
@@ -624,13 +660,27 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
             alignItems: 'center'
           }}
         >
+          {/* Expand/collapse icon for World */}
+          <span 
+            onClick={(e) => toggleNodeExpansion('world', e)} 
+            style={{ 
+              marginRight: '5px', 
+              cursor: 'pointer',
+              color: selectedGeometry === 'world' ? '#fff' : '#555',
+              fontSize: '14px',
+              width: '16px',
+              textAlign: 'center'
+            }}
+          >
+            {expandedNodes['world'] ? '▼' : '►'}
+          </span>
           <span style={{ marginRight: '5px' }}>🌐</span>
           <strong>World</strong>
           <span style={{ marginLeft: '5px', fontSize: '0.8em', color: selectedGeometry === 'world' ? '#ddd' : '#777' }}></span>
         </div>
         
-        {/* Render volumes with World as parent and their children recursively */}
-        {renderVolumeTree('world')}
+        {/* Render volumes with World as parent and their children recursively, but only if World is expanded */}
+        {expandedNodes['world'] && renderVolumeTree('world')}
       </div>
     </div>
   );
