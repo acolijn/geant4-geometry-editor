@@ -1,5 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
+import { instanceTracker } from '../utils/InstanceTracker';
+import UpdateInstancesManager from './UpdateInstancesManager';
+import UpdateNotification from './UpdateNotification';
+import UpdateInstancesDialog from './UpdateInstancesDialog';
 import { 
   Box, 
   Paper, 
@@ -19,6 +23,7 @@ import {
   Alert
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 const GeometryEditor = ({ 
   geometries, 
@@ -43,6 +48,19 @@ const GeometryEditor = ({
   const [firstSolid, setFirstSolid] = useState('');
   const [secondSolid, setSecondSolid] = useState('');
   
+  // State for update instances dialog
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [updateDialogData, setUpdateDialogData] = useState({
+    instanceCount: 0,
+    objectName: '',
+    sourceId: '',
+    sourceData: null,
+    isLoading: false
+  });
+  
+  // State for update manager
+  const [updateManagerOpen, setUpdateManagerOpen] = useState(false);
+  
   // Handle opening the context menu
   const handleMenuOpen = (event) => {
     event.stopPropagation();
@@ -55,9 +73,30 @@ const GeometryEditor = ({
     setMenuAnchorEl(null);
   };
   
+  // Handle opening the update manager
+  const handleOpenUpdateManager = useCallback(() => {
+    setUpdateManagerOpen(true);
+  }, []);
+  
+  // Handle update completion
+  const handleUpdateComplete = (result) => {
+    if (result.success) {
+      setImportAlert({
+        show: true,
+        message: `Successfully updated ${result.updatedCount} instances.`,
+        severity: 'success'
+      });
+    } else {
+      setImportAlert({
+        show: true,
+        message: `Error updating instances: ${result.error}`,
+        severity: 'error'
+      });
+    }
+  };
+  
   // Handle exporting the selected object with its descendants
-  const handleExportObject = (event) => {
-    if (event) event.stopPropagation();
+  const handleExportObject = () => {
     handleMenuClose();
     
     if (!selectedGeometry) return;
@@ -108,12 +147,64 @@ const GeometryEditor = ({
           await writable.write(blob);
           await writable.close();
           
-          // Show success message
-          setImportAlert({
-            show: true,
-            message: `Saved ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
-            severity: 'success'
+          // Register the source with the instance tracker
+          const sourceId = fileHandle.name;
+          
+          // Check if there are other instances of this object
+          const instanceId = selectedGeometry;
+          const volumeIndex = selectedGeometry === 'world' ? -1 : 
+            geometries.volumes.findIndex((_, index) => `volume-${index}` === selectedGeometry);
+          
+          // Get the current object for debugging
+          const currentObject = selectedGeometry === 'world' ? geometries.world : 
+            geometries.volumes[volumeIndex];
+          
+          console.log('Saving object:', {
+            sourceId,
+            instanceId,
+            volumeIndex,
+            objectType: currentObject.type,
+            objectName: currentObject.name,
+            exportData
           });
+          
+          // Force a check of all volumes to find similar objects
+          console.log('All volumes in the scene:');
+          geometries.volumes.forEach((volume, index) => {
+            console.log(`Volume ${index}:`, {
+              type: volume.type,
+              name: volume.name,
+              key: `volume-${index}`
+            });
+          });
+          
+          // Register this instance
+          instanceTracker.registerInstance(sourceId, instanceId, volumeIndex, exportData);
+          
+          // Check for related instances that might need updating
+          const relatedInstances = instanceTracker.getRelatedInstances(sourceId, instanceId);
+          
+          console.log('Related instances found:', relatedInstances);
+          console.log('All pending updates:', instanceTracker.getPendingUpdates());
+          
+          if (relatedInstances.length > 0) {
+            // Show dialog asking if user wants to update related instances
+            setUpdateDialogData({
+              instanceCount: relatedInstances.length,
+              objectName: exportData.object.name,
+              sourceId,
+              sourceData: exportData,
+              isLoading: false
+            });
+            setUpdateDialogOpen(true);
+          } else {
+            // Show success message
+            setImportAlert({
+              show: true,
+              message: `Saved ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
+              severity: 'success'
+            });
+          }
         } catch (err) {
           // User probably canceled the save dialog
           if (err.name !== 'AbortError') {
@@ -215,12 +306,38 @@ const GeometryEditor = ({
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        // Show alert with export information
-        setImportAlert({
-          show: true,
-          message: `Downloaded ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
-          severity: 'info'
-        });
+        // Register the source with the instance tracker
+        const sourceId = `${exportData.object.name}-${Date.now()}.json`;
+        
+        // Check if there are other instances of this object
+        const instanceId = selectedGeometry;
+        const volumeIndex = selectedGeometry === 'world' ? -1 : 
+          geometries.volumes.findIndex((_, index) => `volume-${index}` === selectedGeometry);
+        
+        // Register this instance
+        instanceTracker.registerInstance(sourceId, instanceId, volumeIndex, exportData);
+        
+        // Check for related instances that might need updating
+        const relatedInstances = instanceTracker.getRelatedInstances(sourceId, instanceId);
+        
+        if (relatedInstances.length > 0) {
+          // Show dialog asking if user wants to update related instances
+          setUpdateDialogData({
+            instanceCount: relatedInstances.length,
+            objectName: exportData.object.name,
+            sourceId,
+            sourceData: exportData,
+            isLoading: false
+          });
+          setUpdateDialogOpen(true);
+        } else {
+          // Show alert with export information
+          setImportAlert({
+            show: true,
+            message: `Downloaded ${exportData.object.name} with ${exportData.descendants.length} descendants.`,
+            severity: 'info'
+          });
+        }
       });
       
       cancelButton.addEventListener('click', () => {
@@ -555,22 +672,94 @@ const GeometryEditor = ({
 
     return (
       <Box sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6">
-            {selectedObject.name || 'Unnamed Geometry'}
-          </Typography>
-          
-          <Tooltip title="Object Options">
-            <IconButton
-              aria-label="more"
-              aria-controls="geometry-menu"
-              aria-haspopup="true"
-              onClick={handleMenuOpen}
-              size="small"
-            >
-              <MoreVertIcon />
-            </IconButton>
-          </Tooltip>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">Geometry Editor</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Update Instances Button - Visible and clearly labeled */}
+            <Tooltip title="Update Instances">
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<RefreshIcon />}
+                onClick={handleOpenUpdateManager}
+                sx={{ mr: 1 }}
+              >
+                Update Instances
+              </Button>
+            </Tooltip>
+            
+            {/* Debug button */}
+            <Tooltip title="Debug Instance Tracker">
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                onClick={() => {
+                  // Force a scan of all objects in the scene
+                  console.log('DEBUG: Scanning all objects in the scene');
+                  
+                  // Log all volumes
+                  console.log('All volumes:');
+                  geometries.volumes.forEach((volume, index) => {
+                    console.log(`Volume ${index}:`, {
+                      type: volume.type,
+                      name: volume.name,
+                      key: `volume-${index}`
+                    });
+                    
+                    // Register this volume with the instance tracker if it's not already registered
+                    const volumeKey = `volume-${index}`;
+                    const sourceId = `debug-source-${volume.type}-${index}`;
+                    const exportData = {
+                      object: volume,
+                      descendants: [],
+                      debug: {
+                        exportedAt: new Date().toISOString(),
+                        objectType: volume.type,
+                        objectName: volume.name,
+                        source: 'debug-scan'
+                      }
+                    };
+                    
+                    // Register with the instance tracker
+                    instanceTracker.registerInstance(sourceId, volumeKey, index, exportData);
+                  });
+                  
+                  // Show the update manager
+                  setUpdateManagerOpen(true);
+                  
+                  // Show a success message
+                  setImportAlert({
+                    show: true,
+                    message: 'Debug scan complete. Check the console for details.',
+                    severity: 'info'
+                  });
+                }}
+                sx={{ mr: 1 }}
+              >
+                Debug Scan
+              </Button>
+            </Tooltip>
+            
+            {/* Update Instances Manager with open state controlled by parent */}
+            <UpdateInstancesManager 
+              open={updateManagerOpen}
+              onClose={() => setUpdateManagerOpen(false)}
+              onUpdateComplete={handleUpdateComplete} 
+            />
+            
+            {selectedGeometry && (
+              <IconButton
+                aria-label="more"
+                aria-controls="geometry-menu"
+                aria-haspopup="true"
+                onClick={handleMenuOpen}
+              >
+                <MoreVertIcon />
+              </IconButton>
+            )}
+          </Box>
         </Box>
         
         <Menu

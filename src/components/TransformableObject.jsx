@@ -33,7 +33,8 @@ export default function TransformableObject({
   onSelect, 
   onTransformEnd,
   worldPosition,
-  worldRotation
+  worldRotation,
+  isSourceObject = false // New prop to indicate if this is a source object that should trigger updates
 }) {
   // Create a ref for the object
   const groupRef = useRef();
@@ -204,10 +205,11 @@ export default function TransformableObject({
         // The parent component will handle converting to local coordinates if needed
         // Pass true as the third parameter to ensure the object stays selected
         // Pass false as the fourth parameter to indicate this is a final update, not a live update
+        // Pass isSourceObject as the fifth parameter to indicate if this should trigger updates to instances
         onTransformEnd(objectKey, { 
           position: finalPosition, 
           rotation: finalRotation 
-        }, true, false);
+        }, true, false, isSourceObject);
       }
       
       // Reset drag state

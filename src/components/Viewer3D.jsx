@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
+import { instanceTracker } from '../utils/InstanceTracker';
 import TransformableObject from './TransformableObject';
 import BoxObject from './BoxObject';
 import SphereObject from './SphereObject';
@@ -58,6 +59,42 @@ function CameraSetup({ setFrontViewCamera }) {
 
 // Simple Scene component with flat object structure
 function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd }) {
+  // Track which objects are source objects (objects that have been loaded from files)
+  const [sourceObjects, setSourceObjects] = useState({});
+  
+  // Check which objects are source objects using the instanceTracker
+  useEffect(() => {
+    const checkSourceObjects = () => {
+      const newSourceObjects = {};
+      
+      // Check world volume
+      const worldSourceId = instanceTracker.getSourceIdForInstance('world');
+      if (worldSourceId) {
+        newSourceObjects['world'] = true;
+      }
+      
+      // Check each volume
+      geometries.volumes && geometries.volumes.forEach((volume, index) => {
+        const volumeKey = `volume-${index}`;
+        const sourceId = instanceTracker.getSourceIdForInstance(volumeKey);
+        if (sourceId) {
+          newSourceObjects[volumeKey] = true;
+        }
+      });
+      
+      setSourceObjects(newSourceObjects);
+    };
+    
+    // Run the check
+    checkSourceObjects();
+    
+    // Register a listener for updates
+    const removeListener = instanceTracker.addUpdateListener(() => {
+      checkSourceObjects();
+    });
+    
+    return () => removeListener();
+  }, [geometries.volumes]);
   // Debug the selected geometry to help diagnose issues
   React.useEffect(() => {
     if (selectedGeometry) {
@@ -554,6 +591,7 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
           isMotherVolume={isMotherVolume}
           worldPosition={worldTransform.position}
           worldRotation={[euler.x, euler.y, euler.z]}
+          isSourceObject={sourceObjects[key] === true}
           onTransformEnd={(objKey, updatedProps, keepSelected, isLiveUpdate) => handleVolumeTransform(objKey, updatedProps, keepSelected, isLiveUpdate)}
         />
       );
@@ -586,6 +624,7 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
           transformMode={transformMode}
           onSelect={() => {/* No-op */}}
           onTransformEnd={onTransformEnd}
+          isSourceObject={sourceObjects['world'] === true}
           visible={false}
         />
       )}
@@ -781,6 +820,75 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   const [transformMode, setTransformMode] = useState('translate');
   const [frontViewCamera, setFrontViewCamera] = useState(null);
   
+  // Register update handler with the InstanceTracker
+  useEffect(() => {
+    // This function will be called when instances need to be updated
+    const handleInstanceUpdates = (updateInfo) => {
+      console.log('Applying updates to instances:', updateInfo);
+      
+      const { sourceData, instances } = updateInfo;
+      if (!sourceData || !sourceData.object || !instances || instances.length === 0) {
+        console.warn('Invalid update info received:', updateInfo);
+        return;
+      }
+      
+      // Apply updates to each instance
+      instances.forEach(instance => {
+        const { instanceId, volumeIndex } = instance;
+        
+        // Skip if the instance is the currently selected geometry (it's already updated)
+        if (instanceId === selectedGeometry) {
+          console.log(`Skipping update for selected geometry: ${instanceId}`);
+          return;
+        }
+        
+        // Get the current object
+        let currentObject;
+        if (instanceId === 'world') {
+          currentObject = { ...geometries.world };
+        } else if (instanceId.startsWith('volume-')) {
+          const index = parseInt(instanceId.split('-')[1]);
+          if (index >= 0 && index < geometries.volumes.length) {
+            currentObject = { ...geometries.volumes[index] };
+          } else {
+            console.warn(`Invalid volume index for instance ${instanceId}`);
+            return;
+          }
+        } else {
+          console.warn(`Unknown instance ID format: ${instanceId}`);
+          return;
+        }
+        
+        // Create an updated object by merging the current object with the source data
+        // but preserving position, rotation, and mother_volume
+        const sourceObject = sourceData.object;
+        const updatedObject = { 
+          ...currentObject,
+          // Copy all properties from the source object
+          ...sourceObject,
+          // But preserve these specific properties from the current object
+          position: currentObject.position,
+          rotation: currentObject.rotation,
+          mother_volume: currentObject.mother_volume,
+          name: currentObject.name
+        };
+        
+        console.log(`Updating instance ${instanceId} with properties from ${sourceObject.name}`);
+        
+        // Update the geometry WITHOUT changing selection
+        onUpdateGeometry(instanceId, updatedObject, false);
+      });
+    };
+    
+    // Register the update handler
+    const unregisterHandler = instanceTracker.registerUpdateHandler(handleInstanceUpdates);
+    
+    // Clean up when component unmounts
+    return () => {
+      unregisterHandler();
+    };
+  }, [geometries, selectedGeometry, onUpdateGeometry]);
+  
   // Function to set front view
   const setFrontView = () => {
     if (frontViewCamera) {
@@ -799,8 +907,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   };
   
   // Handle transform end - completely rewritten to fix selection issues
-  const handleTransformEnd = (objectKey, updates, keepSelected = true) => {
-    console.log(`Transform end for ${objectKey}, keepSelected: ${keepSelected}`);
+  const handleTransformEnd = (objectKey, updates, keepSelected = true, isSourceUpdate = false) => {
+    console.log(`Transform end for ${objectKey}, keepSelected: ${keepSelected}, isSourceUpdate: ${isSourceUpdate}`);
     
     // CRITICAL: Force selection of the object being transformed
     // This must happen BEFORE any geometry updates to ensure it takes effect
@@ -902,6 +1010,40 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
         console.log(`Forcing selection to ${objectKey} after update`);
         onSelect(objectKey);
       });
+    }
+    
+    // If this is a source update (from editing a compound object), register it with the instance tracker
+    if (isSourceUpdate) {
+      // Get the source ID for this instance
+      const sourceId = instanceTracker.getSourceIdForInstance(objectKey);
+      
+      if (sourceId) {
+        // Get the full updated object
+        let updatedSourceObject;
+        if (objectKey === 'world') {
+          updatedSourceObject = { ...geometries.world };
+        } else if (objectKey.startsWith('volume-')) {
+          const index = parseInt(objectKey.split('-')[1]);
+          updatedSourceObject = { ...geometries.volumes[index] };
+        }
+        
+        if (updatedSourceObject) {
+          // Create source data in the format expected by the instance tracker
+          const sourceData = {
+            object: updatedSourceObject,
+            descendants: [], // We're not updating descendants in this case
+            debug: {
+              updatedAt: new Date().toISOString(),
+              updatedBy: 'transform-operation'
+            }
+          };
+          
+          // Update the source in the instance tracker
+          // This will mark all other instances as needing updates
+          console.log(`Updating source ${sourceId} from transform operation`);
+          instanceTracker.updateSource(sourceId, sourceData, false);
+        }
+      }
     }
     
     // If this is a parent object, handle parent-child relationships
