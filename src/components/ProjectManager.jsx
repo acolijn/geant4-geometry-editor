@@ -36,7 +36,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import CategoryIcon from '@mui/icons-material/Category';
 import fileSystemManager from '../utils/FileSystemManager';
-import localStorageManager from '../utils/LocalStorageManager';
+// LocalStorageManager has been removed to avoid browser storage usage
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
 
@@ -65,7 +65,7 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
   const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
   const [storageManager, setStorageManager] = useState(null);
-  const [storageMode, setStorageMode] = useState('none'); // 'filesystem', 'localstorage', or 'none'
+  const [storageMode, setStorageMode] = useState('none'); // 'filesystem' or 'none'
 
   // Handle custom saveObject event
   useEffect(() => {
@@ -130,13 +130,6 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
       setIsInitialized(true);
       loadSavedProjectsList();
       loadCategories();
-    } else if (localStorageManager.initialized) {
-      // Use localStorage as a fallback
-      setStorageManager(localStorageManager);
-      setStorageMode('localstorage');
-      setIsInitialized(true);
-      loadSavedProjectsList();
-      loadCategories();
     } else {
       setIsInitialized(false);
       setStorageMode('none');
@@ -196,14 +189,13 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
       
       setAlert({
         open: true,
-        message: `File system initialization failed: ${error.message}. Please try again or use browser storage.`,
+        message: `File system initialization failed: ${error.message}. Please try again.`,
         severity: 'error'
       });
       
-      // Don't automatically fall back to localStorage
-      // Let the user choose explicitly
-      setStorageMode('none');
+      // No fallback to localStorage - we're only using filesystem access
       setIsInitialized(false);
+      setIsLoading(false);
       return false;
     } finally {
       setIsLoading(false);
@@ -211,33 +203,6 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
     } 
   };
   
-  // Initialize localStorage as the storage system
-  const initializeLocalStorage = async () => {
-    try {
-      const success = await localStorageManager.initialize();
-      setStorageManager(localStorageManager);
-      setStorageMode('localstorage');
-      setIsInitialized(true);
-      loadSavedProjectsList();
-      loadCategories();
-      setAlert({
-        open: true,
-        message: 'Using browser storage (localStorage). Your data is saved in your browser.',
-        severity: 'info'
-      });
-      setInitDialogOpen(false);
-      return success;
-    } catch (error) {
-      console.error('Error initializing localStorage:', error);
-      setAlert({
-        open: true,
-        message: 'Error initializing browser storage: ' + error.message,
-        severity: 'error'
-      });
-      return false;
-    }
-  };
-
   // Load the list of saved projects
   const loadSavedProjectsList = async () => {
     if (!isInitialized || !storageManager) return;
@@ -661,30 +626,22 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* Storage indicator icon with click to change */}
           {isInitialized && (
-            <Tooltip title={storageMode === 'filesystem' ? 
-              'Using File System Storage - Click to switch to Browser Storage' : 
-              'Using Browser Storage - Click to switch to File System Storage'}>
+            <Tooltip title="Using File System Storage - Click to switch to Browser Storage">
               <IconButton 
                 size="small"
                 sx={{ 
-                  bgcolor: storageMode === 'filesystem' ? 'success.main' : 'info.main',
+                  bgcolor: 'success.main',
                   color: 'white',
                   mr: 1,
                   '&:hover': {
-                    bgcolor: storageMode === 'filesystem' ? 'success.dark' : 'info.dark',
+                    bgcolor: 'success.dark',
                   }
                 }}
                 onClick={() => {
-                  if (storageMode === 'filesystem') {
-                    initializeLocalStorage();
-                  } else {
-                    setInitDialogOpen(true);
-                  }
+                  setInitDialogOpen(true);
                 }}
               >
-                {storageMode === 'filesystem' ? 
-                  <FolderIcon fontSize="small" /> : 
-                  <SaveIcon fontSize="small" />}
+                <FolderIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           )}
@@ -1084,47 +1041,6 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
                 Select Directory
               </Button>
             </Box>
-            
-            {/* Local Storage Option */}
-            <Box 
-              sx={{ 
-                border: '1px solid', 
-                borderColor: 'divider', 
-                borderRadius: 1, 
-                p: 2,
-                '&:hover': { bgcolor: 'action.hover' }
-              }}
-            >
-              <Typography variant="h6" gutterBottom>
-                <SaveIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                Browser Storage
-              </Typography>
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Store data in your browser's localStorage. Simple and works everywhere, but limited to your current browser.
-              </Typography>
-              <Button 
-                onClick={async () => {
-                  try {
-                    setIsLoading(true);
-                    await initializeLocalStorage();
-                  } catch (error) {
-                    setAlert({
-                      open: true,
-                      message: `Error: ${error.message || 'Failed to initialize browser storage'}`,
-                      severity: 'error'
-                    });
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }} 
-                variant="outlined"
-                disabled={isLoading}
-                startIcon={isLoading ? <CircularProgress size={20} /> : <SaveIcon />}
-                fullWidth
-              >
-                Use Browser Storage
-              </Button>
-            </Box>
           </Box>
           
           {isLoading && (
@@ -1152,26 +1068,14 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
               mb: 1, 
               p: 1, 
               borderRadius: 1,
-              bgcolor: storageMode === 'filesystem' ? 'success.light' : 'info.light',
-              color: storageMode === 'filesystem' ? 'success.contrastText' : 'info.contrastText',
+              bgcolor: 'success.light',
+              color: 'success.contrastText',
             }}
           >
-            {storageMode === 'filesystem' && (
-              <>
-                <FolderIcon sx={{ mr: 1 }} />
-                <Typography variant="body2">
-                  Storage Mode: <strong>File System</strong> - Your data is being saved to your selected folder
-                </Typography>
-              </>
-            )}
-            {storageMode === 'localstorage' && (
-              <>
-                <SaveIcon sx={{ mr: 1 }} />
-                <Typography variant="body2">
-                  Storage Mode: <strong>Browser Storage</strong> - Your data is saved in your browser's localStorage
-                </Typography>
-              </>
-            )}
+            <FolderIcon sx={{ mr: 1 }} />
+            <Typography variant="body2">
+              Storage Mode: <strong>File System</strong> - Your data is being saved to your selected folder
+            </Typography>
           </Box>
         )}
         
@@ -1223,6 +1127,9 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
             {!isInitialized && (
               <Alert severity="info" sx={{ mb: 2 }}>
                 Please initialize the storage system first by clicking the button below.
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Browser storage has been disabled. Please use the file system access.
+                </Typography>
                 <Button 
                   variant="outlined" 
                   size="small" 
