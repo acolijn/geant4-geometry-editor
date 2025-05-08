@@ -409,12 +409,27 @@ function App() {
     const addedMainName = mainObject.name;
     const mainObjectIndex = updatedGeometries.volumes.length - 1;
     
-    // Register the main object with the instance tracker
+    // Register the main object with the instance tracker as a compound object
     const mainObjectId = `volume-${mainObjectIndex}`;
-    instanceTracker.registerInstance(mainObject._sourceId, mainObjectId, mainObjectIndex);
+    
+    // Create a compound object structure with the main object and its descendants
+    const compoundData = {
+      object: { ...mainObject },
+      descendants: content.descendants,
+      importedAt: new Date().toISOString()
+    };
+    
+    // Register with the instance tracker, passing both the source data and compound data
+    instanceTracker.registerInstance(
+      mainObject._sourceId, 
+      mainObjectId, 
+      mainObjectIndex, 
+      mainObject,  // Source data for the main object
+      compoundData // Compound object data (parent + descendants)
+    );
     
     console.log(`IMPORT - Added main object with name: ${addedMainName} at index: ${mainObjectIndex}`);
-    console.log(`IMPORT - Registered instance with ID: ${mainObjectId} for source: ${mainObject._sourceId}`);
+    console.log(`IMPORT - Registered compound object with instance tracker: sourceId=${mainObject._sourceId}, instanceId=${mainObjectId}, descendantCount=${content.descendants.length}`);
     
     // Process descendants
     if (content.descendants.length > 0) {
@@ -836,31 +851,10 @@ return (
     </ThemeProvider>
   );
   
-  // Function to update all instances of an object
+  // Function to handle the update instances button click
   function handleUpdateAllInstances() {
-    // Set loading state
-    setUpdateLoading(true);
-    
-    try {
-      // Get the data from the dialog
-      const { sourceId, instanceId, modifiedObject } = updateDialogData;
-      
-      console.log('Updating all instances of:', sourceId);
-      console.log('Modified object:', modifiedObject);
-      
-      // Use the global update function
-      const result = window.updateAllInstances(sourceId, modifiedObject);
-      console.log('Update result:', result);
-      
-      // Close the dialog after a short delay to show the loading state
-      setTimeout(() => {
-        setUpdateDialogOpen(false);
-        setUpdateLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error('Error updating instances:', error);
-      setUpdateLoading(false);
-    }
+    // Simply open the dialog, the new dialog handles everything internally
+    setUpdateDialogOpen(true);
   }
 }
 

@@ -3,6 +3,8 @@
  * 
  * Utility for tracking and updating multiple instances of the same object
  * in the Geant4 Geometry Editor.
+ * 
+ * Enhanced to support compound objects (parent + descendants).
  */
 
 // Store instance groups with a unique source identifier
@@ -13,6 +15,9 @@ const typeGroups = {};
 
 // Store source metadata including last modified time
 const sourceMeta = {};
+
+// Store compound object data (parent + descendants)
+const compoundObjects = {};
 
 // Store pending updates
 const pendingUpdates = {};
@@ -26,8 +31,9 @@ const updateListeners = [];
  * @param {string} instanceId - Volume ID in the format 'volume-X'
  * @param {number} volumeIndex - The index of the volume in the volumes array
  * @param {Object} sourceData - The source object data
+ * @param {Object} compoundData - Optional compound object data (parent + descendants)
  */
-const registerInstance = (sourceId, instanceId, volumeIndex, sourceData = null) => {
+const registerInstance = (sourceId, instanceId, volumeIndex, sourceData = null, compoundData = null) => {
   if (!instanceGroups[sourceId]) {
     instanceGroups[sourceId] = [];
   }
@@ -76,6 +82,16 @@ const registerInstance = (sourceId, instanceId, volumeIndex, sourceData = null) 
     instanceGroups[sourceId][existingIndex].lastUpdated = new Date().toISOString();
     instanceGroups[sourceId][existingIndex].objectType = sourceData?.object?.type || instanceGroups[sourceId][existingIndex].objectType;
     console.log(`Updated instance ${instanceId} (new index: ${volumeIndex}) for source ${sourceId}`);
+  }
+  
+  // Store compound object data if provided
+  if (compoundData && compoundData.object && Array.isArray(compoundData.descendants)) {
+    compoundObjects[sourceId] = {
+      data: compoundData,
+      lastModified: new Date().toISOString(),
+      instanceCount: instanceGroups[sourceId].length
+    };
+    console.log(`Stored compound object data for source ${sourceId} with ${compoundData.descendants.length} descendants`);
   }
   
   // After registering, check for other instances of the same type that might need updating
@@ -563,6 +579,87 @@ const notifyUpdateListeners = () => {
   });
 };
 
+/**
+ * Get compound object data for a source
+ * @param {string} sourceId - Unique identifier for the source
+ * @returns {Object|null} - Compound object data or null if not found
+ */
+const getCompoundObject = (sourceId) => {
+  return compoundObjects[sourceId]?.data || null;
+};
+
+/**
+ * Update a compound object with new data
+ * @param {string} sourceId - Unique identifier for the source
+ * @param {Object} newCompoundData - New compound object data
+ * @returns {Object} - Result of the update operation
+ */
+const updateCompoundObject = (sourceId, newCompoundData) => {
+  if (!sourceId || !newCompoundData || !newCompoundData.object || !Array.isArray(newCompoundData.descendants)) {
+    console.error('Invalid compound object data for update');
+    return { success: false, message: 'Invalid compound object data' };
+  }
+  
+  // Store the updated compound object data
+  compoundObjects[sourceId] = {
+    data: newCompoundData,
+    lastModified: new Date().toISOString(),
+    instanceCount: (instanceGroups[sourceId] || []).length
+  };
+  
+  // Mark all instances as needing update
+  if (instanceGroups[sourceId]) {
+    instanceGroups[sourceId].forEach(instance => {
+      instance.needsUpdate = true;
+    });
+    
+    // Add to pending updates
+    pendingUpdates[sourceId] = {
+      sourceId,
+      updatedAt: new Date().toISOString(),
+      affectedInstances: instanceGroups[sourceId].length,
+      compoundData: newCompoundData,
+      isCompoundUpdate: true
+    };
+    
+    // Notify listeners about the update
+    notifyUpdateListeners();
+    
+    return { 
+      success: true, 
+      message: `Compound object ${sourceId} updated with ${instanceGroups[sourceId].length} instances marked for update`,
+      instanceCount: instanceGroups[sourceId].length
+    };
+  }
+  
+  return { success: false, message: 'No instances found for this source' };
+};
+
+/**
+ * Get all compound objects that need updates
+ * @returns {Array} - Array of compound objects that need updates
+ */
+const getPendingCompoundUpdates = () => {
+  const updates = [];
+  
+  Object.keys(pendingUpdates).forEach(sourceId => {
+    const update = pendingUpdates[sourceId];
+    
+    if (update.isCompoundUpdate && compoundObjects[sourceId]) {
+      updates.push({
+        sourceId,
+        name: update.compoundData?.object?.name || 'Unknown Object',
+        type: update.compoundData?.object?.type || 'unknown',
+        instanceCount: update.affectedInstances || 0,
+        descendantCount: update.compoundData?.descendants?.length || 0,
+        updatedAt: update.updatedAt
+      });
+    }
+  });
+  
+  return updates;
+};
+
 // Create a singleton instance that can be imported throughout the app
 export const instanceTracker = {
   registerInstance,
@@ -573,10 +670,20 @@ export const instanceTracker = {
   getAllSources,
   getDebugInfo,
   updateSource,
+  registerUpdateHandler,
   applyUpdates,
   getPendingUpdates,
   getPendingUpdateCount,
   getPendingInstanceCount,
   addUpdateListener,
-  registerUpdateHandler
+  removeUpdateListener: (listener) => {
+    const index = updateListeners.indexOf(listener);
+    if (index !== -1) {
+      updateListeners.splice(index, 1);
+    }
+  },
+  // New compound object functions
+  getCompoundObject,
+  updateCompoundObject,
+  getPendingCompoundUpdates
 };
