@@ -544,17 +544,66 @@ const clearPendingUpdate = (sourceId) => {
  * @returns {Object} - Result of the update operation
  */
 const updateCompoundObjects = (geometries, sourceObject, sourceDescendants, sourceId) => {
-  if (!geometries || !sourceObject || !Array.isArray(sourceDescendants) || !sourceId) {
-    console.error('Missing required parameters for compound object update');
-    return { success: false, message: 'Missing parameters', count: 0 };
+  // Validate parameters with detailed error messages
+  if (!geometries) {
+    console.error('Missing geometries parameter');
+    return { success: false, message: 'Missing geometries data', count: 0 };
   }
   
-  // Get all instances with this source ID
-  const instances = instanceGroups[sourceId] || [];
+  if (!sourceObject) {
+    console.error('Missing sourceObject parameter');
+    return { success: false, message: 'Missing source object data', count: 0 };
+  }
+  
+  if (!Array.isArray(sourceDescendants)) {
+    console.error('sourceDescendants must be an array');
+    return { success: false, message: 'Invalid descendants data', count: 0 };
+  }
+  
+  if (!sourceId) {
+    console.error('Missing sourceId parameter');
+    return { success: false, message: 'Missing source ID', count: 0 };
+  }
+  
+  // Ensure sourceObject has a _sourceId property
+  if (!sourceObject._sourceId) {
+    sourceObject._sourceId = sourceId;
+    console.log(`Added missing _sourceId to sourceObject: ${sourceId}`);
+  }
+  
+  // First try to find instances by source ID
+  let instances = instanceGroups[sourceId] || [];
+  
+  // If no instances found by source ID, try to find by name pattern
+  if (instances.length === 0 && sourceObject.name) {
+    console.log(`No instances found for source ID: ${sourceId}, trying to find by name: ${sourceObject.name}`);
+    
+    // Find all volumes with the same name or name pattern
+    const matchingIndices = [];
+    geometries.volumes.forEach((volume, index) => {
+      // Check if this is an instance of the source object by name pattern
+      const isMatch = 
+        volume.name === sourceObject.name || 
+        volume.name.match(new RegExp(`^${sourceObject.name}_\d+$`)) ||
+        volume.name.match(new RegExp(`^${sourceObject.name}\d+$`));
+      
+      if (isMatch) {
+        matchingIndices.push(index);
+        console.log(`Found matching object by name: ${volume.name} at index ${index}`);
+        
+        // Register this instance with the source ID for future updates
+        const instanceId = `volume-${index}`;
+        registerInstance(sourceId, instanceId, index, sourceObject);
+      }
+    });
+    
+    // Get the updated instances
+    instances = instanceGroups[sourceId] || [];
+  }
   
   if (instances.length === 0) {
-    console.log(`No instances found for source ID: ${sourceId}`);
-    return { success: false, message: 'No instances found', count: 0 };
+    console.log(`No instances found for source ID: ${sourceId} or name: ${sourceObject.name}`);
+    return { success: false, message: 'No instances found. Try importing the object first.', count: 0 };
   }
   
   console.log(`Found ${instances.length} instances for source ID: ${sourceId}`);

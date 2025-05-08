@@ -718,11 +718,18 @@ function App() {
       }
     }
     
+    // Generate a source ID if one doesn't exist
+    if (!mainObject._sourceId) {
+      mainObject._sourceId = `source-${mainObject.name}-${Date.now()}`;
+      console.log(`Generated new source ID for ${mainObject.name}: ${mainObject._sourceId}`);
+    }
+    
     // Return the main object and all its descendants
     return {
       object: mainObject,
       descendants: allDescendants,
-      isWorld
+      isWorld,
+      _sourceId: mainObject._sourceId // Include the source ID at the top level for easy access
     };
   };
   

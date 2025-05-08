@@ -1,9 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
 import { instanceTracker } from '../utils/InstanceTracker';
-import UpdateInstancesManager from './UpdateInstancesManager';
-import UpdateNotification from './UpdateNotification';
-import UpdateInstancesDialog from './UpdateInstancesDialog';
 import UpdateCompoundDialog from './UpdateCompoundDialog';
 import { 
   Box, 
@@ -24,7 +21,6 @@ import {
   Alert
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import RefreshIcon from '@mui/icons-material/Refresh';
 
 const GeometryEditor = ({ 
   geometries, 
@@ -45,20 +41,6 @@ const GeometryEditor = ({
   const menuOpen = Boolean(menuAnchorEl);
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
   
-  // State for union solid creation
-  const [firstSolid, setFirstSolid] = useState('');
-  const [secondSolid, setSecondSolid] = useState('');
-  
-  // State for update instances dialog
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [updateDialogData, setUpdateDialogData] = useState({
-    instanceCount: 0,
-    objectName: '',
-    sourceId: '',
-    sourceData: null,
-    isLoading: false
-  });
-  
   // State for update compound dialog
   const [updateCompoundDialogOpen, setUpdateCompoundDialogOpen] = useState(false);
   const [updateCompoundData, setUpdateCompoundData] = useState({
@@ -69,9 +51,6 @@ const GeometryEditor = ({
   
   // Reference to the update compound file input
   const updateCompoundFileInputRef = useRef(null);
-  
-  // State for update manager
-  const [updateManagerOpen, setUpdateManagerOpen] = useState(false);
   
   // Handle opening the context menu
   const handleMenuOpen = (event) => {
@@ -85,27 +64,7 @@ const GeometryEditor = ({
     setMenuAnchorEl(null);
   };
   
-  // Handle opening the update manager
-  const handleOpenUpdateManager = useCallback(() => {
-    setUpdateManagerOpen(true);
-  }, []);
-  
-  // Handle update completion
-  const handleUpdateComplete = (result) => {
-    if (result.success) {
-      setImportAlert({
-        show: true,
-        message: `Successfully updated ${result.updatedCount} instances.`,
-        severity: 'success'
-      });
-    } else {
-      setImportAlert({
-        show: true,
-        message: `Error updating instances: ${result.error}`,
-        severity: 'error'
-      });
-    }
-  };
+
   
   // Handle exporting the selected object with its descendants
   const handleExportObject = () => {
@@ -687,79 +646,11 @@ const GeometryEditor = ({
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Geometry Editor</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {/* Update Instances Button - Visible and clearly labeled */}
-            <Tooltip title="Update Instances">
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                startIcon={<RefreshIcon />}
-                onClick={handleOpenUpdateManager}
-                sx={{ mr: 1 }}
-              >
-                Update Instances
-              </Button>
-            </Tooltip>
+
             
-            {/* Debug button */}
-            <Tooltip title="Debug Instance Tracker">
-              <Button
-                variant="outlined"
-                color="secondary"
-                size="small"
-                onClick={() => {
-                  // Force a scan of all objects in the scene
-                  console.log('DEBUG: Scanning all objects in the scene');
-                  
-                  // Log all volumes
-                  console.log('All volumes:');
-                  geometries.volumes.forEach((volume, index) => {
-                    console.log(`Volume ${index}:`, {
-                      type: volume.type,
-                      name: volume.name,
-                      key: `volume-${index}`
-                    });
-                    
-                    // Register this volume with the instance tracker if it's not already registered
-                    const volumeKey = `volume-${index}`;
-                    const sourceId = `debug-source-${volume.type}-${index}`;
-                    const exportData = {
-                      object: volume,
-                      descendants: [],
-                      debug: {
-                        exportedAt: new Date().toISOString(),
-                        objectType: volume.type,
-                        objectName: volume.name,
-                        source: 'debug-scan'
-                      }
-                    };
-                    
-                    // Register with the instance tracker
-                    instanceTracker.registerInstance(sourceId, volumeKey, index, exportData);
-                  });
-                  
-                  // Show the update manager
-                  setUpdateManagerOpen(true);
-                  
-                  // Show a success message
-                  setImportAlert({
-                    show: true,
-                    message: 'Debug scan complete. Check the console for details.',
-                    severity: 'info'
-                  });
-                }}
-                sx={{ mr: 1 }}
-              >
-                Debug Scan
-              </Button>
-            </Tooltip>
+
             
-            {/* Update Instances Manager with open state controlled by parent */}
-            <UpdateInstancesManager 
-              open={updateManagerOpen}
-              onClose={() => setUpdateManagerOpen(false)}
-              onUpdateComplete={handleUpdateComplete} 
-            />
+
             
             {selectedGeometry && (
               <IconButton
@@ -1321,27 +1212,37 @@ const GeometryEditor = ({
         
         // Validate the object JSON format
         if (content.object && Array.isArray(content.descendants)) {
-          // Check if the object has a source ID
-          if (content.object._sourceId) {
-            // Use the source ID from the file
-            setUpdateCompoundData({
-              sourceId: content.object._sourceId,
-              sourceObject: content.object,
-              sourceDescendants: content.descendants
-            });
-            setUpdateCompoundDialogOpen(true);
-          } else {
-            // Generate a source ID based on the object name
-            const sourceId = `source-${content.object.name}-${Date.now()}`;
-            content.object._sourceId = sourceId;
-            
-            setUpdateCompoundData({
-              sourceId: sourceId,
-              sourceObject: content.object,
-              sourceDescendants: content.descendants
-            });
-            setUpdateCompoundDialogOpen(true);
+          // Check for source ID at different levels
+          let sourceId = null;
+          
+          // Check if the source ID is at the top level (preferred)
+          if (content._sourceId) {
+            sourceId = content._sourceId;
+            console.log(`Found source ID at top level: ${sourceId}`);
           }
+          // Check if the source ID is in the object
+          else if (content.object._sourceId) {
+            sourceId = content.object._sourceId;
+            console.log(`Found source ID in object: ${sourceId}`);
+          }
+          
+          // If no source ID found, generate one
+          if (!sourceId) {
+            sourceId = `source-${content.object.name}-${Date.now()}`;
+            content.object._sourceId = sourceId;
+            console.log(`Generated new source ID: ${sourceId}`);
+          }
+          
+          // Make sure the object has the source ID
+          content.object._sourceId = sourceId;
+          
+          // Set the update data
+          setUpdateCompoundData({
+            sourceId: sourceId,
+            sourceObject: content.object,
+            sourceDescendants: content.descendants
+          });
+          setUpdateCompoundDialogOpen(true);
         } else {
           setImportAlert({
             show: true,
