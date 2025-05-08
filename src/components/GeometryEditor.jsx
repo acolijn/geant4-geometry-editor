@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
 import { instanceTracker } from '../utils/InstanceTracker';
-import UpdateCompoundDialog from './UpdateCompoundDialog';
+// UpdateCompoundDialog import removed
 import { 
   Box, 
   Paper, 
@@ -41,16 +41,8 @@ const GeometryEditor = ({
   const menuOpen = Boolean(menuAnchorEl);
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
   
-  // State for update compound dialog
-  const [updateCompoundDialogOpen, setUpdateCompoundDialogOpen] = useState(false);
-  const [updateCompoundData, setUpdateCompoundData] = useState({
-    sourceId: '',
-    sourceObject: null,
-    sourceDescendants: []
-  });
-  
-  // Reference to the update compound file input
-  const updateCompoundFileInputRef = useRef(null);
+  // State for alerts and notifications
+  // (Update compound functionality has been removed)
   
   // Handle opening the context menu
   const handleMenuOpen = (event) => {
@@ -677,12 +669,7 @@ const GeometryEditor = ({
           }}
         >
           <MenuItem onClick={handleExportObject}>Save Object</MenuItem>
-          <MenuItem onClick={() => {
-            handleMenuClose();
-            updateCompoundFileInputRef.current.click();
-          }}>
-            Update Compound Objects
-          </MenuItem>
+          {/* Update Compound Objects functionality has been removed */}
         </Menu>
         
 
@@ -1201,70 +1188,8 @@ const GeometryEditor = ({
   };
   
   // Handle updating compound objects by selecting a JSON file
-  const handleUpdateCompoundFile = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = JSON.parse(e.target.result);
-        
-        // Validate the object JSON format
-        if (content.object && Array.isArray(content.descendants)) {
-          // Check for source ID at different levels
-          let sourceId = null;
-          
-          // Check if the source ID is at the top level (preferred)
-          if (content._sourceId) {
-            sourceId = content._sourceId;
-            console.log(`Found source ID at top level: ${sourceId}`);
-          }
-          // Check if the source ID is in the object
-          else if (content.object._sourceId) {
-            sourceId = content.object._sourceId;
-            console.log(`Found source ID in object: ${sourceId}`);
-          }
-          
-          // If no source ID found, generate one
-          if (!sourceId) {
-            sourceId = `source-${content.object.name}-${Date.now()}`;
-            content.object._sourceId = sourceId;
-            console.log(`Generated new source ID: ${sourceId}`);
-          }
-          
-          // Make sure the object has the source ID
-          content.object._sourceId = sourceId;
-          
-          // Set the update data
-          setUpdateCompoundData({
-            sourceId: sourceId,
-            sourceObject: content.object,
-            sourceDescendants: content.descendants
-          });
-          setUpdateCompoundDialogOpen(true);
-        } else {
-          setImportAlert({
-            show: true,
-            message: 'Invalid object format. The file must contain an "object" and "descendants" array.',
-            severity: 'error'
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing JSON file:', error);
-        setImportAlert({
-          show: true,
-          message: 'Error parsing JSON file. Please ensure it is valid JSON.',
-          severity: 'error'
-        });
-      }
-      
-      // Clear the file input
-      event.target.value = null;
-    };
-    
-    reader.readAsText(file);
-  };
+  // The handleUpdateCompoundFile function has been removed as part of cleanup
+  // Object updating functionality will be reimplemented in a simpler way in the future
   
   // Handle importing an object JSON file using the standard file input
   const handleImportObjectFile = (event) => {
@@ -1494,25 +1419,7 @@ const GeometryEditor = ({
         onChange={handleImportObjectFile}
       />
       
-      {/* Hidden file input for updating compound objects */}
-      <input
-        type="file"
-        accept=".json"
-        ref={updateCompoundFileInputRef}
-        style={{ display: 'none' }}
-        onChange={handleUpdateCompoundFile}
-      />
-      
-      {/* Update Compound Dialog */}
-      <UpdateCompoundDialog
-        open={updateCompoundDialogOpen}
-        onClose={() => setUpdateCompoundDialogOpen(false)}
-        geometries={geometries}
-        setGeometries={onUpdateGeometry}
-        sourceObject={updateCompoundData.sourceObject}
-        sourceDescendants={updateCompoundData.sourceDescendants}
-        sourceId={updateCompoundData.sourceId}
-      />
+      {/* Update Compound functionality has been removed */}
     </Paper>
   );
 };
