@@ -518,11 +518,145 @@ const applyUpdates = (sourceId = null) => {
 
 /**
  * Get all pending updates
- * @returns {Object} - Pending updates object
+ * @returns {Object} - Object with sourceId keys and update info
  */
 const getPendingUpdates = () => {
-  console.log('Current pending updates:', pendingUpdates);
   return { ...pendingUpdates };
+};
+
+/**
+ * Clear a pending update
+ * @param {string} sourceId - The source ID to clear
+ */
+const clearPendingUpdate = (sourceId) => {
+  if (pendingUpdates[sourceId]) {
+    delete pendingUpdates[sourceId];
+    notifyUpdateListeners();
+  }
+};
+
+/**
+ * Update all instances of a compound object based on source ID
+ * @param {Object} geometries - Current geometries state
+ * @param {Object} sourceObject - Source object with updated properties
+ * @param {Array} sourceDescendants - Descendants of the source object
+ * @param {string} sourceId - Source ID to match instances
+ * @returns {Object} - Result of the update operation
+ */
+const updateCompoundObjects = (geometries, sourceObject, sourceDescendants, sourceId) => {
+  if (!geometries || !sourceObject || !Array.isArray(sourceDescendants) || !sourceId) {
+    console.error('Missing required parameters for compound object update');
+    return { success: false, message: 'Missing parameters', count: 0 };
+  }
+  
+  // Get all instances with this source ID
+  const instances = instanceGroups[sourceId] || [];
+  
+  if (instances.length === 0) {
+    console.log(`No instances found for source ID: ${sourceId}`);
+    return { success: false, message: 'No instances found', count: 0 };
+  }
+  
+  console.log(`Found ${instances.length} instances for source ID: ${sourceId}`);
+  
+  // Create a new copy of geometries to work with
+  const newGeometries = { 
+    world: { ...geometries.world },
+    volumes: [...geometries.volumes]
+  };
+  
+  let updatedCount = 0;
+  
+  // Update each main instance
+  instances.forEach(instance => {
+    const { volumeIndex } = instance;
+    
+    if (volumeIndex >= 0 && volumeIndex < newGeometries.volumes.length) {
+      const currentInstance = newGeometries.volumes[volumeIndex];
+      
+      // Create updated instance with properties from source object
+      const updatedInstance = { ...sourceObject };
+      
+      // Preserve instance-specific properties
+      updatedInstance.name = currentInstance.name;
+      updatedInstance.position = currentInstance.position;
+      updatedInstance.rotation = currentInstance.rotation;
+      updatedInstance.mother_volume = currentInstance.mother_volume;
+      updatedInstance._sourceId = sourceId; // Preserve the source ID
+      
+      // Replace the instance in the volumes array
+      newGeometries.volumes[volumeIndex] = updatedInstance;
+      updatedCount++;
+      
+      console.log(`Updated main instance: ${currentInstance.name} at index ${volumeIndex}`);
+      
+      // Now update all descendants of this instance
+      if (sourceDescendants.length > 0) {
+        // Find all volumes that have this instance as their mother_volume
+        newGeometries.volumes.forEach((volume, volIndex) => {
+          if (volume.mother_volume === currentInstance.name) {
+            // This is a direct descendant of our instance
+            const descendantName = volume.name;
+            
+            // Find the corresponding descendant in the source
+            const sourceDescendant = sourceDescendants.find(desc => {
+              // Try different matching strategies
+              return (
+                // Match by type if names don't match
+                desc.type === volume.type
+              );
+            });
+            
+            if (sourceDescendant) {
+              // Create updated descendant with preserved properties
+              const updatedDescendant = { ...sourceDescendant };
+              
+              // Preserve instance-specific properties
+              updatedDescendant.name = descendantName;
+              updatedDescendant.position = volume.position;
+              updatedDescendant.rotation = volume.rotation;
+              updatedDescendant.mother_volume = currentInstance.name;
+              
+              // Preserve source ID if it exists
+              if (volume._sourceId) {
+                updatedDescendant._sourceId = volume._sourceId;
+              }
+              
+              // Replace in the volumes array
+              newGeometries.volumes[volIndex] = updatedDescendant;
+              updatedCount++;
+              
+              console.log(`Updated descendant: ${descendantName}`);
+            }
+          }
+        });
+      }
+    }
+  });
+  
+  // Clear any pending updates for this source ID
+  clearPendingUpdate(sourceId);
+  
+  // Update the compound object data with the latest version
+  compoundObjects[sourceId] = {
+    data: {
+      object: sourceObject,
+      descendants: sourceDescendants
+    },
+    lastModified: new Date().toISOString(),
+    instanceCount: instances.length
+  };
+  
+  if (updatedCount > 0) {
+    return { 
+      success: true, 
+      message: `Updated ${instances.length} instances with ${updatedCount} total objects`, 
+      count: updatedCount,
+      newGeometries
+    };
+  }
+  
+  return { success: false, message: 'No objects were updated', count: 0 };
 };
 
 /**
@@ -685,5 +819,6 @@ export const instanceTracker = {
   // New compound object functions
   getCompoundObject,
   updateCompoundObject,
-  getPendingCompoundUpdates
+  getPendingCompoundUpdates,
+  updateCompoundObjects
 };

@@ -4,6 +4,7 @@ import { instanceTracker } from '../utils/InstanceTracker';
 import UpdateInstancesManager from './UpdateInstancesManager';
 import UpdateNotification from './UpdateNotification';
 import UpdateInstancesDialog from './UpdateInstancesDialog';
+import UpdateCompoundDialog from './UpdateCompoundDialog';
 import { 
   Box, 
   Paper, 
@@ -57,6 +58,17 @@ const GeometryEditor = ({
     sourceData: null,
     isLoading: false
   });
+  
+  // State for update compound dialog
+  const [updateCompoundDialogOpen, setUpdateCompoundDialogOpen] = useState(false);
+  const [updateCompoundData, setUpdateCompoundData] = useState({
+    sourceId: '',
+    sourceObject: null,
+    sourceDescendants: []
+  });
+  
+  // Reference to the update compound file input
+  const updateCompoundFileInputRef = useRef(null);
   
   // State for update manager
   const [updateManagerOpen, setUpdateManagerOpen] = useState(false);
@@ -774,7 +786,15 @@ const GeometryEditor = ({
           }}
         >
           <MenuItem onClick={handleExportObject}>Save Object</MenuItem>
+          <MenuItem onClick={() => {
+            handleMenuClose();
+            updateCompoundFileInputRef.current.click();
+          }}>
+            Update Compound Objects
+          </MenuItem>
         </Menu>
+        
+
         
         <TextField
           label="Name"
@@ -1289,6 +1309,62 @@ const GeometryEditor = ({
     }
   };
   
+  // Handle updating compound objects by selecting a JSON file
+  const handleUpdateCompoundFile = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = JSON.parse(e.target.result);
+        
+        // Validate the object JSON format
+        if (content.object && Array.isArray(content.descendants)) {
+          // Check if the object has a source ID
+          if (content.object._sourceId) {
+            // Use the source ID from the file
+            setUpdateCompoundData({
+              sourceId: content.object._sourceId,
+              sourceObject: content.object,
+              sourceDescendants: content.descendants
+            });
+            setUpdateCompoundDialogOpen(true);
+          } else {
+            // Generate a source ID based on the object name
+            const sourceId = `source-${content.object.name}-${Date.now()}`;
+            content.object._sourceId = sourceId;
+            
+            setUpdateCompoundData({
+              sourceId: sourceId,
+              sourceObject: content.object,
+              sourceDescendants: content.descendants
+            });
+            setUpdateCompoundDialogOpen(true);
+          }
+        } else {
+          setImportAlert({
+            show: true,
+            message: 'Invalid object format. The file must contain an "object" and "descendants" array.',
+            severity: 'error'
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing JSON file:', error);
+        setImportAlert({
+          show: true,
+          message: 'Error parsing JSON file. Please ensure it is valid JSON.',
+          severity: 'error'
+        });
+      }
+      
+      // Clear the file input
+      event.target.value = null;
+    };
+    
+    reader.readAsText(file);
+  };
+  
   // Handle importing an object JSON file using the standard file input
   const handleImportObjectFile = (event) => {
     const file = event.target.files[0];
@@ -1507,6 +1583,35 @@ const GeometryEditor = ({
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {tabValue === 0 ? renderPropertyEditor() : renderAddNewTab()}
       </Box>
+      
+      {/* Hidden file input for importing object JSON files */}
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleImportObjectFile}
+      />
+      
+      {/* Hidden file input for updating compound objects */}
+      <input
+        type="file"
+        accept=".json"
+        ref={updateCompoundFileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleUpdateCompoundFile}
+      />
+      
+      {/* Update Compound Dialog */}
+      <UpdateCompoundDialog
+        open={updateCompoundDialogOpen}
+        onClose={() => setUpdateCompoundDialogOpen(false)}
+        geometries={geometries}
+        setGeometries={onUpdateGeometry}
+        sourceObject={updateCompoundData.sourceObject}
+        sourceDescendants={updateCompoundData.sourceDescendants}
+        sourceId={updateCompoundData.sourceId}
+      />
     </Paper>
   );
 };
