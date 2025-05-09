@@ -354,15 +354,13 @@ const GeometryEditor = ({
             if (templateDesc) {
               console.log('Found matching template:', templateDesc);
               
-              // Only preserve the name, mother_volume, and position/rotation of the original descendant
-              // Everything else should come directly from the template
+              // Only preserve the name and mother_volume of the original descendant
+              // Take ALL other properties directly from the template, including position and rotation
               const updatedDesc = {
                 ...templateDesc,       // Start with ALL template properties
                 name: originalDesc.name,
-                mother_volume: originalDesc.mother_volume,
-                // Keep the original position and rotation
-                position: { ...originalDesc.position },
-                rotation: { ...originalDesc.rotation }
+                mother_volume: originalDesc.mother_volume
+                // Use the template's position and rotation exactly as defined
               };
               
               console.log('Updated descendant:', updatedDesc);
