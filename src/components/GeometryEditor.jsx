@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
 import SaveObjectDialog from './SaveObjectDialog';
 import LoadObjectDialog from './LoadObjectDialog';
+import UpdateObjectsDialog from './UpdateObjectsDialog';
 // Instance tracking functionality has been removed for a cleaner implementation
 // UpdateCompoundDialog import removed
 import { 
@@ -43,9 +44,10 @@ const GeometryEditor = ({
   const menuOpen = Boolean(menuAnchorEl);
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
   
-  // State for object save/load dialogs
+  // State for object save/load/update dialogs
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
+  const [updateObjectsDialogOpen, setUpdateObjectsDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
   
   // State for alerts and notifications
@@ -128,6 +130,180 @@ const GeometryEditor = ({
       return {
         success: false,
         message: `Error loading object: ${error.message}`
+      };
+    }
+  };
+  
+  // Handle updating instances of objects in the scene
+  const handleUpdateObjects = (instanceIds, objectData) => {
+    try {
+      if (!instanceIds || !instanceIds.length || !objectData) {
+        throw new Error('Invalid update parameters');
+      }
+      
+      console.log('Updating instances:', instanceIds, 'with object data:', objectData);
+      
+      // Track how many instances were updated
+      let updatedCount = 0;
+      
+      // First, we need to find all descendants of the selected instances
+      // This will allow us to update the entire hierarchy for each selected top-level object
+      const topLevelInstances = [];
+      const instancesMap = new Map(); // Map to store all instances by name
+      
+      // Build a map of all objects in the scene
+      if (geometries.world) {
+        instancesMap.set(geometries.world.name, {
+          id: 'world',
+          object: geometries.world
+        });
+      }
+      
+      geometries.volumes.forEach((volume, index) => {
+        instancesMap.set(volume.name, {
+          id: `volume-${index}`,
+          object: volume
+        });
+      });
+      
+      // Process each selected instance
+      instanceIds.forEach(instanceId => {
+        // Get the instance to update
+        let instance;
+        
+        if (instanceId === 'world') {
+          instance = geometries.world;
+        } else if (instanceId.startsWith('volume-')) {
+          const volumeIndex = parseInt(instanceId.split('-')[1]);
+          instance = geometries.volumes[volumeIndex];
+        }
+        
+        if (!instance) {
+          console.warn(`Instance ${instanceId} not found`);
+          return;
+        }
+        
+        // Add this top-level instance to our list
+        topLevelInstances.push({
+          id: instanceId,
+          object: instance,
+          descendants: []
+        });
+        
+        // Extract the base name from the instance name
+        const nameParts = instance.name.split('_');
+        const baseName = nameParts[0];
+        
+        // Find all descendants of this instance
+        // A descendant will have the same base name and its mother_volume will point to another object with the same base name
+        geometries.volumes.forEach((volume, index) => {
+          const volumeNameParts = volume.name.split('_');
+          const volumeBaseName = volumeNameParts[0];
+          
+          // Check if this volume is a descendant of our instance
+          if (volumeBaseName === baseName && volume.mother_volume) {
+            // Find the mother in our map
+            const mother = instancesMap.get(volume.mother_volume);
+            if (mother) {
+              // Add this volume to the descendants of the top-level instance
+              topLevelInstances[topLevelInstances.length - 1].descendants.push({
+                id: `volume-${index}`,
+                object: volume
+              });
+            }
+          }
+        });
+      });
+      
+      // Now update each top-level instance and its descendants
+      topLevelInstances.forEach(topInstance => {
+        // Get the original object data
+        const originalObject = topInstance.object;
+        
+        // Store the original position and rotation
+        const originalPosition = { ...originalObject.position };
+        const originalRotation = { ...originalObject.rotation };
+        
+        // Create an updated object by merging with the new template
+        const updatedObject = {
+          ...originalObject,  // Start with all existing properties
+          ...objectData.object,  // Override with properties from the source object
+          // Preserve original properties that should not be changed
+          name: originalObject.name,
+          position: originalPosition,
+          rotation: originalRotation,
+          mother_volume: originalObject.mother_volume
+        };
+        
+        // Update the top-level instance
+        onUpdateGeometry(topInstance.id, updatedObject);
+        updatedCount++;
+        
+        // Update all descendants
+        if (topInstance.descendants.length > 0 && objectData.descendants) {
+          topInstance.descendants.forEach(descendant => {
+            const originalDesc = descendant.object;
+            
+            // Extract the component name from the descendant name
+            const descNameParts = originalDesc.name.split('_');
+            const componentName = descNameParts.length > 1 ? descNameParts[1] : null;
+            
+            // Find the matching template descendant
+            const templateDesc = objectData.descendants.find(td => {
+              // Try to match by name or type
+              const tdName = td.name || '';
+              const tdNameParts = tdName.split('_');
+              const tdComponentName = tdNameParts.length > 1 ? tdNameParts[1] : tdName;
+              
+              return tdComponentName === componentName || td.type === originalDesc.type;
+            });
+            
+            if (templateDesc) {
+              // Store original position, rotation, and relationships
+              const descPosition = { ...originalDesc.position };
+              const descRotation = { ...originalDesc.rotation };
+              
+              // Create updated descendant
+              const updatedDesc = {
+                ...originalDesc,  // Start with original properties
+                ...templateDesc,  // Override with template properties
+                // Preserve original properties
+                name: originalDesc.name,
+                position: descPosition,
+                rotation: descRotation,
+                mother_volume: originalDesc.mother_volume
+              };
+              
+              // Update this descendant
+              onUpdateGeometry(descendant.id, updatedDesc);
+              updatedCount++;
+            }
+          });
+        }
+      });
+      
+      // Show success message
+      setImportAlert({
+        show: true,
+        message: `Updated ${updatedCount} object(s) successfully.`,
+        severity: 'success'
+      });
+      
+      return {
+        success: true,
+        updatedCount
+      };
+    } catch (error) {
+      console.error('Error updating objects:', error);
+      setImportAlert({
+        show: true,
+        message: `Error updating objects: ${error.message}`,
+        severity: 'error'
+      });
+      
+      return {
+        success: false,
+        message: `Error updating objects: ${error.message}`
       };
     }
   };
@@ -1433,8 +1609,7 @@ const GeometryEditor = ({
         
         <Divider sx={{ my: 2 }} />
         
-        <Typography variant="subtitle1">Create New Object</Typography>
-        
+        <Typography variant="subtitle1">Create New Primitive</Typography>
         <FormControl fullWidth margin="normal">
           <InputLabel>Geometry Type</InputLabel>
           <Select
@@ -1526,10 +1701,26 @@ const GeometryEditor = ({
           variant="contained" 
           color="primary" 
           onClick={handleAddGeometry}
-          sx={{ mt: 2 }}
+          sx={{ mt: 2, mb: 4 }}
           fullWidth
         >
           Add Geometry
+        </Button>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Typography variant="h6">Update Existing Objects</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Update all instances of an object type with the latest definition
+        </Typography>
+        
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => setUpdateObjectsDialogOpen(true)}
+          fullWidth
+        >
+          Update Object Instances
         </Button>
       </Box>
     );
@@ -1576,7 +1767,13 @@ const GeometryEditor = ({
         onAddNew={() => setTabValue(1)}
       />
       
-      {/* Update Compound functionality has been removed */}
+      {/* Update Objects Dialog */}
+      <UpdateObjectsDialog
+        open={updateObjectsDialogOpen}
+        onClose={() => setUpdateObjectsDialogOpen(false)}
+        onUpdate={handleUpdateObjects}
+        geometries={geometries}
+      />
     </Paper>
   );
 };
