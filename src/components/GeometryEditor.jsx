@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
+import SaveObjectDialog from './SaveObjectDialog';
+import LoadObjectDialog from './LoadObjectDialog';
 // Instance tracking functionality has been removed for a cleaner implementation
 // UpdateCompoundDialog import removed
 import { 
@@ -41,6 +43,11 @@ const GeometryEditor = ({
   const menuOpen = Boolean(menuAnchorEl);
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
   
+  // State for object save/load dialogs
+  const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
+  const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
+  const [objectToSave, setObjectToSave] = useState(null);
+  
   // State for alerts and notifications
   // (Update compound functionality has been removed)
   
@@ -48,6 +55,78 @@ const GeometryEditor = ({
   const handleMenuOpen = (event) => {
     event.stopPropagation();
     setMenuAnchorEl(event.currentTarget);
+  };
+  
+  // Open the load object dialog
+  const handleOpenLoadObjectDialog = () => {
+    setLoadObjectDialogOpen(true);
+  };
+  
+  // Handle saving an object to the objects directory
+  const handleSaveObject = async (name, description, objectData) => {
+    try {
+      // Import the ObjectStorage utility
+      const { saveObject } = await import('../utils/ObjectStorage');
+      
+      // Save the object
+      const result = await saveObject(name, description, objectData);
+      
+      if (result.success) {
+        console.log(`Object saved successfully to ${result.filePath}`);
+        setImportAlert({
+          show: true,
+          message: `Saved ${name} with ${objectData.descendants.length} descendants.`,
+          severity: 'success'
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error saving object:', error);
+      setImportAlert({
+        show: true,
+        message: `Error saving object: ${error.message}`,
+        severity: 'error'
+      });
+      
+      return {
+        success: false,
+        message: `Error saving object: ${error.message}`
+      };
+    }
+  };
+  
+  // Handle loading an object from the objects directory
+  const handleLoadObject = (objectData) => {
+    try {
+      // Process the loaded object data
+      console.log('Loaded object data:', objectData);
+      
+      // Add the object to the scene
+      handleImportPartialFromAddNew(objectData);
+      
+      setImportAlert({
+        show: true,
+        message: `Loaded ${objectData.object.name} with ${objectData.descendants.length} descendants.`,
+        severity: 'success'
+      });
+      
+      return {
+        success: true
+      };
+    } catch (error) {
+      console.error('Error loading object:', error);
+      setImportAlert({
+        show: true,
+        message: `Error loading object: ${error.message}`,
+        severity: 'error'
+      });
+      
+      return {
+        success: false,
+        message: `Error loading object: ${error.message}`
+      };
+    }
   };
   
   // Handle closing the context menu
@@ -75,6 +154,11 @@ const GeometryEditor = ({
       objectName: exportData.object.name,
       descendantCount: exportData.descendants.length
     };
+    
+    // Store the export data and open the save dialog
+    setObjectToSave(exportData);
+    setSaveObjectDialogOpen(true);
+    return;
     
     // Create a file input element to trigger the native file dialog
     const saveFileInput = document.createElement('input');
@@ -1388,6 +1472,23 @@ const GeometryEditor = ({
         ref={fileInputRef}
         style={{ display: 'none' }}
         onChange={handleImportObjectFile}
+      />
+      
+      {/* Save Object Dialog */}
+      <SaveObjectDialog
+        open={saveObjectDialogOpen}
+        onClose={() => setSaveObjectDialogOpen(false)}
+        onSave={handleSaveObject}
+        objectData={objectToSave}
+        defaultName={objectToSave?.object?.name || ''}
+      />
+      
+      {/* Load Object Dialog */}
+      <LoadObjectDialog
+        open={loadObjectDialogOpen}
+        onClose={() => setLoadObjectDialogOpen(false)}
+        onLoad={handleLoadObject}
+        onAddNew={() => setTabValue(1)}
       />
       
       {/* Update Compound functionality has been removed */}
