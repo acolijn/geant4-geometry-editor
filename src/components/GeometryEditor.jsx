@@ -1077,7 +1077,7 @@ const GeometryEditor = ({
             style: { minWidth: '200px' }
           }}
         >
-          <MenuItem onClick={handleExportObject}>Save Object</MenuItem>
+          {/* Save to Library button moved to bottom of panel */}
           {/* Update Compound Objects functionality has been removed */}
         </Menu>
         
@@ -1495,7 +1495,14 @@ const GeometryEditor = ({
         )}
         
         {selectedGeometry !== 'world' && (
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              onClick={handleExportObject}
+            >
+              Save to Library
+            </Button>
             <Button 
               variant="outlined" 
               color="error" 
