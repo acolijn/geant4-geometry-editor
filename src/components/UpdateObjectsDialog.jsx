@@ -190,21 +190,8 @@ const UpdateObjectsDialog = ({
         // Find objects that could be the main object based on their descendants
         const potentialMainObjects = [];
         
-        // Check if world could be a main object
-        let worldDescendants = [];
-        geometries.volumes.forEach(vol => {
-          if (vol.mother_volume === geometries.world.name) {
-            worldDescendants.push(vol);
-          }
-        });
-        
-        if (worldDescendants.length > 0) {
-          potentialMainObjects.push({
-            id: 'world',
-            object: geometries.world,
-            descendants: worldDescendants
-          });
-        }
+        // Skip checking the world object - we don't want to update the world
+        // as it's a special object that shouldn't be treated as a compound object
         
         // Check all volumes as potential main objects
         geometries.volumes.forEach((volume, index) => {
@@ -254,16 +241,7 @@ const UpdateObjectsDialog = ({
       if (foundInstances.length === 0) {
         console.log('Falling back to name-based detection');
         
-        // Check the world object
-        if (isTopLevelInstance(geometries.world)) {
-          foundInstances.push({
-            id: 'world',
-            name: geometries.world.name,
-            type: geometries.world.type,
-            position: geometries.world.position,
-            rotation: geometries.world.rotation
-          });
-        }
+        // Skip checking the world object - we don't want to update the world
         
         // Check all volumes
         geometries.volumes.forEach((volume, index) => {
@@ -284,17 +262,7 @@ const UpdateObjectsDialog = ({
         console.log('Using last resort approach');
         const mainObjectType = objectDefinition.object.type;
         
-        // Check the world
-        if (geometries.world.type === mainObjectType || 
-            geometries.world.name.includes(baseName)) {
-          foundInstances.push({
-            id: 'world',
-            name: geometries.world.name,
-            type: geometries.world.type,
-            position: geometries.world.position,
-            rotation: geometries.world.rotation
-          });
-        }
+        // Skip checking the world object - we don't want to update the world
         
         // Check all volumes
         geometries.volumes.forEach((volume, index) => {

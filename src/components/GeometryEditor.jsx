@@ -284,7 +284,8 @@ const GeometryEditor = ({
         const originalObject = topInstance.object;
         console.log('Updating top-level object:', originalObject.name);
         
-        // Store properties that should not be changed
+        // Only preserve the name, position, rotation, and mother_volume of the original object
+        // Everything else should come from the template
         const preservedProps = {
           name: originalObject.name,
           position: { ...originalObject.position },
@@ -311,6 +312,14 @@ const GeometryEditor = ({
           console.log('Updating descendants for', originalObject.name);
           console.log('Template descendants:', templateData.descendants);
           
+          // Create a map of component names to template descendants for easier lookup
+          const templateDescMap = new Map();
+          templateData.descendants.forEach(td => {
+            if (td.name) {
+              templateDescMap.set(td.name, td);
+            }
+          });
+          
           topInstance.descendants.forEach(descendant => {
             const originalDesc = descendant.object;
             console.log('Processing descendant:', originalDesc.name);
@@ -324,11 +333,16 @@ const GeometryEditor = ({
               const componentName = descNameParts[1];
               console.log('Looking for template with component name:', componentName);
               
-              templateDesc = templateData.descendants.find(td => {
-                // Check if template name contains this component name
-                return td.name === componentName || 
-                       (td.name && td.name.includes(componentName));
-              });
+              // Look for an exact match in the template
+              templateDesc = templateDescMap.get(componentName);
+              
+              // If no exact match, try to find by partial name match
+              if (!templateDesc) {
+                templateDesc = templateData.descendants.find(td => {
+                  return td.name === componentName || 
+                         (td.name && td.name.includes(componentName));
+                });
+              }
             }
             
             // If no match by name, try to match by type
@@ -340,18 +354,15 @@ const GeometryEditor = ({
             if (templateDesc) {
               console.log('Found matching template:', templateDesc);
               
-              // Store properties that should not be changed
-              const preservedDescProps = {
-                name: originalDesc.name,
-                position: { ...originalDesc.position },
-                rotation: { ...originalDesc.rotation },
-                mother_volume: originalDesc.mother_volume
-              };
-              
-              // Create updated descendant by combining template with preserved properties
+              // Only preserve the name, mother_volume, and position/rotation of the original descendant
+              // Everything else should come directly from the template
               const updatedDesc = {
-                ...templateDesc,       // Start with template properties
-                ...preservedDescProps  // Override with preserved properties
+                ...templateDesc,       // Start with ALL template properties
+                name: originalDesc.name,
+                mother_volume: originalDesc.mother_volume,
+                // Keep the original position and rotation
+                position: { ...originalDesc.position },
+                rotation: { ...originalDesc.rotation }
               };
               
               console.log('Updated descendant:', updatedDesc);
