@@ -1335,10 +1335,18 @@ const GeometryEditor = ({
             <Button
               variant="contained"
               color="primary"
+              onClick={() => setLoadObjectDialogOpen(true)}
+              sx={{ flexGrow: 1 }}
+            >
+              Select From Library
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
               onClick={handleImportFromFileSystem}
               sx={{ flexGrow: 1 }}
             >
-              Select Object JSON File
+              Select JSON File
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary">
