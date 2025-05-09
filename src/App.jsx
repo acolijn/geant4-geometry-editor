@@ -678,13 +678,46 @@ function App() {
       console.log(`Generated new source ID for ${mainObject.name}: ${mainObject._sourceId}`);
     }
     
+    // Ensure the mother_volume property is included for the main object if it exists
+    // This fixes the issue where the top-level object of a compound object doesn't have its mother_volume in the exported JSON
+    // We need to make sure the mother_volume is explicitly preserved
+    const exportedMainObject = { ...mainObject };
+    
+    // For volumes (not the world), ensure the mother_volume is explicitly set in the exported object
+    if (!isWorld && objectId.startsWith('volume-')) {
+      const index = parseInt(objectId.split('-')[1]);
+      const originalVolume = geometries.volumes[index];
+      if (originalVolume.mother_volume) {
+        exportedMainObject.mother_volume = originalVolume.mother_volume;
+        console.log(`Preserved mother_volume '${originalVolume.mother_volume}' for object '${exportedMainObject.name}'`);
+      }
+    }
+    
     // Return the main object and all its descendants
     return {
-      object: mainObject,
+      object: exportedMainObject,
       descendants: allDescendants,
       isWorld,
       _sourceId: mainObject._sourceId // Include the source ID at the top level for easy access
     };
+  };
+  
+  // Pre-process geometries before export to ensure all volumes have mother_volume property
+  const prepareGeometriesForExport = () => {
+    // Create a deep copy of the geometries to avoid modifying the state directly
+    const exportGeometries = JSON.parse(JSON.stringify(geometries));
+    
+    // Ensure all volumes have their mother_volume property
+    exportGeometries.volumes = exportGeometries.volumes.map(volume => {
+      // If mother_volume is missing and it's a top-level volume, set it to "World"
+      if (!volume.mother_volume) {
+        console.log(`Adding missing mother_volume "World" to volume: ${volume.name}`);
+        return { ...volume, mother_volume: "World" };
+      }
+      return volume;
+    });
+    
+    return exportGeometries;
   };
   
   // Handle loading a project (geometries and materials)
@@ -783,7 +816,7 @@ return (
           {tabValue === 2 && (
             <Container maxWidth="lg" sx={{ height: '100%', py: 2 }}>
               <JsonViewer 
-                geometries={geometries} 
+                geometries={prepareGeometriesForExport()} 
                 materials={materials} 
                 onImportGeometries={handleImportGeometries}
                 onImportMaterials={handleImportMaterials}
