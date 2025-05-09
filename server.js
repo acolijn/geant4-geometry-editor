@@ -1,17 +1,31 @@
 /**
  * Simple Express server for handling object storage operations
  */
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const bodyParser = require('body-parser');
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import bodyParser from 'body-parser';
+
+// ES modules fix for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Configuration
+const BASE_PATH = process.env.BASE_PATH || '';
+
 // Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'dist')));
+
+// Serve static files with proper base path handling
+if (BASE_PATH) {
+  app.use(BASE_PATH, express.static(path.join(__dirname, 'dist')));
+} else {
+  app.use(express.static(path.join(__dirname, 'dist')));
+}
 
 // Ensure objects directory exists
 const objectsDir = path.join(__dirname, 'objects');
@@ -21,7 +35,9 @@ if (!fs.existsSync(objectsDir)) {
 }
 
 // API Routes
-app.post('/api/objects/save', (req, res) => {
+const apiPath = BASE_PATH ? `${BASE_PATH}/api` : '/api';
+
+app.post(`${apiPath}/objects/save`, (req, res) => {
   try {
     const { name, data } = req.body;
     if (!name || !data) {
@@ -47,7 +63,7 @@ app.post('/api/objects/save', (req, res) => {
   }
 });
 
-app.get('/api/objects/list', (req, res) => {
+app.get(`${apiPath}/objects/list`, (req, res) => {
   try {
     const files = fs.readdirSync(objectsDir);
     const jsonFiles = files.filter(file => file.endsWith('.json'));
@@ -87,7 +103,7 @@ app.get('/api/objects/list', (req, res) => {
   }
 });
 
-app.get('/api/objects/load/:fileName', (req, res) => {
+app.get(`${apiPath}/objects/load/:fileName`, (req, res) => {
   try {
     const { fileName } = req.params;
     const filePath = path.join(objectsDir, fileName);
@@ -117,9 +133,20 @@ app.get('/api/objects/load/:fileName', (req, res) => {
 });
 
 // Catch-all route for SPA
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+if (BASE_PATH) {
+  app.get(`${BASE_PATH}/*`, (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+  
+  // Redirect from root to base path if accessing the root
+  app.get('/', (req, res) => {
+    res.redirect(BASE_PATH);
+  });
+} else {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+}
 
 // Start server
 app.listen(PORT, () => {

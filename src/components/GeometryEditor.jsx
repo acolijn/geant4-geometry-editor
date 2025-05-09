@@ -810,6 +810,38 @@ const GeometryEditor = ({
   };
 
   // Handle property changes
+  // Auto-select the content of input fields when they receive focus
+  const handleInputFocus = (event) => {
+    event.target.select();
+  };
+  
+  // Handle key events for number input fields to allow negative numbers
+  const handleNumberKeyDown = (e) => {
+    // Allow: backspace, delete, tab, escape, enter, decimal point, minus sign
+    if (
+      [46, 8, 9, 27, 13, 110, 190, 189, 109].indexOf(e.keyCode) !== -1 ||
+      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+      (e.keyCode === 65 && e.ctrlKey === true) ||
+      (e.keyCode === 67 && e.ctrlKey === true) ||
+      (e.keyCode === 86 && e.ctrlKey === true) ||
+      (e.keyCode === 88 && e.ctrlKey === true) ||
+      // Allow: home, end, left, right
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    
+    // Ensure that it's a number or stop the keypress
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      // Allow minus sign at the beginning of empty input or if cursor is at position 0
+      if ((e.keyCode === 189 || e.keyCode === 109) && 
+          (e.target.value === '' || e.target.selectionStart === 0)) {
+        return;
+      }
+      e.preventDefault();
+    }
+  };
+
   const handlePropertyChange = (property, value, allowNegative = true, isStringProperty = false) => {
     if (!selectedGeometry) return;
     
@@ -831,20 +863,30 @@ const GeometryEditor = ({
     
     // Process numeric values
     let processedValue = value;
-    if (typeof value === 'string' && value.match(/^-?\d*\.?\d*$/)) {
-      // Convert to number if it's a valid numeric string
-      const numValue = parseFloat(value);
-      
-      // If not allowing negative values, ensure it's positive
-      if (!allowNegative && numValue < 0) {
-        processedValue = 0;
-      } else if (!isNaN(numValue)) {
-        processedValue = numValue;
-      } else if (value === '-' || value === '') {
-        // Allow typing a minus sign or empty string (will be converted to 0 later)
-        processedValue = value;
-      } else {
-        processedValue = 0;
+    
+    // Special handling for negative number input
+    // Allow '-' as a valid input during typing
+    if (value === '-') {
+      processedValue = value;
+    }
+    // Allow empty string
+    else if (value === '') {
+      processedValue = value;
+    }
+    // Handle numeric strings
+    else if (typeof value === 'string' && value.match(/^-?\d*\.?\d*$/)) {
+      // If it's a valid number, parse it
+      if (value !== '-' && value !== '') {
+        const numValue = parseFloat(value);
+        
+        // If not allowing negative values, ensure it's positive
+        if (!allowNegative && numValue < 0) {
+          processedValue = 0;
+        } else if (!isNaN(numValue)) {
+          processedValue = numValue;
+        } else {
+          processedValue = 0;
+        }
       }
     }
     
@@ -858,10 +900,18 @@ const GeometryEditor = ({
           ...updatedObject[parent], 
           [child]: processedValue 
         };
-      } else {
+      } else if (typeof processedValue === 'number') {
+        // For actual numbers, use them directly
         updatedObject[parent] = { 
           ...updatedObject[parent], 
-          [child]: parseFloat(processedValue) || 0 
+          [child]: processedValue 
+        };
+      } else {
+        // For string values that should be numbers
+        const parsedValue = parseFloat(processedValue);
+        updatedObject[parent] = { 
+          ...updatedObject[parent], 
+          [child]: isNaN(parsedValue) ? 0 : parsedValue 
         };
       }
     } else {
@@ -871,7 +921,9 @@ const GeometryEditor = ({
       } else if (typeof processedValue === 'number') {
         updatedObject[property] = processedValue;
       } else {
-        updatedObject[property] = parseFloat(processedValue) || 0;
+        // For string values that should be numbers
+        const parsedValue = parseFloat(processedValue);
+        updatedObject[property] = isNaN(parsedValue) ? 0 : parsedValue;
       }
     }
     
@@ -1156,24 +1208,30 @@ const GeometryEditor = ({
           <TextField
             label="X"
             type="number"
-            value={selectedObject.position?.x || 0}
+            value={selectedObject.position?.x ?? 0}
             onChange={(e) => handlePropertyChange('position.x', e.target.value)}
+            onFocus={handleInputFocus}
+            onKeyDown={handleNumberKeyDown}
             size="small"
             inputProps={{ step: 'any' }}
           />
           <TextField
             label="Y"
             type="number"
-            value={selectedObject.position?.y || 0}
+            value={selectedObject.position?.y ?? 0}
             onChange={(e) => handlePropertyChange('position.y', e.target.value)}
+            onFocus={handleInputFocus}
+            onKeyDown={handleNumberKeyDown}
             size="small"
             inputProps={{ step: 'any' }}
           />
           <TextField
             label="Z"
             type="number"
-            value={selectedObject.position?.z || 0}
+            value={selectedObject.position?.z ?? 0}
             onChange={(e) => handlePropertyChange('position.z', e.target.value)}
+            onFocus={handleInputFocus}
+            onKeyDown={handleNumberKeyDown}
             size="small"
             inputProps={{ step: 'any' }}
           />
@@ -1193,24 +1251,30 @@ const GeometryEditor = ({
           <TextField
             label="X"
             type="number"
-            value={selectedObject.rotation?.x || 0}
+            value={selectedObject.rotation?.x ?? 0}
             onChange={(e) => handlePropertyChange('rotation.x', e.target.value)}
+            onFocus={handleInputFocus}
+            onKeyDown={handleNumberKeyDown}
             size="small"
             inputProps={{ step: 'any' }}
           />
           <TextField
             label="Y"
             type="number"
-            value={selectedObject.rotation?.y || 0}
+            value={selectedObject.rotation?.y ?? 0}
             onChange={(e) => handlePropertyChange('rotation.y', e.target.value)}
+            onFocus={handleInputFocus}
+            onKeyDown={handleNumberKeyDown}
             size="small"
             inputProps={{ step: 'any' }}
           />
           <TextField
             label="Z"
             type="number"
-            value={selectedObject.rotation?.z || 0}
+            value={selectedObject.rotation?.z ?? 0}
             onChange={(e) => handlePropertyChange('rotation.z', e.target.value)}
+            onFocus={handleInputFocus}
+            onKeyDown={handleNumberKeyDown}
             size="small"
             inputProps={{ step: 'any' }}
           />
@@ -1232,6 +1296,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.size?.x || 0}
                 onChange={(e) => handlePropertyChange('size.x', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1240,6 +1305,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.size?.y || 0}
                 onChange={(e) => handlePropertyChange('size.y', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1248,6 +1314,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.size?.z || 0}
                 onChange={(e) => handlePropertyChange('size.z', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1270,6 +1337,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.radius || 0}
                 onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1278,6 +1346,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.height || 0}
                 onChange={(e) => handlePropertyChange('height', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1287,6 +1356,7 @@ const GeometryEditor = ({
               type="number"
               value={selectedObject.innerRadius || 0}
               onChange={(e) => handlePropertyChange('innerRadius', e.target.value, false)}
+              onFocus={handleInputFocus}
               size="small"
               sx={{ mb: 1 }}
               inputProps={{ step: 'any', min: 0 }}
@@ -1302,6 +1372,7 @@ const GeometryEditor = ({
               type="number"
               value={selectedObject.radius || 0}
               onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
+              onFocus={handleInputFocus}
               size="small"
               fullWidth
               inputProps={{ step: 'any', min: 0 }}
@@ -1318,6 +1389,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.dx1 || 0}
                 onChange={(e) => handlePropertyChange('dx1', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1326,6 +1398,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.dx2 || 0}
                 onChange={(e) => handlePropertyChange('dx2', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1336,6 +1409,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.dy1 || 0}
                 onChange={(e) => handlePropertyChange('dy1', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1344,6 +1418,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.dy2 || 0}
                 onChange={(e) => handlePropertyChange('dy2', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1353,6 +1428,7 @@ const GeometryEditor = ({
               type="number"
               value={selectedObject.dz || 0}
               onChange={(e) => handlePropertyChange('dz', e.target.value, false)}
+              onFocus={handleInputFocus}
               size="small"
               fullWidth
               inputProps={{ step: 'any', min: 0 }}
@@ -1370,6 +1446,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.xRadius || 0}
                 onChange={(e) => handlePropertyChange('xRadius', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1378,6 +1455,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.yRadius || 0}
                 onChange={(e) => handlePropertyChange('yRadius', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1386,6 +1464,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.zRadius || 0}
                 onChange={(e) => handlePropertyChange('zRadius', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1402,6 +1481,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.majorRadius || 0}
                 onChange={(e) => handlePropertyChange('majorRadius', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1410,6 +1490,7 @@ const GeometryEditor = ({
                 type="number"
                 value={selectedObject.minorRadius || 0}
                 onChange={(e) => handlePropertyChange('minorRadius', e.target.value, false)}
+                onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
               />
@@ -1434,6 +1515,7 @@ const GeometryEditor = ({
                     newSections[index] = { ...newSections[index], z: parseFloat(e.target.value) || 0 };
                     handlePropertyChange('zSections', newSections);
                   }}
+                  onFocus={handleInputFocus}
                   size="small"
                   inputProps={{ step: 'any' }}
                 />
@@ -1446,6 +1528,7 @@ const GeometryEditor = ({
                     newSections[index] = { ...newSections[index], rMin: parseFloat(e.target.value) || 0 };
                     handlePropertyChange('zSections', newSections);
                   }}
+                  onFocus={handleInputFocus}
                   size="small"
                   inputProps={{ step: 'any', min: 0 }}
                 />
@@ -1458,6 +1541,7 @@ const GeometryEditor = ({
                     newSections[index] = { ...newSections[index], rMax: parseFloat(e.target.value) || 0 };
                     handlePropertyChange('zSections', newSections);
                   }}
+                  onFocus={handleInputFocus}
                   size="small"
                   inputProps={{ step: 'any', min: 0 }}
                 />

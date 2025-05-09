@@ -1,5 +1,7 @@
 # Geant4 Geometry Editor
 
+A web-based visual editor for creating and modifying Geant4 detector geometries. This tool allows you to create complex 3D geometries through an intuitive interface and export them to JSON format for use in Geant4 simulations.
+
 A web-based application for creating and editing Geant4 geometry JSON files with a graphical interface. This tool allows you to visually design detector geometries and export them as JSON files that can be used with Geant4.
 
 ## Features

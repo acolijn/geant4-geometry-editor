@@ -1,13 +1,15 @@
 {
   "name": "geant4-geometry-editor",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js",
+    "prod": "npm run build && npm run start"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -16,6 +18,8 @@
     "@mui/material": "^7.0.2",
     "@react-three/drei": "^10.0.7",
     "@react-three/fiber": "^9.1.2",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.176.0",
