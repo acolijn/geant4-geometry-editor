@@ -685,8 +685,15 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
       return null;
     }
     
-    // Render all children of this parent
-    return volumesByParent[parentKey].map(({ volume, key, index }) => {
+    // Sort volumes alphabetically by name
+    const sortedVolumes = [...volumesByParent[parentKey]].sort((a, b) => {
+      const nameA = a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`;
+      const nameB = b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`;
+      return nameA.localeCompare(nameB);
+    });
+    
+    // Render all children of this parent (now sorted alphabetically)
+    return sortedVolumes.map(({ volume, key, index }) => {
       let icon = '📦'; // Default box icon
       if (volume.type === 'sphere') icon = '🔴';
       if (volume.type === 'cylinder') icon = '🧪';
