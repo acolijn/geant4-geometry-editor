@@ -134,15 +134,123 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
 }
 ```
 
+#### Ellipsoid
+
+```json
+{
+  "type": "ellipsoid",
+  "name": "DetectorEllipsoid",
+  "material": "G4_Si",
+  "xRadius": 5.0,
+  "yRadius": 3.0,
+  "zRadius": 7.0,
+  "position": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "cm"
+  },
+  "rotation": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "deg"
+  },
+  "mother_volume": "World"
+}
+```
+
+#### Torus
+
+```json
+{
+  "type": "torus",
+  "name": "DetectorTorus",
+  "material": "G4_Si",
+  "majorRadius": 10.0,
+  "minorRadius": 2.0,
+  "position": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "cm"
+  },
+  "rotation": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "deg"
+  },
+  "mother_volume": "World"
+}
+```
+
+#### Trapezoid
+
+```json
+{
+  "type": "trapezoid",
+  "name": "DetectorTrapezoid",
+  "material": "G4_Si",
+  "dx1": 5.0,
+  "dx2": 7.0,
+  "dy1": 3.0,
+  "dy2": 4.0,
+  "dz": 6.0,
+  "position": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "cm"
+  },
+  "rotation": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "deg"
+  },
+  "mother_volume": "World"
+}
+```
+
+#### Polycone
+
+```json
+{
+  "type": "polycone",
+  "name": "DetectorPolycone",
+  "material": "G4_Si",
+  "zSections": [
+    { "z": -10.0, "rMin": 0.0, "rMax": 5.0 },
+    { "z": -5.0, "rMin": 0.0, "rMax": 7.0 },
+    { "z": 5.0, "rMin": 0.0, "rMax": 7.0 },
+    { "z": 10.0, "rMin": 0.0, "rMax": 5.0 }
+  ],
+  "position": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "cm"
+  },
+  "rotation": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "unit": "deg"
+  },
+  "mother_volume": "World"
+}
+```
+
 ### Common Properties
 
 All volume objects share these common properties:
 
-- **type**: The shape type ("box", "cylinder", "sphere")
+- **type**: The shape type ("box", "cylinder", "sphere", "ellipsoid", "torus", "trapezoid", "polycone")
 - **name**: A unique identifier for the volume
 - **material**: The material name (must be defined in the materials JSON)
 - **position**: The position of the volume's center relative to its mother volume
-- **rotation**: The rotation angles around the x, y, and z axes
+- **rotation**: The rotation angles around the x, y, and z axes (applied sequentially in Geant4 order)
 - **mother_volume**: The name of the parent volume (except for the world volume)
 
 ### Units

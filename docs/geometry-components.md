@@ -43,6 +43,60 @@ A sphere defined by its radius.
 
 **Geant4 Equivalent**: `G4Sphere`
 
+### Ellipsoid
+
+An ellipsoid defined by three radii along the x, y, and z axes.
+
+**Properties:**
+- **X Radius**: Radius along the x-axis
+- **Y Radius**: Radius along the y-axis
+- **Z Radius**: Radius along the z-axis
+- **Position**: Center position (x, y, z)
+- **Rotation**: Rotation angles around x, y, and z axes
+
+**Geant4 Equivalent**: `G4Ellipsoid`
+
+### Torus
+
+A torus (ring) defined by its major and minor radii.
+
+**Properties:**
+- **Major Radius**: Distance from the center of the torus to the center of the tube
+- **Minor Radius**: Radius of the tube
+- **Position**: Center position (x, y, z)
+- **Rotation**: Rotation angles around x, y, and z axes
+
+**Geant4 Equivalent**: `G4Torus`
+
+### Trapezoid
+
+A trapezoid with varying dimensions along the z-axis.
+
+**Properties:**
+- **dx1**: Half-length along x at -z/2
+- **dx2**: Half-length along x at +z/2
+- **dy1**: Half-length along y at -z/2
+- **dy2**: Half-length along y at +z/2
+- **dz**: Half-length along z-axis
+- **Position**: Center position (x, y, z)
+- **Rotation**: Rotation angles around x, y, and z axes
+
+**Geant4 Equivalent**: `G4Trap`
+
+### Polycone
+
+A polycone is a solid constructed from multiple cylindrical sections stacked along the z-axis.
+
+**Properties:**
+- **Z Sections**: An array of sections, each with:
+  - **z**: Z-position of the section
+  - **rMin**: Inner radius at this z-position
+  - **rMax**: Outer radius at this z-position
+- **Position**: Center position (x, y, z)
+- **Rotation**: Rotation angles around x, y, and z axes
+
+**Geant4 Equivalent**: `G4Polycone`
+
 ## Common Properties
 
 All geometry components share these common properties:

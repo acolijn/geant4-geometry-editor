@@ -8,8 +8,8 @@ The Geant4 Geometry Editor is a web application that can be run locally on your 
 
 ### Prerequisites
 
-- Node.js (v14 or later)
-- npm (v6 or later)
+- Node.js (v18 or later)
+- npm (v9 or later)
 
 ### Setup
 
@@ -29,7 +29,7 @@ The Geant4 Geometry Editor is a web application that can be run locally on your 
    npm run dev
    ```
 
-4. Open your browser and navigate to `http://localhost:5173` (or the URL shown in your terminal).
+4. Open your browser and navigate to `http://localhost:5174` (or the URL shown in your terminal).
 
 ## Quick Start Guide
 
@@ -42,9 +42,9 @@ The Geant4 Geometry Editor is a web application that can be run locally on your 
 
 2. **Add a New Volume**:
    - Click on the "Add New" tab in the Properties panel
-   - Select the geometry type (Box, Cylinder, or Sphere)
+   - Select the geometry type (Box, Cylinder, Sphere, Ellipsoid, Torus, Trapezoid, or Polycone)
    - Click "Add Geometry"
-   - The new volume will appear in the 3D viewer
+   - The new volume will appear in the 3D viewer and be automatically selected with transform controls visible
 
 3. **Edit Volume Properties**:
    - Select the volume in the 3D viewer

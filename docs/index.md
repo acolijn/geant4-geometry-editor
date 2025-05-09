@@ -19,11 +19,13 @@ The Geant4 Geometry Editor provides a graphical interface for designing detector
 ## Key Features
 
 - 3D visualization of Geant4 geometries using Three.js
-- Support for basic shapes: Box, Cylinder, and Sphere
+- Support for multiple shapes: Box, Cylinder, Sphere, Ellipsoid, Torus, Trapezoid, and Polycone
+- Interactive 3D transform controls for positioning and rotating objects
 - Material editor for defining custom materials
 - Real-time JSON preview and export
-- Automatic saving of work in progress to localStorage
-- Consistent coordinate system with Geant4
+- Object library for saving and reusing geometry components
+- Consistent coordinate system with Geant4 (sequential rotations)
+- Alphabetically sorted geometry tree for easier navigation
 
 ## Development
 
