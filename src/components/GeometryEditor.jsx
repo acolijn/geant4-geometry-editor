@@ -102,12 +102,15 @@ const GeometryEditor = ({
       // Process the loaded object data
       console.log('Loaded object data:', objectData);
       
+      // Apply structured naming convention to the object and its descendants
+      const structuredObjectData = applyStructuredNaming(objectData);
+      
       // Add the object to the scene
-      handleImportPartialFromAddNew(objectData);
+      handleImportPartialFromAddNew(structuredObjectData);
       
       setImportAlert({
         show: true,
-        message: `Loaded ${objectData.object.name} with ${objectData.descendants.length} descendants.`,
+        message: `Loaded ${structuredObjectData.object.name} with ${structuredObjectData.descendants.length} descendants.`,
         severity: 'success'
       });
       
@@ -127,6 +130,70 @@ const GeometryEditor = ({
         message: `Error loading object: ${error.message}`
       };
     }
+  };
+  
+  // Apply structured naming convention to an object and its descendants
+  const applyStructuredNaming = (objectData) => {
+    if (!objectData || !objectData.object) return objectData;
+    
+    // Get the base name from the metadata (if available) or from the main object
+    const baseName = objectData.metadata?.name || objectData.object.name;
+    
+    // Create a deep copy of the object data
+    const structuredData = JSON.parse(JSON.stringify(objectData));
+    
+    // Create a mapping of old names to new names
+    const nameMapping = {};
+    
+    // Store the original mother object name
+    const originalMotherName = structuredData.object.name;
+    
+    // Rename the mother object with the base name prefix
+    const newMotherName = `${baseName}_Main_1`;
+    nameMapping[originalMotherName] = newMotherName;
+    structuredData.object.name = newMotherName;
+    
+    // Keep track of component names to handle duplicates
+    const componentCounts = {};
+    
+    // First pass: Create the name mapping for all descendants
+    if (structuredData.descendants && Array.isArray(structuredData.descendants)) {
+      structuredData.descendants.forEach((descendant) => {
+        // Store the original name
+        const originalName = descendant.name;
+        
+        // Use the original object name as the component type
+        const componentName = originalName || 
+                             (descendant.type.charAt(0).toUpperCase() + descendant.type.slice(1));
+        
+        // Track the count for this component name
+        componentCounts[componentName] = (componentCounts[componentName] || 0) + 1;
+        
+        // Create a structured name: BaseName_ComponentName_Index
+        const newName = `${baseName}_${componentName}_${componentCounts[componentName]}`;
+        
+        // Add to the name mapping
+        nameMapping[originalName] = newName;
+      });
+    }
+    
+    // Second pass: Apply the new names and update mother_volume references
+    if (structuredData.descendants && Array.isArray(structuredData.descendants)) {
+      structuredData.descendants = structuredData.descendants.map((descendant) => {
+        // Rename the object using the mapping
+        const originalName = descendant.name;
+        descendant.name = nameMapping[originalName];
+        
+        // Update the mother_volume reference if it's in our mapping
+        if (descendant.mother_volume && nameMapping[descendant.mother_volume]) {
+          descendant.mother_volume = nameMapping[descendant.mother_volume];
+        }
+        
+        return descendant;
+      });
+    }
+    
+    return structuredData;
   };
   
   // Handle closing the context menu
@@ -1339,14 +1406,6 @@ const GeometryEditor = ({
               sx={{ flexGrow: 1 }}
             >
               Select From Library
-            </Button>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleImportFromFileSystem}
-              sx={{ flexGrow: 1 }}
-            >
-              Select JSON File
             </Button>
           </Box>
           <Typography variant="caption" color="text.secondary">
