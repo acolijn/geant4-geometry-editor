@@ -207,7 +207,8 @@ const GeometryEditor = ({
         throw new Error('Invalid update parameters');
       }
       
-      console.log('Updating instances:', instanceIds, 'with object data:', objectData);
+      console.log('Updating instances:', instanceIds);
+      console.log('With object data:', objectData);
       
       // Track how many instances were updated
       let updatedCount = 0;
@@ -249,6 +250,8 @@ const GeometryEditor = ({
           return;
         }
         
+        console.log('Found instance to update:', instance.name);
+        
         // Add this top-level instance to our list
         topLevelInstances.push({
           id: instanceId,
@@ -256,107 +259,108 @@ const GeometryEditor = ({
           descendants: []
         });
         
-        // Extract the base name from the instance name
-        const nameParts = instance.name.split('_');
-        const baseName = nameParts[0];
-        
-        // Find all descendants of this instance
-        // A descendant will have the same base name and its mother_volume will point to another object with the same base name
-        // or it will be directly connected to this instance as its mother
+        // Find all descendants of this instance by checking mother_volume references
         geometries.volumes.forEach((volume, index) => {
           // Check if this volume has the current instance as its mother
           if (volume.mother_volume === instance.name) {
+            console.log('Found direct child:', volume.name, 'of', instance.name);
             // Direct child - add to descendants
             topLevelInstances[topLevelInstances.length - 1].descendants.push({
               id: `volume-${index}`,
               object: volume
             });
-            return; // Skip the other checks
-          }
-          
-          // Check if it shares the same base name (for structured naming)
-          const volumeNameParts = volume.name.split('_');
-          const volumeBaseName = volumeNameParts[0];
-          const instanceNameParts = instance.name.split('_');
-          const instanceBaseName = instanceNameParts[0];
-          
-          // Check if this volume is a descendant of our instance
-          if (volumeBaseName === instanceBaseName && volume.mother_volume) {
-            // Find the mother in our map
-            const mother = instancesMap.get(volume.mother_volume);
-            if (mother) {
-              // Add this volume to the descendants of the top-level instance
-              topLevelInstances[topLevelInstances.length - 1].descendants.push({
-                id: `volume-${index}`,
-                object: volume
-              });
-            }
           }
         });
       });
+      
+      console.log('Top level instances with descendants:', topLevelInstances);
+      
+      // Create a deep copy of the object data to avoid modifying the original
+      const templateData = JSON.parse(JSON.stringify(objectData));
       
       // Now update each top-level instance and its descendants
       topLevelInstances.forEach(topInstance => {
         // Get the original object data
         const originalObject = topInstance.object;
+        console.log('Updating top-level object:', originalObject.name);
         
-        // Store the original position and rotation
-        const originalPosition = { ...originalObject.position };
-        const originalRotation = { ...originalObject.rotation };
-        
-        // Create an updated object by merging with the new template
-        const updatedObject = {
-          ...originalObject,  // Start with all existing properties
-          ...objectData.object,  // Override with properties from the source object
-          // Preserve original properties that should not be changed
+        // Store properties that should not be changed
+        const preservedProps = {
           name: originalObject.name,
-          position: originalPosition,
-          rotation: originalRotation,
+          position: { ...originalObject.position },
+          rotation: { ...originalObject.rotation },
           mother_volume: originalObject.mother_volume
         };
+        
+        // Create a new object with the template properties
+        const updatedObject = {
+          ...templateData.object,  // Start with template properties
+          ...preservedProps       // Override with preserved properties
+        };
+        
+        console.log('Original object:', originalObject);
+        console.log('Template object:', templateData.object);
+        console.log('Updated object:', updatedObject);
         
         // Update the top-level instance
         onUpdateGeometry(topInstance.id, updatedObject);
         updatedCount++;
         
         // Update all descendants
-        if (topInstance.descendants.length > 0 && objectData.descendants) {
+        if (topInstance.descendants.length > 0 && templateData.descendants) {
+          console.log('Updating descendants for', originalObject.name);
+          console.log('Template descendants:', templateData.descendants);
+          
           topInstance.descendants.forEach(descendant => {
             const originalDesc = descendant.object;
+            console.log('Processing descendant:', originalDesc.name);
             
-            // Extract the component name from the descendant name
+            // Try to find a matching template descendant
+            let templateDesc = null;
+            
+            // First try to match by component name (from structured naming)
             const descNameParts = originalDesc.name.split('_');
-            const componentName = descNameParts.length > 1 ? descNameParts[1] : null;
-            
-            // Find the matching template descendant
-            const templateDesc = objectData.descendants.find(td => {
-              // Try to match by name or type
-              const tdName = td.name || '';
-              const tdNameParts = tdName.split('_');
-              const tdComponentName = tdNameParts.length > 1 ? tdNameParts[1] : tdName;
+            if (descNameParts.length >= 2) {
+              const componentName = descNameParts[1];
+              console.log('Looking for template with component name:', componentName);
               
-              return tdComponentName === componentName || td.type === originalDesc.type;
-            });
+              templateDesc = templateData.descendants.find(td => {
+                // Check if template name contains this component name
+                return td.name === componentName || 
+                       (td.name && td.name.includes(componentName));
+              });
+            }
+            
+            // If no match by name, try to match by type
+            if (!templateDesc) {
+              console.log('Trying to match by type:', originalDesc.type);
+              templateDesc = templateData.descendants.find(td => td.type === originalDesc.type);
+            }
             
             if (templateDesc) {
-              // Store original position, rotation, and relationships
-              const descPosition = { ...originalDesc.position };
-              const descRotation = { ...originalDesc.rotation };
+              console.log('Found matching template:', templateDesc);
               
-              // Create updated descendant
-              const updatedDesc = {
-                ...originalDesc,  // Start with original properties
-                ...templateDesc,  // Override with template properties
-                // Preserve original properties
+              // Store properties that should not be changed
+              const preservedDescProps = {
                 name: originalDesc.name,
-                position: descPosition,
-                rotation: descRotation,
+                position: { ...originalDesc.position },
+                rotation: { ...originalDesc.rotation },
                 mother_volume: originalDesc.mother_volume
               };
+              
+              // Create updated descendant by combining template with preserved properties
+              const updatedDesc = {
+                ...templateDesc,       // Start with template properties
+                ...preservedDescProps  // Override with preserved properties
+              };
+              
+              console.log('Updated descendant:', updatedDesc);
               
               // Update this descendant
               onUpdateGeometry(descendant.id, updatedDesc);
               updatedCount++;
+            } else {
+              console.warn('No matching template found for:', originalDesc.name);
             }
           });
         }
