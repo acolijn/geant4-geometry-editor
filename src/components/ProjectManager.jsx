@@ -685,54 +685,7 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
             </Button>
           </Tooltip>
           
-          <Tooltip title="Save Object">
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={() => {
-                if (!isInitialized) {
-                  setInitDialogOpen(true);
-                  return;
-                }
-                
-                // Check if we have a selected geometry
-                if (!geometries.selectedGeometry) {
-                  setAlert({
-                    open: true,
-                    message: 'Please select an object to save',
-                    severity: 'warning'
-                  });
-                  return;
-                }
-                
-                // Get the selected geometry name
-                let selectedObject;
-                let suggestedName = '';
-                
-                if (geometries.selectedGeometry === 'world') {
-                  selectedObject = geometries.world;
-                  suggestedName = 'World';
-                } else if (geometries.selectedGeometry.startsWith('volume-')) {
-                  const index = parseInt(geometries.selectedGeometry.replace('volume-', ''));
-                  selectedObject = geometries.volumes[index];
-                  suggestedName = selectedObject.name;
-                }
-                
-                // Set a suggested name based on the object type and name
-                if (suggestedName) {
-                  // Remove any numeric suffixes like _0, _1, etc.
-                  suggestedName = suggestedName.replace(/_\d+$/, '');
-                }
-                
-                setObjectName(suggestedName);
-                setObjectDialogOpen(true);
-              }}
-              size="small"
-              startIcon={<AddIcon />}
-            >
-              Object
-            </Button>
-          </Tooltip>
+          {/* Save Object button removed as requested */}
           
           {!isInitialized && (
             <Tooltip title="Initialize Storage">
@@ -1175,52 +1128,6 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
         {currentTab === 1 && (
           <Box>
             <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center' }}>
-              <Button 
-                variant="contained" 
-                color="primary"
-                startIcon={<SaveIcon />}
-                onClick={() => {
-                  if (!isInitialized) {
-                    setInitDialogOpen(true);
-                    return;
-                  }
-                  
-                  // Check if we have a selected geometry
-                  if (!geometries.selectedGeometry) {
-                    setAlert({
-                      open: true,
-                      message: 'Please select an object to save',
-                      severity: 'warning'
-                    });
-                    return;
-                  }
-                  
-                  // Get the selected geometry name
-                  let selectedObject;
-                  let suggestedName = '';
-                  
-                  if (geometries.selectedGeometry === 'world') {
-                    selectedObject = geometries.world;
-                    suggestedName = 'World';
-                  } else if (geometries.selectedGeometry.startsWith('volume-')) {
-                    const index = parseInt(geometries.selectedGeometry.replace('volume-', ''));
-                    selectedObject = geometries.volumes[index];
-                    suggestedName = selectedObject.name;
-                  }
-                  
-                  // Set a suggested name based on the object type and name
-                  if (suggestedName) {
-                    // Remove any numeric suffixes like _0, _1, etc.
-                    suggestedName = suggestedName.replace(/_\d+$/, '');
-                  }
-                  
-                  setObjectName(suggestedName);
-                  setObjectDialogOpen(true);
-                }}
-                size="small"
-              >
-                Save Object
-              </Button>
               <Button 
                 variant="outlined"
                 startIcon={<CategoryIcon />}
