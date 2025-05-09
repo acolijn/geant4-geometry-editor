@@ -145,46 +145,64 @@ const GeometryEditor = ({
     // Create a mapping of old names to new names
     const nameMapping = {};
     
+    // Get all existing names in the scene to ensure uniqueness
+    const existingNames = [
+      geometries.world.name,
+      ...geometries.volumes.map(vol => vol.name)
+    ];
+    
     // Store the original mother object name
     const originalMotherName = structuredData.object.name;
     
-    // Rename the mother object with the base name prefix
-    const newMotherName = `${baseName}_Main_1`;
+    // Create a unique ID counter for this import operation
+    let uniqueIdCounter = 0;
+    
+    // Find a unique ID for the mother object
+    while (existingNames.includes(`${baseName}_${originalMotherName}_${uniqueIdCounter}`)) {
+      uniqueIdCounter++;
+    }
+    
+    // Create the structured name for the mother object
+    const newMotherName = `${baseName}_${originalMotherName}_${uniqueIdCounter}`;
+    
+    // Add to the name mapping
     nameMapping[originalMotherName] = newMotherName;
+    
+    // Rename the mother object
     structuredData.object.name = newMotherName;
     
-    // Keep track of component names to handle duplicates
-    const componentCounts = {};
+    // Add the new name to our list of existing names
+    existingNames.push(newMotherName);
     
-    // First pass: Create the name mapping for all descendants
+    // Process all descendants
     if (structuredData.descendants && Array.isArray(structuredData.descendants)) {
       structuredData.descendants.forEach((descendant) => {
         // Store the original name
-        const originalName = descendant.name;
+        const originalName = descendant.name || 
+                            (descendant.type.charAt(0).toUpperCase() + descendant.type.slice(1));
         
-        // Use the original object name as the component type
-        const componentName = originalName || 
-                             (descendant.type.charAt(0).toUpperCase() + descendant.type.slice(1));
+        // Find a unique ID for this component
+        let componentId = 0;
+        while (existingNames.includes(`${baseName}_${originalName}_${componentId}`)) {
+          componentId++;
+        }
         
-        // Track the count for this component name
-        componentCounts[componentName] = (componentCounts[componentName] || 0) + 1;
+        // Create a structured name
+        const newName = `${baseName}_${originalName}_${componentId}`;
         
-        // Create a structured name: BaseName_ComponentName_Index
-        const newName = `${baseName}_${componentName}_${componentCounts[componentName]}`;
+        // Add to our mapping
+        nameMapping[descendant.name] = newName;
         
-        // Add to the name mapping
-        nameMapping[originalName] = newName;
+        // Add to our list of existing names
+        existingNames.push(newName);
       });
-    }
-    
-    // Second pass: Apply the new names and update mother_volume references
-    if (structuredData.descendants && Array.isArray(structuredData.descendants)) {
+      
+      // Apply the new names and update mother_volume references
       structuredData.descendants = structuredData.descendants.map((descendant) => {
         // Rename the object using the mapping
-        const originalName = descendant.name;
-        descendant.name = nameMapping[originalName];
+        descendant.name = nameMapping[descendant.name];
         
-        // Update the mother_volume reference if it's in our mapping
+        // Update mother_volume references using our mapping
         if (descendant.mother_volume && nameMapping[descendant.mother_volume]) {
           descendant.mother_volume = nameMapping[descendant.mother_volume];
         }
