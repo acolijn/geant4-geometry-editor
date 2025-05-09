@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
-import { instanceTracker } from '../utils/InstanceTracker';
+// Instance tracking functionality has been removed for a cleaner implementation
 // UpdateCompoundDialog import removed
 import { 
   Box, 
@@ -141,26 +141,10 @@ const GeometryEditor = ({
             });
           });
           
-          // Register this instance
-          instanceTracker.registerInstance(sourceId, instanceId, volumeIndex, exportData);
-          
-          // Check for related instances that might need updating
-          const relatedInstances = instanceTracker.getRelatedInstances(sourceId, instanceId);
-          
-          console.log('Related instances found:', relatedInstances);
-          console.log('All pending updates:', instanceTracker.getPendingUpdates());
-          
-          if (relatedInstances.length > 0) {
-            // Show dialog asking if user wants to update related instances
-            setUpdateDialogData({
-              instanceCount: relatedInstances.length,
-              objectName: exportData.object.name,
-              sourceId,
-              sourceData: exportData,
-              isLoading: false
-            });
-            setUpdateDialogOpen(true);
-          } else {
+          // Instance tracking functionality has been removed for a cleaner implementation
+          // Object tracking and updating will be reimplemented in a simpler way
+          console.log('Exported object:', exportData.object.name);
+          {
             // Show success message
             setImportAlert({
               show: true,
@@ -277,23 +261,10 @@ const GeometryEditor = ({
         const volumeIndex = selectedGeometry === 'world' ? -1 : 
           geometries.volumes.findIndex((_, index) => `volume-${index}` === selectedGeometry);
         
-        // Register this instance
-        instanceTracker.registerInstance(sourceId, instanceId, volumeIndex, exportData);
-        
-        // Check for related instances that might need updating
-        const relatedInstances = instanceTracker.getRelatedInstances(sourceId, instanceId);
-        
-        if (relatedInstances.length > 0) {
-          // Show dialog asking if user wants to update related instances
-          setUpdateDialogData({
-            instanceCount: relatedInstances.length,
-            objectName: exportData.object.name,
-            sourceId,
-            sourceData: exportData,
-            isLoading: false
-          });
-          setUpdateDialogOpen(true);
-        } else {
+        // Instance tracking functionality has been removed for a cleaner implementation
+        // Object tracking and updating will be reimplemented in a simpler way
+        console.log('Saved object:', exportData.object.name);
+        {
           // Show alert with export information
           setImportAlert({
             show: true,

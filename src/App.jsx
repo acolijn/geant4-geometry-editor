@@ -18,13 +18,9 @@ import GeometryEditor from './components/GeometryEditor';
 import MaterialsEditor from './components/MaterialsEditor';
 import JsonViewer from './components/JsonViewer';
 import ProjectManager from './components/ProjectManager';
-import { instanceTracker } from './utils/InstanceTracker';
-import UpdateInstancesDialog from './components/UpdateInstancesDialog';
-import InstanceUpdater from './components/InstanceUpdater';
 import './App.css';
 
-// Make instanceTracker globally available for debugging
-window.instanceTracker = instanceTracker; 
+// Instance tracking functionality has been removed for a cleaner implementation
 
 // Create a theme
 const theme = createTheme({
@@ -112,15 +108,7 @@ function App() {
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   
   // State for the update instances dialog
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [updateDialogData, setUpdateDialogData] = useState({
-    sourceId: '',
-    instanceId: '',
-    objectName: '',
-    instanceCount: 0,
-    modifiedObject: null
-  });
-  const [updateLoading, setUpdateLoading] = useState(false);
+  // Instance tracking state has been removed for a cleaner implementation
   
   // We'll no longer automatically load from localStorage on initial load
   // This ensures we always start with the default empty world
@@ -140,36 +128,8 @@ function App() {
     // Store the current selection before any updates
     const currentSelection = selectedGeometry;
     
-    // We only want to show the update dialog when explicitly exporting objects,
-    // not during regular movements or transformations
-    
-    // Skip the update dialog check for:
-    // 1. Live updates during dragging (isLiveUpdate = true)
-    // 2. Regular position/rotation updates (these are handled separately during export)
-    // 3. Any updates that aren't explicitly marked as needing instance updates
-    
-    // The sourceId check is maintained for when we explicitly want to update instances
-    const sourceId = updatedObject._sourceId;
-    const shouldCheckForInstanceUpdates = false; // Set to false to disable automatic instance updates
-    
-    // Only show update dialog in very specific circumstances when explicitly requested
-    if (sourceId && shouldCheckForInstanceUpdates && !isLiveUpdate) {
-      // Get all related instances (excluding the current one)
-      const relatedInstances = instanceTracker.getRelatedInstances(sourceId, id);
-      
-      if (relatedInstances.length > 0) {
-        // Show the update dialog if there are related instances
-        setUpdateDialogData({
-          sourceId,
-          instanceId: id,
-          objectName: updatedObject.name,
-          instanceCount: relatedInstances.length,
-          modifiedObject: updatedObject
-        });
-        setUpdateDialogOpen(true);
-        return;
-      }
-    }
+    // Instance tracking functionality has been removed for a cleaner implementation
+    // The update dialog and related functionality will be reimplemented in a simpler way
     
     // Create a new state update that includes both geometry and selection changes
     // to ensure they happen atomically and prevent flickering/jumping
@@ -419,14 +379,8 @@ function App() {
       importedAt: new Date().toISOString()
     };
     
-    // Register with the instance tracker, passing both the source data and compound data
-    instanceTracker.registerInstance(
-      mainObject._sourceId, 
-      mainObjectId, 
-      mainObjectIndex, 
-      mainObject,  // Source data for the main object
-      compoundData // Compound object data (parent + descendants)
-    );
+    // Instance tracking functionality has been removed for a cleaner implementation
+    // Object tracking and updating will be reimplemented in a simpler way
     
     console.log(`IMPORT - Added main object with name: ${addedMainName} at index: ${mainObjectIndex}`);
     console.log(`IMPORT - Registered compound object with instance tracker: sourceId=${mainObject._sourceId}, instanceId=${mainObjectId}, descendantCount=${content.descendants.length}`);
@@ -498,11 +452,11 @@ function App() {
         // Get the index of the descendant in the volumes array
         const descendantIndex = updatedGeometries.volumes.length - 1;
         
-        // If the descendant has a source ID, register it with the instance tracker
+        // Instance tracking functionality has been removed for a cleaner implementation
+        // Descendant tracking will be reimplemented in a simpler way
         if (desc._sourceId) {
           const descendantId = `volume-${descendantIndex}`;
-          instanceTracker.registerInstance(desc._sourceId, descendantId, descendantIndex);
-          console.log(`IMPORT - Registered descendant with ID: ${descendantId} for source: ${desc._sourceId}`);
+          console.log(`IMPORT - Added descendant with ID: ${descendantId}`);
         }
       });
       
@@ -840,29 +794,11 @@ return (
         </Box>
       </Box>
       
-      {/* Instance Updater Component */}
-      <InstanceUpdater 
-        geometries={geometries}
-        setGeometries={setGeometries}
-      />
-      
-      {/* Update Instances Dialog */}
-      <UpdateInstancesDialog 
-        open={updateDialogOpen}
-        onClose={() => setUpdateDialogOpen(false)}
-        onUpdateAll={handleUpdateAllInstances}
-        instanceCount={updateDialogData.instanceCount}
-        objectName={updateDialogData.objectName}
-        isLoading={updateLoading}
-      />
+      {/* Instance tracking components have been removed for a cleaner implementation */}
     </ThemeProvider>
   );
   
-  // Function to handle the update instances button click
-  function handleUpdateAllInstances() {
-    // Simply open the dialog, the new dialog handles everything internally
-    setUpdateDialogOpen(true);
-  }
+  // Instance update functionality has been removed for a cleaner implementation
 }
 
 export default App;
