@@ -99,49 +99,217 @@ const UpdateObjectsDialog = ({
     setError('');
     
     try {
+      // Load the object definition to get more information about it
+      let objectDefinition = null;
+      try {
+        const { loadObject } = await import('../utils/ObjectStorage');
+        const result = await loadObject(objectType.fileName);
+        if (result.success && result.data) {
+          objectDefinition = result.data;
+          console.log('Loaded object definition:', objectDefinition);
+        }
+      } catch (err) {
+        console.warn('Could not load object definition:', err);
+      }
+      
       // Find top-level instances of this object type in the scene
       const baseName = objectType.name;
+      console.log('Looking for instances of:', baseName);
+      console.log('World object:', geometries.world);
+      console.log('All volumes:', geometries.volumes);
       
       // Collect all top-level instances from the scene
       const foundInstances = [];
       
       // Helper function to check if an object is a top-level instance of the selected type
       const isTopLevelInstance = (obj) => {
-        // Parse the object name to extract the base name and component name
+        if (!obj.name) {
+          console.log('Object has no name:', obj);
+          return false;
+        }
+        
+        console.log('Checking object:', obj.name);
+        
+        // Parse the object name to extract parts
         const nameParts = obj.name.split('_');
-        if (nameParts.length < 2) return false;
+        console.log('Name parts:', nameParts);
         
-        const objBaseName = nameParts[0];
-        const componentName = nameParts[1];
+        // Different detection strategies
         
-        // Check if this is a top-level object of the selected type
-        // A top-level object will have the same component name as the object type name
-        return objBaseName === baseName && componentName === baseName;
+        // Strategy 1: Check for BaseName_BaseName_ID pattern (e.g., PMT_PMT_0)
+        if (nameParts.length >= 3) {
+          const objBaseName = nameParts[0];
+          const componentName = nameParts[1];
+          const result = objBaseName === baseName && componentName === baseName;
+          console.log('Strategy 1:', { objBaseName, componentName, baseName, result });
+          if (result) return true;
+        }
+        
+        // Strategy 2: Check if this is a mother object with children that have the same base name
+        let hasMatchingChildren = false;
+        geometries.volumes.forEach(volume => {
+          if (volume.mother_volume === obj.name) {
+            console.log('Found child with mother:', obj.name, volume.name);
+            const childNameParts = volume.name.split('_');
+            if (childNameParts.length > 0 && childNameParts[0] === baseName) {
+              hasMatchingChildren = true;
+              console.log('Child matches base name:', volume.name);
+            }
+          }
+        });
+        
+        if (hasMatchingChildren) {
+          console.log('Strategy 2: Has matching children');
+          return true;
+        }
+        
+        // Strategy 3: Check if the name exactly matches the base name
+        if (obj.name === baseName) {
+          console.log('Strategy 3: Exact name match');
+          return true;
+        }
+        
+        // Strategy 4: Check if the name contains the base name
+        // This is a fallback for simpler naming schemes
+        const result = obj.name.includes(baseName);
+        console.log('Strategy 4: Name includes base name:', result);
+        return result;
       };
       
-      // Check the world object
-      if (isTopLevelInstance(geometries.world)) {
-        foundInstances.push({
-          id: 'world',
-          name: geometries.world.name,
-          type: geometries.world.type,
-          position: geometries.world.position,
-          rotation: geometries.world.rotation
+      // APPROACH 1: Use the object definition to find matching structures
+      if (objectDefinition && objectDefinition.descendants) {
+        console.log('Using structure matching approach');
+        // Get the structure of the object (number and types of descendants)
+        const objectStructure = {
+          mainType: objectDefinition.object.type,
+          descendantTypes: objectDefinition.descendants.map(d => d.type),
+          descendantCount: objectDefinition.descendants.length
+        };
+        console.log('Object structure:', objectStructure);
+        
+        // Find objects that could be the main object based on their descendants
+        const potentialMainObjects = [];
+        
+        // Check if world could be a main object
+        let worldDescendants = [];
+        geometries.volumes.forEach(vol => {
+          if (vol.mother_volume === geometries.world.name) {
+            worldDescendants.push(vol);
+          }
+        });
+        
+        if (worldDescendants.length > 0) {
+          potentialMainObjects.push({
+            id: 'world',
+            object: geometries.world,
+            descendants: worldDescendants
+          });
+        }
+        
+        // Check all volumes as potential main objects
+        geometries.volumes.forEach((volume, index) => {
+          let descendants = [];
+          geometries.volumes.forEach(vol => {
+            if (vol.mother_volume === volume.name) {
+              descendants.push(vol);
+            }
+          });
+          
+          if (descendants.length > 0) {
+            potentialMainObjects.push({
+              id: `volume-${index}`,
+              object: volume,
+              descendants: descendants
+            });
+          }
+        });
+        
+        console.log('Potential main objects:', potentialMainObjects);
+        
+        // Check each potential main object to see if its structure matches the object definition
+        potentialMainObjects.forEach(candidate => {
+          console.log('Checking candidate:', candidate.object.name);
+          
+          // Simple structure matching - just check if it has a similar number of descendants
+          // and if the main object type matches
+          const structureMatches = 
+            candidate.descendants.length > 0 &&
+            (candidate.object.type === objectStructure.mainType ||
+             candidate.object.name.includes(baseName));
+          
+          if (structureMatches) {
+            console.log('Found matching structure:', candidate.object.name);
+            foundInstances.push({
+              id: candidate.id,
+              name: candidate.object.name,
+              type: candidate.object.type,
+              position: candidate.object.position,
+              rotation: candidate.object.rotation
+            });
+          }
         });
       }
       
-      // Check all volumes
-      geometries.volumes.forEach((volume, index) => {
-        if (isTopLevelInstance(volume)) {
+      // APPROACH 2: Use name-based detection as a fallback
+      if (foundInstances.length === 0) {
+        console.log('Falling back to name-based detection');
+        
+        // Check the world object
+        if (isTopLevelInstance(geometries.world)) {
           foundInstances.push({
-            id: `volume-${index}`,
-            name: volume.name,
-            type: volume.type,
-            position: volume.position,
-            rotation: volume.rotation
+            id: 'world',
+            name: geometries.world.name,
+            type: geometries.world.type,
+            position: geometries.world.position,
+            rotation: geometries.world.rotation
           });
         }
-      });
+        
+        // Check all volumes
+        geometries.volumes.forEach((volume, index) => {
+          if (isTopLevelInstance(volume)) {
+            foundInstances.push({
+              id: `volume-${index}`,
+              name: volume.name,
+              type: volume.type,
+              position: volume.position,
+              rotation: volume.rotation
+            });
+          }
+        });
+      }
+      
+      // APPROACH 3: Last resort - just find any objects with similar types or names
+      if (foundInstances.length === 0 && objectDefinition) {
+        console.log('Using last resort approach');
+        const mainObjectType = objectDefinition.object.type;
+        
+        // Check the world
+        if (geometries.world.type === mainObjectType || 
+            geometries.world.name.includes(baseName)) {
+          foundInstances.push({
+            id: 'world',
+            name: geometries.world.name,
+            type: geometries.world.type,
+            position: geometries.world.position,
+            rotation: geometries.world.rotation
+          });
+        }
+        
+        // Check all volumes
+        geometries.volumes.forEach((volume, index) => {
+          if (volume.type === mainObjectType || 
+              volume.name.includes(baseName)) {
+            foundInstances.push({
+              id: `volume-${index}`,
+              name: volume.name,
+              type: volume.type,
+              position: volume.position,
+              rotation: volume.rotation
+            });
+          }
+        });
+      }
       
       setInstances(foundInstances);
       setSelectedInstances([]);
@@ -340,7 +508,7 @@ const UpdateObjectsDialog = ({
           Instances of {selectedType?.name}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Select the instances you want to update
+          Select the instances you want to update. Each instance will be updated along with all its components.
         </Typography>
       </Box>
       
@@ -357,24 +525,45 @@ const UpdateObjectsDialog = ({
               </Typography>
             </Box>
           ) : (
-            <List dense>
-              {instances.map((instance) => (
-                <React.Fragment key={instance.id}>
-                  <ListItem>
-                    <Checkbox
-                      edge="start"
-                      checked={selectedInstances.includes(instance.id)}
-                      onChange={() => handleToggleInstance(instance.id)}
-                    />
-                    <ListItemText 
-                      primary={instance.name} 
-                      secondary={`Type: ${instance.type}`}
-                    />
-                  </ListItem>
-                  <Divider />
-                </React.Fragment>
-              ))}
-            </List>
+            <>
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="subtitle2">
+                  Found {instances.length} instance(s)
+                </Typography>
+                <Button 
+                  size="small" 
+                  variant="outlined" 
+                  onClick={() => {
+                    if (selectedInstances.length === instances.length) {
+                      setSelectedInstances([]);
+                    } else {
+                      setSelectedInstances(instances.map(inst => inst.id));
+                    }
+                  }}
+                >
+                  {selectedInstances.length === instances.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </Box>
+              <Divider />
+              <List dense>
+                {instances.map((instance) => (
+                  <React.Fragment key={instance.id}>
+                    <ListItem>
+                      <Checkbox
+                        edge="start"
+                        checked={selectedInstances.includes(instance.id)}
+                        onChange={() => handleToggleInstance(instance.id)}
+                      />
+                      <ListItemText 
+                        primary={instance.name} 
+                        secondary={`Position: (${instance.position.x.toFixed(2)}, ${instance.position.y.toFixed(2)}, ${instance.position.z.toFixed(2)})`}
+                      />
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                ))}
+              </List>
+            </>
           )}
         </Paper>
       </Box>

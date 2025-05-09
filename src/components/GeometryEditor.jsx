@@ -65,13 +65,79 @@ const GeometryEditor = ({
   };
   
   // Handle saving an object to the objects directory
+  // Simplify object names by removing the structured naming pattern before saving
+  const simplifyObjectNames = (objectData) => {
+    if (!objectData || !objectData.object) return objectData;
+    
+    // Create a deep copy of the object data
+    const simplifiedData = JSON.parse(JSON.stringify(objectData));
+    
+    // Create a mapping of old names to simplified names
+    const nameMapping = {};
+    
+    // Extract the component name from the structured name
+    const extractComponentName = (structuredName) => {
+      if (!structuredName) return structuredName;
+      
+      // Parse the name parts: BaseName_ComponentName_ID
+      const parts = structuredName.split('_');
+      if (parts.length >= 2) {
+        // Return just the component name
+        return parts[1];
+      }
+      return structuredName; // If not in expected format, return as is
+    };
+    
+    // Simplify the mother object name
+    const originalMotherName = simplifiedData.object.name;
+    const simplifiedMotherName = extractComponentName(originalMotherName);
+    
+    // Store the mapping
+    nameMapping[originalMotherName] = simplifiedMotherName;
+    
+    // Update the mother object name
+    simplifiedData.object.name = simplifiedMotherName;
+    
+    // Simplify all descendant names
+    if (simplifiedData.descendants && Array.isArray(simplifiedData.descendants)) {
+      // First pass: Create the name mapping
+      simplifiedData.descendants.forEach((descendant) => {
+        if (descendant.name) {
+          const originalName = descendant.name;
+          const simplifiedName = extractComponentName(originalName);
+          nameMapping[originalName] = simplifiedName;
+        }
+      });
+      
+      // Second pass: Apply the simplified names and update mother_volume references
+      simplifiedData.descendants = simplifiedData.descendants.map((descendant) => {
+        // Simplify the name
+        if (descendant.name) {
+          descendant.name = nameMapping[descendant.name] || descendant.name;
+        }
+        
+        // Update mother_volume reference
+        if (descendant.mother_volume && nameMapping[descendant.mother_volume]) {
+          descendant.mother_volume = nameMapping[descendant.mother_volume];
+        }
+        
+        return descendant;
+      });
+    }
+    
+    return simplifiedData;
+  };
+  
   const handleSaveObject = async (name, description, objectData) => {
     try {
       // Import the ObjectStorage utility
       const { saveObject } = await import('../utils/ObjectStorage');
       
-      // Save the object
-      const result = await saveObject(name, description, objectData);
+      // Simplify object names before saving
+      const simplifiedObjectData = simplifyObjectNames(objectData);
+      
+      // Save the object with simplified names
+      const result = await saveObject(name, description, simplifiedObjectData);
       
       if (result.success) {
         console.log(`Object saved successfully to ${result.filePath}`);
@@ -196,12 +262,26 @@ const GeometryEditor = ({
         
         // Find all descendants of this instance
         // A descendant will have the same base name and its mother_volume will point to another object with the same base name
+        // or it will be directly connected to this instance as its mother
         geometries.volumes.forEach((volume, index) => {
+          // Check if this volume has the current instance as its mother
+          if (volume.mother_volume === instance.name) {
+            // Direct child - add to descendants
+            topLevelInstances[topLevelInstances.length - 1].descendants.push({
+              id: `volume-${index}`,
+              object: volume
+            });
+            return; // Skip the other checks
+          }
+          
+          // Check if it shares the same base name (for structured naming)
           const volumeNameParts = volume.name.split('_');
           const volumeBaseName = volumeNameParts[0];
+          const instanceNameParts = instance.name.split('_');
+          const instanceBaseName = instanceNameParts[0];
           
           // Check if this volume is a descendant of our instance
-          if (volumeBaseName === baseName && volume.mother_volume) {
+          if (volumeBaseName === instanceBaseName && volume.mother_volume) {
             // Find the mother in our map
             const mother = instancesMap.get(volume.mother_volume);
             if (mother) {
