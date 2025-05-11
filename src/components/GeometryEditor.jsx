@@ -3,6 +3,7 @@ import fileSystemManager from '../utils/FileSystemManager';
 import SaveObjectDialog from './SaveObjectDialog';
 import LoadObjectDialog from './LoadObjectDialog';
 import UpdateObjectsDialog from './UpdateObjectsDialog';
+import HitCollectionsDialog from './HitCollectionsDialog';
 // Instance tracking functionality has been removed for a cleaner implementation
 // UpdateCompoundDialog import removed
 import { 
@@ -48,7 +49,11 @@ const GeometryEditor = ({
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
   const [updateObjectsDialogOpen, setUpdateObjectsDialogOpen] = useState(false);
+  const [hitCollectionsDialogOpen, setHitCollectionsDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
+  
+  // State for hit collections
+  const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
   
   // State for alerts and notifications
   // (Update compound functionality has been removed)
@@ -745,11 +750,12 @@ const GeometryEditor = ({
     return null;
   };
 
-  const selectedObject = getSelectedGeometryObject();
+  // We'll get the selected object inside the render functions to ensure it's always up-to-date
 
   // Handle rotation changes
   const handleRotationChange = (axis, value) => {
     if (!selectedGeometry) return;
+    const selectedObject = getSelectedGeometryObject();
     
     const updatedGeometries = { ...geometries };
     
@@ -844,6 +850,8 @@ const GeometryEditor = ({
 
   const handlePropertyChange = (property, value, allowNegative = true, isStringProperty = false) => {
     if (!selectedGeometry) return;
+    const selectedObject = getSelectedGeometryObject();
+    if (!selectedObject) return;
     
     const updatedObject = { ...getSelectedGeometryObject() };
     
@@ -1086,6 +1094,9 @@ const GeometryEditor = ({
 
   // Render the property editor for the selected geometry
   const renderPropertyEditor = () => {
+    // Get the selected object inside the function to ensure it's always up-to-date
+    const selectedObject = getSelectedGeometryObject();
+    
     if (!selectedObject) {
       return (
         <Typography variant="body1" sx={{ p: 2 }}>
@@ -1137,7 +1148,7 @@ const GeometryEditor = ({
         
         <TextField
           label="Name"
-          value={selectedObject.name || ''}
+          value={selectedObject?.name || ''}
           onChange={(e) => {
             e.stopPropagation();
             handlePropertyChange('name', e.target.value, true, true);
@@ -1152,7 +1163,7 @@ const GeometryEditor = ({
         <FormControl fullWidth margin="normal" size="small">
           <InputLabel>Material</InputLabel>
           <Select
-            value={selectedObject.material || ''}
+            value={selectedObject?.material || ''}
             label="Material"
             onChange={(e) => {
               e.stopPropagation();
@@ -1172,12 +1183,54 @@ const GeometryEditor = ({
           </Select>
         </FormControl>
         
+        {/* Hits Collection selector - simple dropdown with inactive option */}
+        {selectedGeometry !== 'world' && (
+          <FormControl fullWidth margin="normal" size="small">
+            <InputLabel>Hits Collection</InputLabel>
+            <Select
+              value={selectedObject && selectedObject.hitsCollectionName ? selectedObject.hitsCollectionName : 'Inactive'}
+              label="Hits Collection"
+              onChange={(e) => {
+                e.stopPropagation();
+                const currentObject = getSelectedGeometryObject();
+                if (!currentObject) return;
+                
+                const updatedObject = { ...currentObject };
+                
+                if (e.target.value === 'Inactive') {
+                  // If Inactive is selected, remove isActive flag and hitsCollectionName
+                  updatedObject.isActive = false;
+                  delete updatedObject.hitsCollectionName;
+                } else {
+                  // Otherwise, set the volume as active with the selected collection
+                  updatedObject.isActive = true;
+                  updatedObject.hitsCollectionName = e.target.value;
+                }
+                
+                onUpdateGeometry(selectedGeometry, updatedObject);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              MenuProps={{
+                onClick: (e) => e.stopPropagation(),
+                PaperProps: { onClick: (e) => e.stopPropagation() }
+              }}
+            >
+              <MenuItem value="Inactive">Inactive</MenuItem>
+              {hitCollections.map((collection) => (
+                <MenuItem key={collection} value={collection}>
+                  {collection}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        
         {/* Mother Volume selector - only show for non-world volumes */}
         {selectedGeometry !== 'world' && (
           <FormControl fullWidth margin="normal" size="small">
             <InputLabel>Mother Volume</InputLabel>
             <Select
-              value={selectedObject.mother_volume || 'World'}
+              value={selectedObject?.mother_volume || 'World'}
               label="Mother Volume"
               onChange={(e) => {
                 e.stopPropagation();
@@ -1208,7 +1261,7 @@ const GeometryEditor = ({
           <TextField
             label="X"
             type="number"
-            value={selectedObject.position?.x ?? 0}
+            value={selectedObject?.position?.x ?? 0}
             onChange={(e) => handlePropertyChange('position.x', e.target.value)}
             onFocus={handleInputFocus}
             onKeyDown={handleNumberKeyDown}
@@ -1218,7 +1271,7 @@ const GeometryEditor = ({
           <TextField
             label="Y"
             type="number"
-            value={selectedObject.position?.y ?? 0}
+            value={selectedObject?.position?.y ?? 0}
             onChange={(e) => handlePropertyChange('position.y', e.target.value)}
             onFocus={handleInputFocus}
             onKeyDown={handleNumberKeyDown}
@@ -1228,7 +1281,7 @@ const GeometryEditor = ({
           <TextField
             label="Z"
             type="number"
-            value={selectedObject.position?.z ?? 0}
+            value={selectedObject?.position?.z ?? 0}
             onChange={(e) => handlePropertyChange('position.z', e.target.value)}
             onFocus={handleInputFocus}
             onKeyDown={handleNumberKeyDown}
@@ -1237,7 +1290,7 @@ const GeometryEditor = ({
           />
           <TextField
             label="Unit"
-            value={selectedObject.position?.unit || 'cm'}
+            value={selectedObject?.position?.unit || 'cm'}
             onChange={(e) => handlePropertyChange('position.unit', e.target.value)}
             size="small"
           />
@@ -1251,7 +1304,7 @@ const GeometryEditor = ({
           <TextField
             label="X"
             type="number"
-            value={selectedObject.rotation?.x ?? 0}
+            value={selectedObject?.rotation?.x ?? 0}
             onChange={(e) => handlePropertyChange('rotation.x', e.target.value)}
             onFocus={handleInputFocus}
             onKeyDown={handleNumberKeyDown}
@@ -1261,7 +1314,7 @@ const GeometryEditor = ({
           <TextField
             label="Y"
             type="number"
-            value={selectedObject.rotation?.y ?? 0}
+            value={selectedObject?.rotation?.y ?? 0}
             onChange={(e) => handlePropertyChange('rotation.y', e.target.value)}
             onFocus={handleInputFocus}
             onKeyDown={handleNumberKeyDown}
@@ -1271,7 +1324,7 @@ const GeometryEditor = ({
           <TextField
             label="Z"
             type="number"
-            value={selectedObject.rotation?.z ?? 0}
+            value={selectedObject?.rotation?.z ?? 0}
             onChange={(e) => handlePropertyChange('rotation.z', e.target.value)}
             onFocus={handleInputFocus}
             onKeyDown={handleNumberKeyDown}
@@ -1280,21 +1333,21 @@ const GeometryEditor = ({
           />
           <TextField
             label="Unit"
-            value={selectedObject.rotation?.unit || 'deg'}
+            value={selectedObject?.rotation?.unit || 'deg'}
             onChange={(e) => handlePropertyChange('rotation.unit', e.target.value)}
             size="small"
           />
         </Box>
         
         {/* Render type-specific properties */}
-        {selectedObject.type === 'box' && (
+        {selectedObject?.type === 'box' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Size</Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <TextField
                 label="X"
                 type="number"
-                value={selectedObject.size?.x || 0}
+                value={selectedObject?.size?.x || 0}
                 onChange={(e) => handlePropertyChange('size.x', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1303,7 +1356,7 @@ const GeometryEditor = ({
               <TextField
                 label="Y"
                 type="number"
-                value={selectedObject.size?.y || 0}
+                value={selectedObject?.size?.y || 0}
                 onChange={(e) => handlePropertyChange('size.y', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1312,7 +1365,7 @@ const GeometryEditor = ({
               <TextField
                 label="Z"
                 type="number"
-                value={selectedObject.size?.z || 0}
+                value={selectedObject?.size?.z || 0}
                 onChange={(e) => handlePropertyChange('size.z', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1320,7 +1373,7 @@ const GeometryEditor = ({
               />
               <TextField
                 label="Unit"
-                value={selectedObject.size?.unit || 'cm'}
+                value={selectedObject?.size?.unit || 'cm'}
                 onChange={(e) => handlePropertyChange('size.unit', e.target.value)}
                 size="small"
               />
@@ -1328,14 +1381,14 @@ const GeometryEditor = ({
           </>
         )}
         
-        {selectedObject.type === 'cylinder' && (
+        {selectedObject?.type === 'cylinder' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
               <TextField
                 label="Radius"
                 type="number"
-                value={selectedObject.radius || 0}
+                value={selectedObject?.radius || 0}
                 onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1344,7 +1397,7 @@ const GeometryEditor = ({
               <TextField
                 label="Height"
                 type="number"
-                value={selectedObject.height || 0}
+                value={selectedObject?.height || 0}
                 onChange={(e) => handlePropertyChange('height', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1354,7 +1407,7 @@ const GeometryEditor = ({
             <TextField
               label="Inner Radius"
               type="number"
-              value={selectedObject.innerRadius || 0}
+              value={selectedObject?.innerRadius || 0}
               onChange={(e) => handlePropertyChange('innerRadius', e.target.value, false)}
               onFocus={handleInputFocus}
               size="small"
@@ -1364,13 +1417,13 @@ const GeometryEditor = ({
           </>
         )}
         
-        {selectedObject.type === 'sphere' && (
+        {selectedObject?.type === 'sphere' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
             <TextField
               label="Radius"
               type="number"
-              value={selectedObject.radius || 0}
+              value={selectedObject?.radius || 0}
               onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
               onFocus={handleInputFocus}
               size="small"
@@ -1380,14 +1433,14 @@ const GeometryEditor = ({
           </>
         )}
         
-        {selectedObject.type === 'trapezoid' && (
+        {selectedObject?.type === 'trapezoid' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
               <TextField
                 label="dx1 (X at -z/2)"
                 type="number"
-                value={selectedObject.dx1 || 0}
+                value={selectedObject?.dx1 || 0}
                 onChange={(e) => handlePropertyChange('dx1', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1396,7 +1449,7 @@ const GeometryEditor = ({
               <TextField
                 label="dx2 (X at +z/2)"
                 type="number"
-                value={selectedObject.dx2 || 0}
+                value={selectedObject?.dx2 || 0}
                 onChange={(e) => handlePropertyChange('dx2', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1407,7 +1460,7 @@ const GeometryEditor = ({
               <TextField
                 label="dy1 (Y at -z/2)"
                 type="number"
-                value={selectedObject.dy1 || 0}
+                value={selectedObject?.dy1 || 0}
                 onChange={(e) => handlePropertyChange('dy1', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1416,7 +1469,7 @@ const GeometryEditor = ({
               <TextField
                 label="dy2 (Y at +z/2)"
                 type="number"
-                value={selectedObject.dy2 || 0}
+                value={selectedObject?.dy2 || 0}
                 onChange={(e) => handlePropertyChange('dy2', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1426,7 +1479,7 @@ const GeometryEditor = ({
             <TextField
               label="dz (Half-length in Z)"
               type="number"
-              value={selectedObject.dz || 0}
+              value={selectedObject?.dz || 0}
               onChange={(e) => handlePropertyChange('dz', e.target.value, false)}
               onFocus={handleInputFocus}
               size="small"
@@ -1437,14 +1490,14 @@ const GeometryEditor = ({
           </>
         )}
         
-        {selectedObject.type === 'ellipsoid' && (
+        {selectedObject?.type === 'ellipsoid' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
               <TextField
                 label="X Radius"
                 type="number"
-                value={selectedObject.xRadius || 0}
+                value={selectedObject?.xRadius || 0}
                 onChange={(e) => handlePropertyChange('xRadius', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1453,7 +1506,7 @@ const GeometryEditor = ({
               <TextField
                 label="Y Radius"
                 type="number"
-                value={selectedObject.yRadius || 0}
+                value={selectedObject?.yRadius || 0}
                 onChange={(e) => handlePropertyChange('yRadius', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1462,7 +1515,7 @@ const GeometryEditor = ({
               <TextField
                 label="Z Radius"
                 type="number"
-                value={selectedObject.zRadius || 0}
+                value={selectedObject?.zRadius || 0}
                 onChange={(e) => handlePropertyChange('zRadius', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1472,14 +1525,14 @@ const GeometryEditor = ({
           </>
         )}
         
-        {selectedObject.type === 'torus' && (
+        {selectedObject?.type === 'torus' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
               <TextField
                 label="Major Radius"
                 type="number"
-                value={selectedObject.majorRadius || 0}
+                value={selectedObject?.majorRadius || 0}
                 onChange={(e) => handlePropertyChange('majorRadius', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1488,7 +1541,7 @@ const GeometryEditor = ({
               <TextField
                 label="Minor Radius"
                 type="number"
-                value={selectedObject.minorRadius || 0}
+                value={selectedObject?.minorRadius || 0}
                 onChange={(e) => handlePropertyChange('minorRadius', e.target.value, false)}
                 onFocus={handleInputFocus}
                 size="small"
@@ -1498,20 +1551,20 @@ const GeometryEditor = ({
           </>
         )}
         
-        {selectedObject.type === 'polycone' && (
+        {selectedObject?.type === 'polycone' && (
           <>
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Z Sections</Typography>
             <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
               Define the sections of the polycone along the z-axis
             </Typography>
-            {selectedObject.zSections && selectedObject.zSections.map((section, index) => (
+            {selectedObject?.zSections && selectedObject?.zSections.map((section, index) => (
               <Box key={`section-${index}`} sx={{ display: 'flex', gap: 1, mb: 1, border: '1px solid #eee', p: 1, borderRadius: '4px' }}>
                 <TextField
                   label="Z Position"
                   type="number"
                   value={section.z || 0}
                   onChange={(e) => {
-                    const newSections = [...selectedObject.zSections];
+                    const newSections = [...selectedObject?.zSections];
                     newSections[index] = { ...newSections[index], z: parseFloat(e.target.value) || 0 };
                     handlePropertyChange('zSections', newSections);
                   }}
@@ -1524,7 +1577,7 @@ const GeometryEditor = ({
                   type="number"
                   value={section.rMin || 0}
                   onChange={(e) => {
-                    const newSections = [...selectedObject.zSections];
+                    const newSections = [...selectedObject?.zSections];
                     newSections[index] = { ...newSections[index], rMin: parseFloat(e.target.value) || 0 };
                     handlePropertyChange('zSections', newSections);
                   }}
@@ -1537,7 +1590,7 @@ const GeometryEditor = ({
                   type="number"
                   value={section.rMax || 0}
                   onChange={(e) => {
-                    const newSections = [...selectedObject.zSections];
+                    const newSections = [...selectedObject?.zSections];
                     newSections[index] = { ...newSections[index], rMax: parseFloat(e.target.value) || 0 };
                     handlePropertyChange('zSections', newSections);
                   }}
@@ -1550,13 +1603,13 @@ const GeometryEditor = ({
                   color="error" 
                   size="small"
                   onClick={() => {
-                    if (selectedObject.zSections.length > 2) {
-                      const newSections = [...selectedObject.zSections];
+                    if (selectedObject?.zSections?.length > 2) {
+                      const newSections = [...selectedObject?.zSections];
                       newSections.splice(index, 1);
                       handlePropertyChange('zSections', newSections);
                     }
                   }}
-                  disabled={selectedObject.zSections.length <= 2}
+                  disabled={selectedObject?.zSections?.length <= 2}
                 >
                   Remove
                 </Button>
@@ -1566,7 +1619,7 @@ const GeometryEditor = ({
               variant="outlined" 
               size="small"
               onClick={() => {
-                const newSections = [...(selectedObject.zSections || [])];
+                const newSections = [...(selectedObject?.zSections || [])];
                 const lastZ = newSections.length > 0 ? newSections[newSections.length - 1].z + 5 : 0;
                 newSections.push({ z: lastZ, rMin: 0, rMax: 5 });
                 handlePropertyChange('zSections', newSections);
@@ -1885,10 +1938,20 @@ const GeometryEditor = ({
           variant="contained" 
           color="primary" 
           onClick={handleAddGeometry}
-          sx={{ mt: 2, mb: 4 }}
+          sx={{ mt: 2, mb: 2 }}
           fullWidth
         >
           Add Geometry
+        </Button>
+        
+        <Button 
+          variant="outlined" 
+          color="secondary" 
+          onClick={() => setHitCollectionsDialogOpen(true)}
+          sx={{ mb: 4 }}
+          fullWidth
+        >
+          Manage Hit Collections
         </Button>
         
         <Divider sx={{ my: 2 }} />
@@ -1957,6 +2020,14 @@ const GeometryEditor = ({
         onClose={() => setUpdateObjectsDialogOpen(false)}
         onUpdate={handleUpdateObjects}
         geometries={geometries}
+      />
+      
+      {/* Hit Collections Dialog */}
+      <HitCollectionsDialog
+        open={hitCollectionsDialogOpen}
+        onClose={() => setHitCollectionsDialogOpen(false)}
+        hitCollections={hitCollections}
+        onUpdateHitCollections={setHitCollections}
       />
     </Paper>
   );

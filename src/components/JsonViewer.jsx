@@ -21,8 +21,46 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return JSON.stringify(data, null, 2);
   };
   
-  // Generate the geometry JSON
-  const geometryJson = formatJson(geometries);
+  // Generate the geometry JSON with hits collections
+  const generateGeometryJson = () => {
+    // Start with the existing format
+    const jsonData = {
+      world: geometries.world,
+      volumes: geometries.volumes || []
+    };
+    
+    // Find all active volumes and their hits collections
+    const activeVolumes = (geometries.volumes || []).filter(vol => vol.isActive);
+    
+    if (activeVolumes.length > 0) {
+      // Get unique hits collection names
+      const collectionNames = new Set();
+      activeVolumes.forEach(vol => {
+        if (vol.hitsCollectionName) {
+          collectionNames.add(vol.hitsCollectionName);
+        }
+      });
+      
+      // Create hits collections entries
+      if (collectionNames.size > 0) {
+        jsonData.hitsCollections = Array.from(collectionNames).map(name => {
+          const associatedVolumes = activeVolumes
+            .filter(vol => vol.hitsCollectionName === name)
+            .map(vol => vol.name);
+            
+          return {
+            name,
+            description: name === "MyHitsCollection" ? "Default hits collection for energy deposits" : "",
+            associatedVolumes
+          };
+        });
+      }
+    }
+    
+    return formatJson(jsonData);
+  };
+  
+  const geometryJson = generateGeometryJson();
   
   // Generate the materials JSON
   const materialsJson = formatJson({ materials });
