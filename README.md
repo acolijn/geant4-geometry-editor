@@ -4,7 +4,16 @@ A web-based visual editor for creating and modifying Geant4 detector geometries.
 
 [![Documentation Status](https://readthedocs.org/projects/geant4-geometry-editor/badge/?version=latest)](https://geant4-geometry-editor.readthedocs.io/en/latest/?badge=latest)
 
-A web-based application for creating and editing Geant4 geometry JSON files with a graphical interface. This tool allows you to visually design detector geometries and export them as JSON files that can be used with Geant4.
+## Documentation
+
+Comprehensive documentation is available at [geant4-geometry-editor.readthedocs.io](https://geant4-geometry-editor.readthedocs.io/en/latest/), including:
+
+- [Getting Started Guide](https://geant4-geometry-editor.readthedocs.io/en/latest/getting-started/)
+- [User Interface Guide](https://geant4-geometry-editor.readthedocs.io/en/latest/user-interface/)
+- [Geometry Components](https://geant4-geometry-editor.readthedocs.io/en/latest/geometry-components/)
+- [API Reference](https://geant4-geometry-editor.readthedocs.io/en/latest/api/)
+
+The API reference is automatically generated from JSDoc comments in the codebase.
 
 ## Features
 

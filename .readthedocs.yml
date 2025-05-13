@@ -12,5 +12,12 @@ build:
   jobs:
     pre_build:
       # Generate API documentation from JSDoc comments before building the docs
-      - npm install jsdoc jsdoc-to-markdown
-      - npm run docs:api
+      - npm ci
+      - mkdir -p docs/api
+      - touch docs/api/GeometryEditor.md docs/api/ProjectManager.md  # Create empty files in case generation fails
+      - node scripts/generate-api-docs.js
+      - ls -la docs/api/  # Debug: List API docs directory contents
+
+python:
+  install:
+    - requirements: docs/requirements.txt
