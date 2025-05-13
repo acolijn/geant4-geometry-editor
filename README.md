@@ -135,3 +135,47 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Documentation
+
+The project documentation is built using MkDocs and is available on ReadTheDocs. The documentation includes:
+
+- User guides
+- Feature documentation
+- Integration guides
+- API reference (automatically generated from JSDoc comments)
+
+### Viewing Documentation Locally
+
+To view the documentation locally:
+
+```bash
+# Generate API documentation and serve the docs site
+./scripts/serve-docs.sh
+
+# Or use npm scripts
+npm run docs:api    # Generate API docs only
+npm run docs:serve  # Generate API docs and serve the site
+```
+
+Then open your browser to http://localhost:8000
+
+### Contributing to Documentation
+
+The documentation is stored in the `docs/` directory. To add or update documentation:
+
+1. Edit the Markdown files in the `docs/` directory
+2. For API documentation, add or update JSDoc comments in the source code
+
+JSDoc comments should follow this format:
+
+```javascript
+/**
+ * Description of the function or component
+ * 
+ * @param {Type} paramName - Description of the parameter
+ * @returns {Type} Description of the return value
+ */
+```
+
+The API documentation is automatically generated from these comments when building the documentation.

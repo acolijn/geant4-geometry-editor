@@ -15,6 +15,7 @@ The Geant4 Geometry Editor provides a graphical interface for designing detector
 - [Coordinate System](coordinate-system.md)
 - [JSON Format](json-format.md)
 - [Integration with Geant4](integration-with-geant4.md)
+- [API Reference](api/index.md)
 
 ## Key Features
 

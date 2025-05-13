@@ -23,3 +23,27 @@ dist-ssr
 *.sln
 *.sw?
 src/components/shapes/fixed_components.tar.gz
+
+# Documentation build files
+site/
+.cache/
+.temp/
+jsdoc/
+docs/jsdoc/
+jsdoc-*.log
+.jsdoc-temp/
+
+# Generated API documentation files
+/docs/api/GeometryEditor.md
+/docs/api/ProjectManager.md
+# Add any other generated API doc files here as they are created
+
+# Keep documentation structure files
+!/docs/api/index.md
+!/docs/api/.gitkeep
+
+# Keep documentation scripts directory but exclude temporary files
+/scripts/*
+!/scripts/generate-api-docs.js
+!/scripts/serve-docs.sh
+!/scripts/.gitignore

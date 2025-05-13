@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server.js",
-    "prod": "npm run build && npm run start"
+    "prod": "npm run build && npm run start",
+    "docs:api": "node scripts/generate-api-docs.js",
+    "docs:build": "npm run docs:api && mkdocs build",
+    "docs:serve": "npm run docs:api && mkdocs serve"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -30,10 +33,13 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "clean-jsdoc-theme": "^4.3.0",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "jsdoc": "^4.0.4",
+    "jsdoc-to-markdown": "^9.1.1",
     "vite": "^6.3.1"
   }
 }

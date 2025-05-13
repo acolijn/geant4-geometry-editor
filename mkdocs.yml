@@ -19,6 +19,10 @@ nav:
   - Coordinate System: 'coordinate-system.md'
   - JSON Format: 'json-format.md'
   - Integration with Geant4: 'integration-with-geant4.md'
+  - API Reference:
+    - Overview: 'api/index.md'
+    - GeometryEditor: 'api/GeometryEditor.md'
+    - ProjectManager: 'api/ProjectManager.md'
 
 markdown_extensions:
   - toc:

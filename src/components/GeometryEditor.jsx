@@ -1,3 +1,18 @@
+/**
+ * GeometryEditor Component
+ * 
+ * This component provides a comprehensive interface for creating, editing, and managing
+ * geometries for Geant4 simulations. It allows users to:
+ * - Create various types of geometry objects (box, cylinder, sphere, etc.)
+ * - Edit properties of existing geometries
+ * - Organize geometries in a hierarchical structure
+ * - Import and export geometry objects
+ * - Configure hit collections for the detector
+ * 
+ * The component maintains the exact layout and behavior required for the
+ * Geant4 geometry editor application.
+ */
+
 import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
 import SaveObjectDialog from './SaveObjectDialog';
@@ -24,6 +39,21 @@ import {
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
+/**
+ * Main GeometryEditor component
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.geometries - The geometry objects (world and volumes)
+ * @param {Array} props.materials - List of available materials
+ * @param {string} props.selectedGeometry - ID of the currently selected geometry
+ * @param {Array} props.hitCollections - List of hit collections for the detector
+ * @param {Function} props.onUpdateHitCollections - Callback to update hit collections
+ * @param {Function} props.onUpdateGeometry - Callback to update a geometry object
+ * @param {Function} props.onAddGeometry - Callback to add a new geometry object
+ * @param {Function} props.onRemoveGeometry - Callback to remove a geometry object
+ * @param {Function} props.extractObjectWithDescendants - Function to extract an object with its descendants
+ * @param {Function} props.handleImportPartialFromAddNew - Function to handle importing partial geometry
+ */
 const GeometryEditor = ({ 
   geometries, 
   materials, 
@@ -36,27 +66,66 @@ const GeometryEditor = ({
   extractObjectWithDescendants,
   handleImportPartialFromAddNew
 }) => {
+  // ===== Refs =====
   // Reference to the file input for importing object JSON files
   const fileInputRef = useRef(null);
+  
+  // ===== UI State =====
+  // Tab selection (0 = Properties, 1 = Add New)
   const [tabValue, setTabValue] = useState(0);
-  const [newGeometryType, setNewGeometryType] = useState('box');
-  const [newMotherVolume, setNewMotherVolume] = useState('World'); // Default mother volume for new geometries
+  // Menu state for the context menu
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const menuOpen = Boolean(menuAnchorEl);
+  // Alert state for import notifications
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
   
-  // State for object save/load/update dialogs
+  // ===== Geometry Creation State =====
+  // Type of geometry to create (box, cylinder, sphere, etc.)
+  const [newGeometryType, setNewGeometryType] = useState('box');
+  // Default mother volume for new geometries
+  const [newMotherVolume, setNewMotherVolume] = useState('World');
+  // For union solids: first solid selection
+  const [firstSolid, setFirstSolid] = useState('');
+  // For union solids: second solid selection
+  const [secondSolid, setSecondSolid] = useState('');
+  
+  // ===== Dialog States =====
+  // Save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
+  // Load object dialog
   const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
+  // Update objects dialog
   const [updateObjectsDialogOpen, setUpdateObjectsDialogOpen] = useState(false);
+  // Hit collections dialog
   const [hitCollectionsDialogOpen, setHitCollectionsDialogOpen] = useState(false);
+  // Object to save in the save dialog
   const [objectToSave, setObjectToSave] = useState(null);
   
   // State for alerts and notifications
   
-  // Handle opening the context menu
+  /**
+   * Handle tab changes between Properties and Add New tabs
+   * 
+   * @param {Object} event - The event object (unused)
+   * @param {number} newValue - The index of the new tab (0 for Properties, 1 for Add New)
+   */
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+  
+  /**
+   * Open the context menu
+   * 
+   * This function opens the context menu at the location of the clicked element.
+   * It prevents event propagation to avoid unintended side effects like selecting
+   * objects underneath the menu button.
+   * 
+   * @param {Object} event - The click event that triggered the menu opening
+   */
   const handleMenuOpen = (event) => {
+    // Prevent event propagation to avoid selecting objects underneath
     event.stopPropagation();
+    // Set the anchor element to position the menu
     setMenuAnchorEl(event.currentTarget);
   };
   
@@ -65,9 +134,18 @@ const GeometryEditor = ({
     setLoadObjectDialogOpen(true);
   };
   
-  // Handle saving an object to the objects directory
-  // Simplify object names by removing the structured naming pattern before saving
+  /**
+   * Simplify object names by removing the structured naming pattern before saving
+   * 
+   * This function processes an object and its descendants to simplify their names
+   * by extracting the component name from structured names (BaseName_ComponentName_ID).
+   * It also updates all references to maintain the correct relationships between objects.
+   * 
+   * @param {Object} objectData - The object data to process, containing object and descendants
+   * @returns {Object} The processed object data with simplified names
+   */
   const simplifyObjectNames = (objectData) => {
+    // Return early if the input is invalid
     if (!objectData || !objectData.object) return objectData;
     
     // Create a deep copy of the object data
@@ -76,8 +154,17 @@ const GeometryEditor = ({
     // Create a mapping of old names to simplified names
     const nameMapping = {};
     
-    // Extract the component name from the structured name
+    /**
+     * Extract the component name from a structured name format
+     * 
+     * Structured names follow the pattern: BaseName_ComponentName_ID
+     * This function extracts just the ComponentName part for cleaner exports.
+     * 
+     * @param {string} structuredName - The structured name to process
+     * @returns {string} The extracted component name or the original name if not in expected format
+     */
     const extractComponentName = (structuredName) => {
+      // Return early if the name is empty or undefined
       if (!structuredName) return structuredName;
       
       // Parse the name parts: BaseName_ComponentName_ID
@@ -86,7 +173,8 @@ const GeometryEditor = ({
         // Return just the component name
         return parts[1];
       }
-      return structuredName; // If not in expected format, return as is
+      // If not in expected format, return as is
+      return structuredName;
     };
     
     // Simplify the mother object name
@@ -165,7 +253,16 @@ const GeometryEditor = ({
     }
   };
   
-  // Handle loading an object from the objects directory
+  /**
+   * Handle loading an object from the library
+   * 
+   * This function processes object data loaded from the library, applies structured naming
+   * to ensure consistency, and adds the object to the scene. It also displays a success
+   * or error notification to provide feedback to the user.
+   * 
+   * @param {Object} objectData - The object data to load, including the main object and its descendants
+   * @returns {Object} An object indicating success or failure of the operation
+   */
   const handleLoadObject = (objectData) => {
     try {
       // Process the loaded object data
@@ -402,7 +499,19 @@ const GeometryEditor = ({
     }
   };
   
-  // Apply structured naming convention to an object and its descendants
+  /**
+   * Apply structured naming to imported objects
+   * 
+   * This function ensures consistent naming of imported objects by applying a structured
+   * naming convention in the format: BaseName_ComponentName_ID. This helps maintain
+   * organization and prevents naming conflicts when importing objects.
+   * 
+   * The function creates a mapping between original names and new structured names,
+   * and updates all mother_volume references to maintain proper relationships.
+   * 
+   * @param {Object} objectData - The object data to process, including the main object and its descendants
+   * @returns {Object} The processed object data with structured naming applied
+   */
   const applyStructuredNaming = (objectData) => {
     if (!objectData || !objectData.object) return objectData;
     
@@ -485,17 +594,35 @@ const GeometryEditor = ({
   };
   
   // Handle closing the context menu
+  /**
+   * Close the context menu
+   * 
+   * This function closes the context menu and prevents event propagation
+   * to avoid unintended side effects like selecting objects underneath.
+   * 
+   * @param {Object} event - The event object (may be undefined if called programmatically)
+   */
   const handleMenuClose = (event) => {
+    // Prevent event propagation if an event is provided
     if (event) event.stopPropagation();
+    // Close the menu by setting its anchor element to null
     setMenuAnchorEl(null);
   };
   
 
   
   // Handle exporting the selected object with its descendants
+  /**
+   * Export the selected geometry object and its descendants
+   * 
+   * This function extracts the selected geometry object along with all its descendants
+   * and prepares them for export. It adds debug information and opens the save dialog
+   * to allow the user to save the exported data to a file.
+   */
   const handleExportObject = () => {
     handleMenuClose();
     
+    // Return early if no geometry is selected
     if (!selectedGeometry) return;
     
     // Extract the selected object and its descendants
@@ -735,21 +862,46 @@ const GeometryEditor = ({
     console.log('Export data saved to window.lastExportedObject for debugging');
   };
 
-  // Get the selected geometry object
+  /**
+   * Get the currently selected geometry object based on the selectedGeometry ID
+   * 
+   * This function retrieves the geometry object that corresponds to the currently
+   * selected geometry ID. The ID can be 'world' for the world volume or 'volume-X'
+   * where X is the index of the volume in the geometries.volumes array.
+   * 
+   * @returns {Object|null} The selected geometry object or null if no geometry is selected
+   */
   const getSelectedGeometryObject = () => {
+    // Return null if no geometry is selected
     if (!selectedGeometry) return null;
+    
+    // Return the world volume if 'world' is selected
     if (selectedGeometry === 'world') return geometries.world;
+    
+    // Return the volume at the specified index if a volume is selected
     if (selectedGeometry.startsWith('volume-')) {
       const index = parseInt(selectedGeometry.split('-')[1]);
       return geometries.volumes[index];
     }
+    
+    // Return null if the selected geometry ID is not recognized
     return null;
   };
 
   // We'll get the selected object inside the render functions to ensure it's always up-to-date
 
-  // Handle rotation changes
+  /**
+   * Handle rotation changes for the selected geometry object
+   * 
+   * This function updates the rotation of the selected geometry along a specified axis.
+   * Rotations in Geant4 follow a sequential system: rotateX, then rotateY around the new Y axis,
+   * then rotateZ around the new Z axis.
+   * 
+   * @param {string} axis - The rotation axis ('x', 'y', or 'z')
+   * @param {number} value - The rotation value in degrees
+   */
   const handleRotationChange = (axis, value) => {
+    // Return early if no geometry is selected
     if (!selectedGeometry) return;
     const selectedObject = getSelectedGeometryObject();
     
@@ -771,8 +923,18 @@ const GeometryEditor = ({
     onUpdateGeometry(selectedGeometry, updatedGeometries);
   };
   
-  // Handle relative position changes for union solids
+  /**
+   * Handle relative position changes for union solids
+   * 
+   * This function updates the relative position of the second solid in a union
+   * with respect to the first solid. This affects how the two solids are combined
+   * in the union operation.
+   * 
+   * @param {string} axis - The position axis ('x', 'y', or 'z')
+   * @param {number} value - The position value in centimeters
+   */
   const handleRelativePositionChange = (axis, value) => {
+    // Return early if no geometry is selected
     if (!selectedGeometry) return;
     
     const index = parseInt(selectedGeometry.split('-')[1]);
@@ -791,8 +953,18 @@ const GeometryEditor = ({
     onUpdateGeometry(selectedGeometry, { relative_position: updatedRelativePosition });
   };
   
-  // Handle relative rotation changes for union solids
+  /**
+   * Handle relative rotation changes for union solids
+   * 
+   * This function updates the relative rotation of the second solid in a union
+   * with respect to the first solid. Rotations follow Geant4's sequential system:
+   * rotateX, then rotateY around the new Y axis, then rotateZ around the new Z axis.
+   * 
+   * @param {string} axis - The rotation axis ('x', 'y', or 'z')
+   * @param {number} value - The rotation value in degrees
+   */
   const handleRelativeRotationChange = (axis, value) => {
+    // Return early if no geometry is selected
     if (!selectedGeometry) return;
     
     const index = parseInt(selectedGeometry.split('-')[1]);
@@ -844,11 +1016,25 @@ const GeometryEditor = ({
     }
   };
 
+  /**
+   * Handle changes to geometry properties
+   * 
+   * This function handles changes to any property of the selected geometry object.
+   * It provides special handling for different types of properties (strings, arrays, numbers)
+   * and ensures proper validation and formatting of values.
+   * 
+   * @param {string} property - The name of the property to change (can be nested like 'position.x')
+   * @param {any} value - The new value for the property
+   * @param {boolean} allowNegative - Whether to allow negative values for numeric properties
+   * @param {boolean} isStringProperty - Whether the property is a string (no numeric conversion)
+   */
   const handlePropertyChange = (property, value, allowNegative = true, isStringProperty = false) => {
+    // Return early if no geometry is selected
     if (!selectedGeometry) return;
     const selectedObject = getSelectedGeometryObject();
     if (!selectedObject) return;
     
+    // Create a copy of the selected object to avoid direct state mutation
     const updatedObject = { ...getSelectedGeometryObject() };
     
     // Special handling for string properties like name and material
@@ -865,37 +1051,54 @@ const GeometryEditor = ({
       return;
     }
     
-    // Process numeric values
+    /**
+     * Process and validate the input value
+     * 
+     * For numeric properties, we need to validate the input and convert strings to numbers.
+     * This includes handling special cases like empty inputs, minus signs, and decimal points.
+     */
     let processedValue = value;
     
-    // Special handling for negative number input
-    // Allow '-' as a valid input during typing
-    if (value === '-') {
-      processedValue = value;
-    }
-    // Allow empty string
-    else if (value === '') {
-      processedValue = value;
-    }
-    // Handle numeric strings
-    else if (typeof value === 'string' && value.match(/^-?\d*\.?\d*$/)) {
-      // If it's a valid number, parse it
-      if (value !== '-' && value !== '') {
-        const numValue = parseFloat(value);
+    // For numeric properties, handle validation and conversion
+    if (!isStringProperty) {
+      // Allow minus sign at the beginning of empty input or if cursor is at position 0
+      // This is important for UX, allowing users to start typing negative numbers
+      if (value === '-' || (typeof value === 'string' && value.trim() === '')) {
+        processedValue = value;
+      } else if (typeof value === 'string') {
+        // Only allow numeric input with optional decimal point and minus sign
+        // This prevents invalid characters from being entered
+        const regex = allowNegative ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/;
+        if (!regex.test(value)) {
+          return; // Invalid input, don't update
+        }
         
-        // If not allowing negative values, ensure it's positive
-        if (!allowNegative && numValue < 0) {
-          processedValue = 0;
-        } else if (!isNaN(numValue)) {
-          processedValue = numValue;
-        } else {
-          processedValue = 0;
+        // Convert to number if it's a valid numeric string
+        // Empty string is allowed to enable clearing the input field
+        if (value !== '') {
+          const numValue = parseFloat(value);
+          // If not allowing negative values, ensure it's positive
+          if (!allowNegative && numValue < 0) {
+            processedValue = 0;
+          } else if (!isNaN(numValue)) {
+            processedValue = numValue;
+          } else {
+            processedValue = 0;
+          }
         }
       }
     }
     
-    // Handle nested properties like position.x
+    /**
+     * Handle nested properties like position.x, rotation.y, etc.
+     * 
+     * This section handles properties that are nested within objects, such as
+     * coordinates within position objects or angles within rotation objects.
+     * It preserves the structure of the parent object while updating only the
+     * specified child property.
+     */
     if (property.includes('.')) {
+      // Split the property path into parent and child components
       const [parent, child] = property.split('.');
       
       // For empty string or just a minus sign, keep it as is to allow typing
@@ -931,10 +1134,20 @@ const GeometryEditor = ({
       }
     }
     
+    // Update the geometry with the modified object
+    // This will trigger a re-render and ensure the object stays selected
+    // after the update, maintaining the transform controls visibility
     onUpdateGeometry(selectedGeometry, updatedObject);
   };
 
   // Add a new geometry
+  /**
+   * Add a new geometry object to the scene
+   * 
+   * This function creates a new geometry object based on the selected type and mother volume.
+   * It handles special cases for union solids, which require combining two existing solids.
+   * For basic geometries, it creates objects with default properties based on the type.
+   */
   const handleAddGeometry = () => {
     // For union solids, we need to validate that both solids are selected
     if (newGeometryType === 'union') {
@@ -1089,8 +1302,19 @@ const GeometryEditor = ({
   };
 
   // Render the property editor for the selected geometry
+  /**
+   * Render the property editor panel
+   * 
+   * This function renders the appropriate property editor UI based on the selected geometry object.
+   * It handles different types of geometries (world, volumes, union solids) and displays
+   * the relevant properties for each type. The property editor allows users to modify
+   * properties like position, rotation, dimensions, and material.
+   * 
+   * @returns {JSX.Element} The rendered property editor component
+   */
   const renderPropertyEditor = () => {
     // Get the selected object inside the function to ensure it's always up-to-date
+    // This is important as the selection may change between renders
     const selectedObject = getSelectedGeometryObject();
     
     if (!selectedObject) {
@@ -1629,17 +1853,22 @@ const GeometryEditor = ({
         
         {selectedGeometry !== 'world' && (
           <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+            {/* Save to Library button - exports the selected geometry to the object library */}
             <Button 
               variant="outlined" 
               color="primary" 
               onClick={handleExportObject}
+              aria-label="Save selected geometry to library"
+              title="Save this geometry and its descendants to the object library for reuse"
             >
               Save to Library
             </Button>
+            {/* Remove Geometry button - deletes the selected geometry from the scene */}
             <Button 
               variant="outlined" 
               color="error" 
               onClick={() => onRemoveGeometry(selectedGeometry)}
+              aria-label="Remove selected geometry"
             >
               Remove Geometry
             </Button>
@@ -1674,6 +1903,16 @@ const GeometryEditor = ({
   };
   
   // Handle importing an object JSON file using the FileSystemManager
+  /**
+   * Import geometry objects from a JSON file using the FileSystemManager
+   * 
+   * This function allows users to import previously exported geometry objects
+   * from JSON files. It validates the imported content, adds the objects to the
+   * scene with the selected mother volume, and displays appropriate notifications.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   const handleImportFromFileSystem = async () => {
     try {
       // Check if FileSystemManager is initialized
@@ -1797,17 +2036,36 @@ const GeometryEditor = ({
     reader.readAsText(file);
   };
   
+  /**
+   * Handle closing of alert notifications
+   * 
+   * This function closes the alert notification by setting its show property to false
+   * while preserving other properties like message and severity.
+   */
+  const handleCloseAlert = useCallback(() => {
+    setImportAlert(prevAlert => ({ ...prevAlert, show: false }));
+  }, []);
+  
   // Clear the import alert after a delay
   React.useEffect(() => {
     if (importAlert.show) {
-      const timer = setTimeout(() => {
-        setImportAlert({ ...importAlert, show: false });
-      }, 5000);
+      const timer = setTimeout(handleCloseAlert, 5000);
       return () => clearTimeout(timer);
     }
-  }, [importAlert]);
+  }, [importAlert, handleCloseAlert]);
   
-  // Render the "Add New" tab content
+  /**
+   * Render the "Add New" tab content
+   * 
+   * This function renders the UI for adding new geometry objects to the scene.
+   * It includes options for importing existing objects, creating new primitive shapes,
+   * and creating union solids by combining two existing objects.
+   * 
+   * The UI is organized into sections with appropriate controls for each type of
+   * geometry that can be added.
+   * 
+   * @returns {JSX.Element} The rendered Add New tab component
+   */
   const renderAddNewTab = () => {
     return (
       <Box sx={{ p: 2 }}>
@@ -1817,7 +2075,7 @@ const GeometryEditor = ({
           <Alert 
             severity={importAlert.severity} 
             sx={{ mt: 2, mb: 2 }}
-            onClose={() => setImportAlert({ ...importAlert, show: false })}
+            onClose={handleCloseAlert}
           >
             {importAlert.message}
           </Alert>
@@ -1971,9 +2229,10 @@ const GeometryEditor = ({
 
   return (
     <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Tabs for switching between Properties and Add New */}
       <Tabs 
         value={tabValue} 
-        onChange={(e, newValue) => setTabValue(newValue)}
+        onChange={handleTabChange}
         variant="fullWidth"
       >
         <Tab label="Properties" />
@@ -2007,7 +2266,7 @@ const GeometryEditor = ({
         open={loadObjectDialogOpen}
         onClose={() => setLoadObjectDialogOpen(false)}
         onLoad={handleLoadObject}
-        onAddNew={() => setTabValue(1)}
+        onAddNew={() => handleTabChange(null, 1)} // Switch to Add New tab
       />
       
       {/* Update Objects Dialog */}
