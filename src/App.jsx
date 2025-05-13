@@ -106,6 +106,7 @@ function App() {
   const [geometries, setGeometries] = useState(defaultGeometry);
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
+  const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
   
   // State for the update instances dialog
   // Instance tracking state has been removed for a cleaner implementation
@@ -720,11 +721,16 @@ function App() {
     return exportGeometries;
   };
   
-  // Handle loading a project (geometries and materials)
-  const handleLoadProject = (loadedGeometries, loadedMaterials) => {
+  // Handle loading a project (geometries and materials and hitCollections)
+  const handleLoadProject = (loadedGeometries, loadedMaterials, loadedHitCollections) => {
     // Set the geometries and materials state with the loaded data
     setGeometries(loadedGeometries);
     setMaterials(loadedMaterials);
+    
+    // Set hit collections if they exist in the loaded project
+    if (loadedHitCollections && Array.isArray(loadedHitCollections)) {
+      setHitCollections(loadedHitCollections);
+    }
     
     // Reset the selection
     setSelectedGeometry(null);
@@ -769,6 +775,7 @@ return (
             <ProjectManager 
               geometries={geometries} 
               materials={materials}
+              hitCollections={hitCollections}
               onLoadProject={handleLoadProject}
               handleImportPartialFromAddNew={handleImportPartialFromAddNew}
               compactMode={true}
@@ -793,6 +800,8 @@ return (
                   geometries={geometries}
                   materials={materials}
                   selectedGeometry={selectedGeometry}
+                  hitCollections={hitCollections}
+                  onUpdateHitCollections={setHitCollections}
                   onUpdateGeometry={handleUpdateGeometry}
                   onAddGeometry={handleAddGeometry}
                   onRemoveGeometry={handleRemoveGeometry}

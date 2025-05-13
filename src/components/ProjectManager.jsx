@@ -40,7 +40,7 @@ import fileSystemManager from '../utils/FileSystemManager';
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
 
-const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPartialFromAddNew, compactMode = false }) => {
+const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, handleImportPartialFromAddNew, compactMode = false }) => {
   // UI state
   const [currentTab, setCurrentTab] = useState(0);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -313,7 +313,8 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
       // Create project data object
       const projectData = {
         geometries,
-        materials
+        materials,
+        hitCollections
       };
 
       // Create metadata
@@ -484,7 +485,9 @@ const ProjectManager = ({ geometries, materials, onLoadProject, handleImportPart
     try {
       const projectData = await storageManager.loadProject(projectName);
       if (projectData) {
-        onLoadProject(projectData.geometry.geometries, projectData.geometry.materials);
+        // Extract hitCollections if they exist in the saved project
+        const loadedHitCollections = projectData.geometry.hitCollections || ['MyHitsCollection'];
+        onLoadProject(projectData.geometry.geometries, projectData.geometry.materials, loadedHitCollections);
         setLoadDialogOpen(false);
         setAlert({
           open: true,

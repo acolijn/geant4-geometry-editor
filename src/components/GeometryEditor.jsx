@@ -30,6 +30,8 @@ const GeometryEditor = ({
   geometries, 
   materials, 
   selectedGeometry, 
+  hitCollections,
+  onUpdateHitCollections,
   onUpdateGeometry, 
   onAddGeometry, 
   onRemoveGeometry,
@@ -51,9 +53,6 @@ const GeometryEditor = ({
   const [updateObjectsDialogOpen, setUpdateObjectsDialogOpen] = useState(false);
   const [hitCollectionsDialogOpen, setHitCollectionsDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
-  
-  // State for hit collections
-  const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
   
   // State for alerts and notifications
   // (Update compound functionality has been removed)
@@ -2027,7 +2026,7 @@ const GeometryEditor = ({
         open={hitCollectionsDialogOpen}
         onClose={() => setHitCollectionsDialogOpen(false)}
         hitCollections={hitCollections}
-        onUpdateHitCollections={setHitCollections}
+        onUpdateHitCollections={onUpdateHitCollections}
       />
     </Paper>
   );
