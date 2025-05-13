@@ -1,0 +1,7 @@
+# Ignore all files in this directory by default
+*
+
+# But track these specific files
+!.gitignore
+!generate-api-docs.js
+!serve-docs.sh
