@@ -51,6 +51,28 @@ const generateComponentDocs = async () => {
         continue;
       }
       
+      // Check if we have a manually created documentation file
+      const manualDocExists = fs.existsSync(outputFile);
+      let manualDocContent = '';
+      let manualDocHeader = '';
+      
+      // If manual documentation exists, preserve the header section (everything before ## Constants or ## Functions)
+      if (manualDocExists) {
+        const existingContent = fs.readFileSync(outputFile, 'utf8');
+        const headerEndIndex = Math.max(
+          existingContent.indexOf('## Constants'),
+          existingContent.indexOf('## Functions'),
+          existingContent.indexOf('## Methods')
+        );
+        
+        if (headerEndIndex > 0) {
+          manualDocHeader = existingContent.substring(0, headerEndIndex).trim() + '\n\n';
+        } else {
+          // If no section markers found, preserve the entire content as header
+          manualDocHeader = existingContent;
+        }
+      }
+      
       // Read the file content to add React component annotations if needed
       const fileContent = fs.readFileSync(inputFile, 'utf8');
       const isReactComponent = fileContent.includes('React.') || 
@@ -72,12 +94,18 @@ const generateComponentDocs = async () => {
         'property-list-format': 'list'
       });
       
-      // Add a title and introduction to the markdown file
-      let outputContent = '# ' + component.name + ' Component API\n\n';
+      // Use the manual documentation header if it exists, otherwise create a default header
+      let outputContent = '';
       
-      // Add React component specific introduction if applicable
-      if (isReactComponent) {
-        outputContent += 'This documentation describes the ' + component.name + ' React component, its props, state, and methods.\n\n';
+      if (manualDocHeader) {
+        outputContent = manualDocHeader;
+      } else {
+        outputContent = '# ' + component.name + ' Component API\n\n';
+        
+        // Add React component specific introduction if applicable
+        if (isReactComponent) {
+          outputContent += 'This documentation describes the ' + component.name + ' React component, its props, state, and methods.\n\n';
+        }
       }
       
       // Add the generated markdown

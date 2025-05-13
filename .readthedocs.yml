@@ -11,11 +11,10 @@ build:
     nodejs: "18"
   jobs:
     pre_build:
-      # Generate API documentation from JSDoc comments before building the docs
-      - npm ci
+      # Ensure API documentation directory exists
       - mkdir -p docs/api
-      - touch docs/api/GeometryEditor.md docs/api/ProjectManager.md  # Create empty files in case generation fails
-      - node scripts/generate-api-docs.js
+      # Skip the dynamic generation since we now have static API docs
+      - echo "Using static API documentation files"
       - ls -la docs/api/  # Debug: List API docs directory contents
 
 python:

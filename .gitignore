@@ -33,14 +33,17 @@ docs/jsdoc/
 jsdoc-*.log
 .jsdoc-temp/
 
-# Generated API documentation files
-/docs/api/GeometryEditor.md
-/docs/api/ProjectManager.md
-# Add any other generated API doc files here as they are created
+# Documentation build files
+site/
+.cache/
+.temp/
+jsdoc/
+docs/jsdoc/
+jsdoc-*.log
+.jsdoc-temp/
 
-# Keep documentation structure files
-!/docs/api/index.md
-!/docs/api/.gitkeep
+# Keep all documentation files
+# We're now including API docs in the repository
 
 # Keep documentation scripts directory but exclude temporary files
 /scripts/*
