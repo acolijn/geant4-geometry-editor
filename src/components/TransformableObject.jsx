@@ -1,8 +1,21 @@
-// TransformableObject with flat structure and world positions
+/**
+ * TransformableObject Component
+ * 
+ * This component handles the transformation and selection of 3D objects in the scene.
+ * It wraps various geometry types and provides transform controls when selected.
+ * 
+ * Key features:
+ * - Supports different geometry types (Box, Cylinder, Sphere, etc.)
+ * - Handles object selection and transformation
+ * - Maintains proper selection state during and after transformations
+ * - Supports both local and world coordinate systems
+ */
 import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
+
+// Import geometry components
 import BoxObject from './BoxObject.jsx';
 import CylinderObject from './CylinderObject.jsx';
 import SphereObject from './SphereObject.jsx';
@@ -12,10 +25,27 @@ import EllipsoidObject from './EllipsoidObject.jsx';
 import PolyconeObject from './PolyconeObject.jsx';
 import UnionObject from './UnionObject.jsx';
 
+/**
+ * Convert radians to degrees
+ * @param {number} r - Angle in radians
+ * @returns {number} Angle in degrees
+ */
 const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
+
+/**
+ * Convert degrees to radians
+ * @param {number} d - Angle in degrees
+ * @returns {number} Angle in radians
+ */
 const degToRad = (d) => THREE.MathUtils.degToRad(d);
 
-// Debug helper function to log object details
+/**
+ * Debug helper function to log object details
+ * Useful for diagnosing positioning and rotation issues
+ * 
+ * @param {string} prefix - Descriptive prefix for the log
+ * @param {Object} object - The object to debug
+ */
 const debugObject = (prefix, object) => {
   console.log(`${prefix} - Type: ${object.type}, Name: ${object.name}`, {
     position: object.position,
@@ -25,6 +55,21 @@ const debugObject = (prefix, object) => {
   });
 };
 
+/**
+ * TransformableObject component for handling 3D object transformations
+ * 
+ * @param {Object} props Component props
+ * @param {Object} props.object The geometry object with properties like type, position, rotation
+ * @param {string} props.objectKey Unique identifier for the object
+ * @param {string} props.transformMode The current transform mode ('translate', 'rotate', or 'scale')
+ * @param {boolean} props.isSelected Whether this object is currently selected
+ * @param {Function} props.onSelect Callback when the object is selected
+ * @param {Function} props.onTransformEnd Callback when transformation ends, receives updated position and rotation
+ * @param {Array} props.worldPosition World position coordinates [x, y, z] if applicable
+ * @param {Array} props.worldRotation World rotation values [x, y, z] in radians if applicable
+ * @param {boolean} props.isSourceObject Whether this is a source object that should trigger updates to other instances
+ * @returns {JSX.Element} The rendered 3D object with transform controls when selected
+ */
 export default function TransformableObject({ 
   object, 
   objectKey, 
@@ -34,7 +79,7 @@ export default function TransformableObject({
   onTransformEnd,
   worldPosition,
   worldRotation,
-  isSourceObject = false // New prop to indicate if this is a source object that should trigger updates
+  isSourceObject = false
 }) {
   // Create a ref for the object
   const groupRef = useRef();

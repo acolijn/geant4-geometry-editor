@@ -20,8 +20,6 @@ import JsonViewer from './components/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import './App.css';
 
-// Instance tracking functionality has been removed for a cleaner implementation
-
 // Create a theme
 const theme = createTheme({
   palette: {
@@ -107,9 +105,6 @@ function App() {
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
-  
-  // State for the update instances dialog
-  // Instance tracking state has been removed for a cleaner implementation
   
   // We'll no longer automatically load from localStorage on initial load
   // This ensures we always start with the default empty world
@@ -393,11 +388,18 @@ function App() {
         const processedDesc = { ...desc };
         const originalName = processedDesc.name;
         
-        // CRITICAL FIX: Ensure each descendant has all required properties
+        // Ensure each descendant has all required properties
         if (processedDesc.type === 'cylinder') {
           if (!processedDesc.radius) processedDesc.radius = 5;
           if (!processedDesc.height) processedDesc.height = 10;
-          if (!processedDesc.inner_radius && !processedDesc.innerRadius) {
+          
+          // Standardize inner_radius property name
+          if (processedDesc.innerRadius !== undefined && processedDesc.inner_radius === undefined) {
+            // Convert innerRadius to inner_radius for consistency
+            processedDesc.inner_radius = processedDesc.innerRadius;
+            delete processedDesc.innerRadius;
+          } else if (!processedDesc.inner_radius) {
+            // Set default if neither property exists
             processedDesc.inner_radius = 0;
           }
         } else if (processedDesc.type === 'box') {

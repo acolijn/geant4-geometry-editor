@@ -4,8 +4,6 @@ import SaveObjectDialog from './SaveObjectDialog';
 import LoadObjectDialog from './LoadObjectDialog';
 import UpdateObjectsDialog from './UpdateObjectsDialog';
 import HitCollectionsDialog from './HitCollectionsDialog';
-// Instance tracking functionality has been removed for a cleaner implementation
-// UpdateCompoundDialog import removed
 import { 
   Box, 
   Paper, 
@@ -55,7 +53,6 @@ const GeometryEditor = ({
   const [objectToSave, setObjectToSave] = useState(null);
   
   // State for alerts and notifications
-  // (Update compound functionality has been removed)
   
   // Handle opening the context menu
   const handleMenuOpen = (event) => {

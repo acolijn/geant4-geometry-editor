@@ -21,6 +21,12 @@ import AddIcon from '@mui/icons-material/Add';
 
 /**
  * Dialog component for managing hit collections
+ * 
+ * @param {Object} props Component props
+ * @param {boolean} props.open Whether the dialog is open
+ * @param {Function} props.onClose Function to call when the dialog is closed
+ * @param {string[]} props.hitCollections Array of hit collection names
+ * @param {Function} props.onUpdateHitCollections Function to call when hit collections are updated
  */
 const HitCollectionsDialog = ({ open, onClose, hitCollections, onUpdateHitCollections }) => {
   // State for the list of hit collections
@@ -35,42 +41,79 @@ const HitCollectionsDialog = ({ open, onClose, hitCollections, onUpdateHitCollec
     setCollections(hitCollections || ['MyHitsCollection']);
   }, [hitCollections]);
 
-  // Handle adding a new hit collection
+  /**
+   * Handle adding a new hit collection
+   * Validates the collection name before adding
+   */
   const handleAddCollection = () => {
+    const trimmedName = newCollectionName.trim();
+    
     // Validate the new collection name
-    if (!newCollectionName.trim()) {
+    if (!trimmedName) {
       setError('Collection name cannot be empty');
       return;
     }
+    
+    // Check for special characters that might cause issues
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmedName)) {
+      setError('Collection name can only contain letters, numbers, and underscores');
+      return;
+    }
 
-    if (collections.includes(newCollectionName)) {
+    if (collections.includes(trimmedName)) {
       setError('Collection name must be unique');
       return;
     }
 
     // Add the new collection
-    const updatedCollections = [...collections, newCollectionName];
+    const updatedCollections = [...collections, trimmedName];
     setCollections(updatedCollections);
     setNewCollectionName('');
     setError('');
   };
 
-  // Handle removing a hit collection
+  /**
+   * Handle removing a hit collection
+   * Prevents removal of the default collection
+   * 
+   * @param {number} index Index of the collection to remove
+   */
   const handleRemoveCollection = (index) => {
+    // Validate the index
+    if (index < 0 || index >= collections.length) {
+      console.error(`Invalid collection index: ${index}`);
+      return;
+    }
+    
     // Don't allow removing the default collection
     if (collections[index] === 'MyHitsCollection') {
       setError('Cannot remove the default collection');
       return;
     }
 
+    // Create a new array without the removed collection
     const updatedCollections = [...collections];
     updatedCollections.splice(index, 1);
     setCollections(updatedCollections);
+    
+    // Clear any previous error messages
+    setError('');
   };
 
-  // Handle saving changes
+  /**
+   * Handle saving changes to hit collections
+   * Updates the parent component with the new collections and closes the dialog
+   */
   const handleSave = () => {
-    onUpdateHitCollections(collections);
+    // Ensure we always have at least the default collection
+    if (!collections.includes('MyHitsCollection')) {
+      const updatedCollections = ['MyHitsCollection', ...collections];
+      onUpdateHitCollections(updatedCollections);
+    } else {
+      onUpdateHitCollections(collections);
+    }
+    
+    // Close the dialog
     onClose();
   };
 
