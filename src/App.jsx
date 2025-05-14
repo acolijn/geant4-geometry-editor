@@ -209,49 +209,27 @@ function App() {
     }
   };
   
-  // Generate a unique name for a new geometry object
+  // Generate a unique name for a new geometry
   const generateUniqueName = (baseType) => {
-    // Special case for PMT objects
-    if (baseType.toLowerCase() === 'pmt') {
-      const prefix = 'PMT_';
-      
-      // Get all existing names
-      const existingNames = [
-        geometries.world.name,
-        ...geometries.volumes.map(vol => vol.name)
-      ];
-      
-      // Find the next available number
-      let counter = 0;
-      let newName;
-      do {
-        newName = `${prefix}${counter}`;
-        counter++;
-      } while (existingNames.includes(newName));
-      
-      return newName;
-    } else {
-      // For other object types, use the original naming convention
-      // Capitalize the first letter of the type
-      const typeName = baseType.charAt(0).toUpperCase() + baseType.slice(1);
-      const prefix = `New${typeName}_`;
-      
-      // Get all existing names
-      const existingNames = [
-        geometries.world.name,
-        ...geometries.volumes.map(vol => vol.name)
-      ];
-      
-      // Find the next available number
-      let counter = 0;
-      let newName;
-      do {
-        newName = `${prefix}${counter}`;
-        counter++;
-      } while (existingNames.includes(newName));
-      
-      return newName;
-    }
+    // Capitalize the first letter of the type
+    const typeName = baseType.charAt(0).toUpperCase() + baseType.slice(1);
+    const prefix = `${typeName}_`;
+    
+    // Get all existing names
+    const existingNames = [
+      geometries.world.name,
+      ...geometries.volumes.map(vol => vol.name)
+    ];
+    
+    // Find the next available number
+    let counter = 0;
+    let newName;
+    do {
+      newName = `${prefix}${counter}`;
+      counter++;
+    } while (existingNames.includes(newName));
+    
+    return newName;
   };
   
   // Handle adding a new geometry
