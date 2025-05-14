@@ -4,6 +4,14 @@ A web-based visual editor for creating and modifying Geant4 detector geometries.
 
 [![Documentation Status](https://readthedocs.org/projects/geant4-geometry-editor/badge/?version=latest)](https://geant4-geometry-editor.readthedocs.io/en/latest/?badge=latest)
 
+## Project Structure
+
+The codebase is organized into modular components:
+
+- `src/components/geometry-editor/`: Contains components for property editing and UI dialogs
+- `src/components/viewer3D/`: Contains 3D geometry objects and transformation controls
+- `src/utils/`: Utility functions for geometry manipulation and storage
+
 ## Documentation
 
 Comprehensive documentation is available at [geant4-geometry-editor.readthedocs.io](https://geant4-geometry-editor.readthedocs.io/en/latest/), including:

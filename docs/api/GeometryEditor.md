@@ -2,6 +2,22 @@
 
 The GeometryEditor is the main component for editing and managing geometry objects in the Geant4 Geometry Editor. It provides functionality for creating, selecting, transforming, and modifying 3D geometry objects.
 
+## Component Organization
+
+The GeometryEditor has been refactored into a modular structure:
+
+- **Main Component**: `src/components/GeometryEditor.jsx`
+- **Property Editing**: `src/components/geometry-editor/PropertyEditor.jsx`
+- **Object Creation**: `src/components/geometry-editor/AddNewTab.jsx`
+- **Dialog Components**: Located in `src/components/geometry-editor/`
+  - `SaveObjectDialog.jsx`
+  - `LoadObjectDialog.jsx`
+  - `UpdateObjectsDialog.jsx`
+  - `HitCollectionsDialog.jsx`
+- **3D Objects**: Located in `src/components/viewer3D/`
+  - Various shape objects (Box, Cylinder, Sphere, etc.)
+  - `TransformableObject.jsx` for handling transformations
+
 ## Key Features
 
 ### Selection System

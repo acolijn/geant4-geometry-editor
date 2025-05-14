@@ -2,6 +2,26 @@
 
 The Geant4 Geometry Editor supports several basic geometry shapes that correspond to Geant4's solid types. This guide explains the available shapes and their properties.
 
+## Component Organization
+
+The geometry components are organized into two main categories:
+
+1. **3D Viewer Components** (`src/components/viewer3D/`): These components handle the 3D rendering and transformation of geometry objects:
+   - `BoxObject.jsx`: Renders 3D box geometry
+   - `CylinderObject.jsx`: Renders 3D cylinder geometry
+   - `SphereObject.jsx`: Renders 3D sphere geometry
+   - `EllipsoidObject.jsx`: Renders 3D ellipsoid geometry
+   - `PolyconeObject.jsx`: Renders 3D polycone geometry
+   - `TorusObject.jsx`: Renders 3D torus geometry
+   - `TrapezoidObject.jsx`: Renders 3D trapezoid geometry
+   - `UnionObject.jsx`: Renders 3D boolean union geometry
+   - `TransformableObject.jsx`: Wrapper component that adds transformation controls
+
+2. **Editor Components** (`src/components/geometry-editor/`): These components handle the property editing and UI:
+   - `PropertyEditor.jsx`: Edits properties of selected geometry objects
+   - `AddNewTab.jsx`: Interface for adding new geometry objects
+   - Dialog components for saving, loading, and updating objects
+
 ## Available Shapes
 
 ### Box

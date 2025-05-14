@@ -3,14 +3,14 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
-import TransformableObject from './TransformableObject';
-import BoxObject from './BoxObject';
-import SphereObject from './SphereObject';
-import CylinderObject from './CylinderObject';
-import TrapezoidObject from './TrapezoidObject';
-import TorusObject from './TorusObject';
-import EllipsoidObject from './EllipsoidObject';
-import PolyconeObject from './PolyconeObject';
+import TransformableObject from './viewer3D/TransformableObject';
+import BoxObject from './viewer3D/BoxObject';
+import SphereObject from './viewer3D/SphereObject';
+import CylinderObject from './viewer3D/CylinderObject';
+import TrapezoidObject from './viewer3D/TrapezoidObject';
+import TorusObject from './viewer3D/TorusObject';
+import EllipsoidObject from './viewer3D/EllipsoidObject';
+import PolyconeObject from './viewer3D/PolyconeObject';
 
 // Coordinate system component
 function CoordinateSystem() {
@@ -48,10 +48,6 @@ function CameraSetup({ setFrontViewCamera }) {
   
   return null;
 }
-
-
-
-
 
 
 

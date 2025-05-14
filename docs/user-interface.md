@@ -2,6 +2,23 @@
 
 The Geant4 Geometry Editor interface is divided into several key sections, each serving a specific purpose in the geometry creation process.
 
+## Component Organization
+
+The user interface is built from several modular components:
+
+- **Main Editor Components** (`src/components/`)
+  - `GeometryEditor.jsx`: Main component that orchestrates the editor functionality
+  - `Viewer3D.jsx`: Handles the 3D visualization of geometry objects
+
+- **Property Editing Components** (`src/components/geometry-editor/`)
+  - `PropertyEditor.jsx`: Edits properties of selected geometry objects
+  - `AddNewTab.jsx`: Interface for adding new geometry objects
+  - Dialog components for saving, loading, and updating objects
+
+- **3D Geometry Components** (`src/components/viewer3D/`)
+  - `TransformableObject.jsx`: Wrapper component that adds transformation controls
+  - Various shape objects (Box, Cylinder, Sphere, etc.) for 3D rendering
+
 ## Main Tabs
 
 The application has three main tabs:
