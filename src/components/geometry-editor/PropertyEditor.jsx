@@ -57,8 +57,39 @@ const PropertyEditor = ({
     }
   };
 
+
   // Handle property changes
-  const handlePropertyChange = (property, value, isString = false, skipConversion = false) => {
+  const handlePropertyChange = (key, value) => {
+    const selectedObject = getSelectedGeometryObject();
+    if (!selectedObject) return;
+  
+    const isNumberField = typeof value === 'string' && /^-?\\d*\\.?\\d*$/.test(value);
+  
+    const keys = key.split('.');
+    const updatedObject = { ...selectedObject };
+  
+    let finalValue = value;
+    if (!isNumberField) {
+      const parsed = parseFloat(value);
+      if (!isNaN(parsed)) {
+        finalValue = parsed;
+      }
+    }
+  
+    if (keys.length === 1) {
+      updatedObject[key] = finalValue;
+    } else {
+      const [outer, inner] = keys;
+      updatedObject[outer] = {
+        ...updatedObject[outer],
+        [inner]: finalValue
+      };
+    }
+  
+    onUpdateGeometry(selectedGeometry, updatedObject);
+  };
+  
+/*   const handlePropertyChange = (property, value, isString = false, skipConversion = false) => {
     const selectedObject = getSelectedGeometryObject();
     if (!selectedObject) return;
     
@@ -97,7 +128,7 @@ const PropertyEditor = ({
     
     // Update the geometry with the modified object
     onUpdateGeometry(selectedGeometry, updatedObject);
-  };
+  }; */
 
   // Get the selected object
   const selectedObject = getSelectedGeometryObject();
