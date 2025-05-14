@@ -75,7 +75,7 @@ const UpdateObjectsDialog = ({
     
     try {
       // Import dynamically to avoid server-side issues
-      const { listObjects } = await import('../utils/ObjectStorage');
+      const { listObjects } = await import('../../utils/ObjectStorage');
       const objectsList = await listObjects();
       
       // Sort by name
@@ -102,7 +102,7 @@ const UpdateObjectsDialog = ({
       // Load the object definition to get more information about it
       let objectDefinition = null;
       try {
-        const { loadObject } = await import('../utils/ObjectStorage');
+        const { loadObject } = await import('../../utils/ObjectStorage');
         const result = await loadObject(objectType.fileName);
         if (result.success && result.data) {
           objectDefinition = result.data;
@@ -310,7 +310,7 @@ const UpdateObjectsDialog = ({
     
     try {
       // Load the object definition from storage
-      const { loadObject } = await import('../utils/ObjectStorage');
+      const { loadObject } = await import('../../utils/ObjectStorage');
       const result = await loadObject(selectedType.fileName);
       
       if (!result.success || !result.data) {

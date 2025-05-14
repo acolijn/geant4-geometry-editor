@@ -15,10 +15,10 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import fileSystemManager from '../utils/FileSystemManager';
-import SaveObjectDialog from './SaveObjectDialog';
-import LoadObjectDialog from './LoadObjectDialog';
-import UpdateObjectsDialog from './UpdateObjectsDialog';
-import HitCollectionsDialog from './HitCollectionsDialog';
+import SaveObjectDialog from './geometry-editor/SaveObjectDialog';
+import LoadObjectDialog from './geometry-editor/LoadObjectDialog';
+import UpdateObjectsDialog from './geometry-editor/UpdateObjectsDialog';
+import HitCollectionsDialog from './geometry-editor/HitCollectionsDialog';
 import PropertyEditor from './geometry-editor/PropertyEditor';
 import { 
   Box, 
