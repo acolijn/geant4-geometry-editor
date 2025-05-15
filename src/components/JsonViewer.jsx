@@ -31,11 +31,21 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     Object.defineProperty(formattedPlacement, 'toJSON', {
       enumerable: false,
       value: function() {
-        let result = `{ "x": ${placement.x}, "y": ${placement.y}, "z": ${placement.z}, "unit": "${placement.unit || 'cm'}"`;  
+        // Convert values to mm
+        const posUnit = placement.unit || 'cm';
+        const x = convertToMm(placement.x, posUnit);
+        const y = convertToMm(placement.y, posUnit);
+        const z = convertToMm(placement.z, posUnit);
+        
+        let result = `{ "x": ${x}, "y": ${y}, "z": ${z}`;
         
         if (placement.rotation) {
           const rot = placement.rotation;
-          result += `, "rotation": { "x": ${rot.x}, "y": ${rot.y}, "z": ${rot.z}, "unit": "${rot.unit || 'deg'}" }`;  
+          const rotUnit = rot.unit || 'deg';
+          const rx = convertToRadians(rot.x, rotUnit);
+          const ry = convertToRadians(rot.y, rotUnit);
+          const rz = convertToRadians(rot.z, rotUnit);
+          result += `, "rotation": { "x": ${rx}, "y": ${ry}, "z": ${rz} }`;
         }
         
         result += ` }`;
@@ -90,7 +100,10 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     
     // Convert position and rotation to placement format
     jsonString = convertPositionRotationToPlacement(jsonString);
-    
+  
+    // Add a comment at the top of the JSON to indicate units
+    jsonString = `{\n  // All distances are in mm, all angles are in radians\n${jsonString.substring(1)}`;
+  
     return jsonString;
   };
   
@@ -110,6 +123,11 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       // Convert dimension properties to dimensions object for world
       if (jsonObj.world.size) {
         jsonObj.world.dimensions = createDimensionsObject(jsonObj.world);
+      }
+      
+      // Remove the unit field if it exists
+      if (jsonObj.world.unit) {
+        delete jsonObj.world.unit;
       }
     }
     
@@ -139,91 +157,103 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return formatPlacementJson(jsonWithMarkers);
   };
   
+  // Helper function to convert lengths to mm
+  const convertToMm = (value, unit) => {
+    if (unit === 'cm') return value * 10;
+    if (unit === 'm') return value * 1000;
+    return value; // Already in mm
+  };
+
+  // Helper function to convert angles to radians
+  const convertToRadians = (value, unit) => {
+    if (unit === 'deg') return value * (Math.PI / 180);
+    return value; // Already in radians
+  };
+
   // Create a dimensions object based on the geometry type
   const createDimensionsObject = (geometry) => {
     const dimensions = {};
     
-    // Default unit if not specified
+    // Get the unit to convert from
     const unit = geometry.size?.unit || 'cm';
-    dimensions.unit = unit;
     
     switch(geometry.type) {
       case 'box':
         if (geometry.size) {
-          dimensions.x = geometry.size.x;
-          dimensions.y = geometry.size.y;
-          dimensions.z = geometry.size.z;
+          dimensions.x = convertToMm(geometry.size.x, unit);
+          dimensions.y = convertToMm(geometry.size.y, unit);
+          dimensions.z = convertToMm(geometry.size.z, unit);
           delete geometry.size;
         }
         break;
         
       case 'sphere':
         if (geometry.radius !== undefined) {
-          dimensions.radius = geometry.radius;
+          dimensions.radius = convertToMm(geometry.radius, unit);
           delete geometry.radius;
         }
         break;
         
       case 'cylinder':
         if (geometry.radius !== undefined) {
-          dimensions.radius = geometry.radius;
+          dimensions.radius = convertToMm(geometry.radius, unit);
           delete geometry.radius;
         }
         if (geometry.innerRadius !== undefined) {
-          dimensions.inner_radius = geometry.innerRadius;
+          dimensions.inner_radius = convertToMm(geometry.innerRadius, unit);
           delete geometry.innerRadius;
         }
         if (geometry.height !== undefined) {
-          dimensions.height = geometry.height;
+          dimensions.height = convertToMm(geometry.height, unit);
           delete geometry.height;
         }
         break;
         
       case 'trapezoid':
         if (geometry.dx1 !== undefined) {
-          dimensions.dx1 = geometry.dx1;
+          dimensions.dx1 = convertToMm(geometry.dx1, unit);
           delete geometry.dx1;
         }
         if (geometry.dx2 !== undefined) {
-          dimensions.dx2 = geometry.dx2;
+          dimensions.dx2 = convertToMm(geometry.dx2, unit);
           delete geometry.dx2;
         }
         if (geometry.dy1 !== undefined) {
-          dimensions.dy1 = geometry.dy1;
+          dimensions.dy1 = convertToMm(geometry.dy1, unit);
           delete geometry.dy1;
         }
         if (geometry.dy2 !== undefined) {
-          dimensions.dy2 = geometry.dy2;
+          dimensions.dy2 = convertToMm(geometry.dy2, unit);
           delete geometry.dy2;
         }
         if (geometry.dz !== undefined) {
-          dimensions.dz = geometry.dz;
+          dimensions.dz = convertToMm(geometry.dz, unit);
           delete geometry.dz;
         }
         break;
         
       case 'torus':
         if (geometry.majorRadius !== undefined) {
-          dimensions.major_radius = geometry.majorRadius;
+          dimensions.major_radius = convertToMm(geometry.majorRadius, unit);
           delete geometry.majorRadius;
         }
         if (geometry.minorRadius !== undefined) {
-          dimensions.minor_radius = geometry.minorRadius;
+          dimensions.minor_radius = convertToMm(geometry.minorRadius, unit);
           delete geometry.minorRadius;
         }
         break;
         
       case 'ellipsoid':
         if (geometry.xRadius !== undefined) {
-          dimensions.x_radius = geometry.xRadius;
+          dimensions.x_radius = convertToMm(geometry.xRadius, unit);
           delete geometry.xRadius;
         }
         if (geometry.yRadius !== undefined) {
-          dimensions.y_radius = geometry.yRadius;
+          dimensions.y_radius = convertToMm(geometry.yRadius, unit);
           delete geometry.yRadius;
         }
         if (geometry.zRadius !== undefined) {
-          dimensions.z_radius = geometry.zRadius;
+          dimensions.z_radius = convertToMm(geometry.zRadius, unit);
           delete geometry.zRadius;
         }
         break;
@@ -238,12 +268,12 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           const rminValues = [];
           const rmaxValues = [];
           
-          // Extract values from each section
+          // Extract values from each section and convert to mm
           zSections.forEach(section => {
-            zValues.push(section.z);
+            zValues.push(convertToMm(section.z, unit));
             // Use rMin and rMax (capital M) as in the PropertyEditor
-            rminValues.push(section.rMin || 0);
-            rmaxValues.push(section.rMax || 0);
+            rminValues.push(convertToMm(section.rMin || 0, unit));
+            rmaxValues.push(convertToMm(section.rMax || 0, unit));
           });
           
           // Add the arrays to dimensions
@@ -266,11 +296,11 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
   
   // Create a placement object from position and rotation
   const createPlacementObject = (position, rotation) => {
+    const posUnit = position?.unit || 'cm';
     const placement = {
-      x: position?.x ?? 0,
-      y: position?.y ?? 0,
-      z: position?.z ?? 0,
-      unit: position?.unit || 'cm'
+      x: convertToMm(position?.x ?? 0, posUnit),
+      y: convertToMm(position?.y ?? 0, posUnit),
+      z: convertToMm(position?.z ?? 0, posUnit)
     };
     
     // Add rotation only if it exists and any value is non-zero
@@ -281,11 +311,11 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     );
     
     if (hasRotation) {
+      const rotUnit = rotation?.unit || 'deg';
       placement.rotation = {
-        x: rotation?.x ?? 0,
-        y: rotation?.y ?? 0,
-        z: rotation?.z ?? 0,
-        unit: rotation?.unit || 'deg'
+        x: convertToRadians(rotation?.x ?? 0, rotUnit),
+        y: convertToRadians(rotation?.y ?? 0, rotUnit),
+        z: convertToRadians(rotation?.z ?? 0, rotUnit)
       };
     }
     
@@ -309,7 +339,6 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
         x: cleanPlacement.x,
         y: cleanPlacement.y,
         z: cleanPlacement.z,
-        unit: cleanPlacement.unit,
         rotation: cleanPlacement.rotation
       };
     }
@@ -319,13 +348,13 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
   // Format the JSON with proper indentation for display and fix placement formatting
   const formatPlacementJson = (jsonString) => {
     // Find all placement marker objects and replace them with properly formatted placement strings
-    return jsonString.replace(/\{\s*"__isPlacementMarker":\s*true,\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+),\s*"unit":\s*"([^"]+)"(?:,\s*"rotation":\s*\{\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+),\s*"unit":\s*"([^"]+)"\s*\})?\s*\}/g, (match, x, y, z, unit, rotX, rotY, rotZ, rotUnit) => {
+    return jsonString.replace(/\{\s*"__isPlacementMarker":\s*true,\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+)(?:,\s*"rotation":\s*\{\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+)\s*\})?\s*\}/g, (match, x, y, z, rotX, rotY, rotZ) => {
       if (rotX !== undefined) {
         // With rotation
-        return `{ "x": ${x}, "y": ${y}, "z": ${z}, "unit": "${unit}", "rotation": { "x": ${rotX}, "y": ${rotY}, "z": ${rotZ}, "unit": "${rotUnit}" } }`;
+        return `{ "x": ${x}, "y": ${y}, "z": ${z}, "rotation": { "x": ${rotX}, "y": ${rotY}, "z": ${rotZ} } }`;
       } else {
         // Without rotation
-        return `{ "x": ${x}, "y": ${y}, "z": ${z}, "unit": "${unit}" }`;
+        return `{ "x": ${x}, "y": ${y}, "z": ${z} }`;
       }
     });
   };
