@@ -684,6 +684,7 @@ function App() {
   };
   
   // Pre-process geometries before export to ensure all volumes have mother_volume property
+  // and convert position/rotation to placement format
   const prepareGeometriesForExport = () => {
     // Create a deep copy of the geometries to avoid modifying the state directly
     const exportGeometries = JSON.parse(JSON.stringify(geometries));

@@ -21,6 +21,34 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return JSON.stringify(data, null, 2);
   };
   
+  // Helper function to mark placement objects for single-line formatting
+  const formatPlacement = (placement) => {
+    // Create a special object with a custom toString method
+    // This will be used to format the placement as a single line
+    const formattedPlacement = {};
+    
+    // Add a custom toString method that will be called during JSON.stringify
+    Object.defineProperty(formattedPlacement, 'toJSON', {
+      enumerable: false,
+      value: function() {
+        let result = `{ "x": ${placement.x}, "y": ${placement.y}, "z": ${placement.z}, "unit": "${placement.unit || 'cm'}"`;  
+        
+        if (placement.rotation) {
+          const rot = placement.rotation;
+          result += `, "rotation": { "x": ${rot.x}, "y": ${rot.y}, "z": ${rot.z}, "unit": "${rot.unit || 'deg'}" }`;  
+        }
+        
+        result += ` }`;
+        return result;
+      }
+    });
+    
+    // Copy all properties from the original placement
+    Object.assign(formattedPlacement, placement);
+    
+    return formattedPlacement;
+  };
+  
   // Generate the geometry JSON with hits collections
   const generateGeometryJson = () => {
     // Start with the existing format
@@ -57,7 +85,109 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       }
     }
     
-    return formatJson(jsonData);
+    // Custom JSON serialization to format placement objects on a single line
+    let jsonString = JSON.stringify(jsonData, null, 2);
+    
+    // Convert position and rotation to placement format
+    jsonString = convertPositionRotationToPlacement(jsonString);
+    
+    return jsonString;
+  };
+  
+  // Helper function to convert position and rotation to placement format in JSON string
+  const convertPositionRotationToPlacement = (jsonString) => {
+    // Create a new JSON object to work with
+    const jsonObj = JSON.parse(jsonString);
+    
+    // Process the world object
+    if (jsonObj.world && jsonObj.world.position) {
+      const placement = createPlacementObject(jsonObj.world.position, jsonObj.world.rotation);
+      jsonObj.world.placement = placement;
+      delete jsonObj.world.position;
+      delete jsonObj.world.rotation;
+    }
+    
+    // Process all volumes
+    if (jsonObj.volumes && Array.isArray(jsonObj.volumes)) {
+      jsonObj.volumes.forEach(volume => {
+        if (volume.position) {
+          const placement = createPlacementObject(volume.position, volume.rotation);
+          volume.placement = placement;
+          delete volume.position;
+          delete volume.rotation;
+        }
+      });
+    }
+    
+    // Convert back to JSON string with custom replacer for placement objects
+    const jsonWithMarkers = JSON.stringify(jsonObj, placementReplacer, 2);
+    return formatPlacementJson(jsonWithMarkers);
+  };
+  
+  // Create a placement object from position and rotation
+  const createPlacementObject = (position, rotation) => {
+    const placement = {
+      x: position?.x ?? 0,
+      y: position?.y ?? 0,
+      z: position?.z ?? 0,
+      unit: position?.unit || 'cm'
+    };
+    
+    // Add rotation only if it exists and any value is non-zero
+    const hasRotation = rotation && (
+      (rotation.x && rotation.x !== 0) || 
+      (rotation.y && rotation.y !== 0) || 
+      (rotation.z && rotation.z !== 0)
+    );
+    
+    if (hasRotation) {
+      placement.rotation = {
+        x: rotation?.x ?? 0,
+        y: rotation?.y ?? 0,
+        z: rotation?.z ?? 0,
+        unit: rotation?.unit || 'deg'
+      };
+    }
+    
+    // Mark this as a special placement object
+    placement._isPlacement = true;
+    
+    return placement;
+  };
+  
+  // Custom replacer function for JSON.stringify to format placement objects
+  const placementReplacer = (key, value) => {
+    // Check if this is a placement object
+    if (value && value._isPlacement === true) {
+      // Remove the marker property
+      const { _isPlacement, ...cleanPlacement } = value;
+      
+      // Create a special object that will be stringified without the placement structure
+      // but will be recognized by our custom formatter
+      return {
+        __isPlacementMarker: true,
+        x: cleanPlacement.x,
+        y: cleanPlacement.y,
+        z: cleanPlacement.z,
+        unit: cleanPlacement.unit,
+        rotation: cleanPlacement.rotation
+      };
+    }
+    return value;
+  };
+  
+  // Format the JSON with proper indentation for display and fix placement formatting
+  const formatPlacementJson = (jsonString) => {
+    // Find all placement marker objects and replace them with properly formatted placement strings
+    return jsonString.replace(/\{\s*"__isPlacementMarker":\s*true,\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+),\s*"unit":\s*"([^"]+)"(?:,\s*"rotation":\s*\{\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+),\s*"unit":\s*"([^"]+)"\s*\})?\s*\}/g, (match, x, y, z, unit, rotX, rotY, rotZ, rotUnit) => {
+      if (rotX !== undefined) {
+        // With rotation
+        return `{ "x": ${x}, "y": ${y}, "z": ${z}, "unit": "${unit}", "rotation": { "x": ${rotX}, "y": ${rotY}, "z": ${rotZ}, "unit": "${rotUnit}" } }`;
+      } else {
+        // Without rotation
+        return `{ "x": ${x}, "y": ${y}, "z": ${z}, "unit": "${unit}" }`;
+      }
+    });
   };
   
   const geometryJson = generateGeometryJson();
