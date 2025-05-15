@@ -59,12 +59,50 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return formattedPlacement;
   };
   
+  // Ensure polycone and polyhedra z-planes are sorted
+  const ensureOrderedZPlanes = (volume) => {
+    if (volume.type === 'polycone' || volume.type === 'polyhedra') {
+      if (volume.dimensions && 
+          Array.isArray(volume.dimensions.z) && 
+          Array.isArray(volume.dimensions.rmax)) {
+        
+        // Create an array of indices
+        const indices = Array.from({ length: volume.dimensions.z.length }, (_, i) => i);
+        
+        // Sort indices based on z values
+        indices.sort((a, b) => volume.dimensions.z[a] - volume.dimensions.z[b]);
+        
+        // Check if already sorted
+        const isSorted = indices.every((val, idx) => val === idx);
+        if (!isSorted) {
+          // Create new sorted arrays
+          const sortedZ = indices.map(i => volume.dimensions.z[i]);
+          const sortedRmax = indices.map(i => volume.dimensions.rmax[i]);
+          
+          // Handle rmin if it exists
+          let sortedRmin = [];
+          if (Array.isArray(volume.dimensions.rmin)) {
+            sortedRmin = indices.map(i => volume.dimensions.rmin[i]);
+            volume.dimensions.rmin = sortedRmin;
+          }
+          
+          // Update the volume with sorted arrays
+          volume.dimensions.z = sortedZ;
+          volume.dimensions.rmax = sortedRmax;
+          
+          console.log(`Sorted z-planes for ${volume.name} (${volume.type})`);
+        }
+      }
+    }
+    return volume;
+  };
+  
   // Generate the geometry JSON with hits collections
   const generateGeometryJson = () => {
     // Start with the existing format
     const jsonData = {
       world: geometries.world,
-      volumes: geometries.volumes || []
+      volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))
     };
     
     // Find all active volumes and their hits collections
@@ -100,9 +138,6 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     
     // Convert position and rotation to placement format
     jsonString = convertPositionRotationToPlacement(jsonString);
-  
-    // Add a comment at the top of the JSON to indicate units
-    jsonString = `{\n  // All distances are in mm, all angles are in radians\n${jsonString.substring(1)}`;
   
     return jsonString;
   };
@@ -332,31 +367,31 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       // Remove the marker property
       const { _isPlacement, ...cleanPlacement } = value;
       
-      // Create a special object that will be stringified without the placement structure
-      // but will be recognized by our custom formatter
-      return {
-        __isPlacementMarker: true,
+      // Create a clean object without any internal markers
+      const result = {
         x: cleanPlacement.x,
         y: cleanPlacement.y,
-        z: cleanPlacement.z,
-        rotation: cleanPlacement.rotation
+        z: cleanPlacement.z
       };
+      
+      // Add rotation if it exists
+      if (cleanPlacement.rotation) {
+        result.rotation = {
+          x: cleanPlacement.rotation.x,
+          y: cleanPlacement.rotation.y,
+          z: cleanPlacement.rotation.z
+        };
+      }
+      
+      return result;
     }
     return value;
   };
   
   // Format the JSON with proper indentation for display and fix placement formatting
   const formatPlacementJson = (jsonString) => {
-    // Find all placement marker objects and replace them with properly formatted placement strings
-    return jsonString.replace(/\{\s*"__isPlacementMarker":\s*true,\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+)(?:,\s*"rotation":\s*\{\s*"x":\s*([\d.-]+),\s*"y":\s*([\d.-]+),\s*"z":\s*([\d.-]+)\s*\})?\s*\}/g, (match, x, y, z, rotX, rotY, rotZ) => {
-      if (rotX !== undefined) {
-        // With rotation
-        return `{ "x": ${x}, "y": ${y}, "z": ${z}, "rotation": { "x": ${rotX}, "y": ${rotY}, "z": ${rotZ} } }`;
-      } else {
-        // Without rotation
-        return `{ "x": ${x}, "y": ${y}, "z": ${z} }`;
-      }
-    });
+    // The JSON is already properly formatted by JSON.stringify, so we don't need to do any special formatting
+    return jsonString;
   };
   
   const geometryJson = generateGeometryJson();
