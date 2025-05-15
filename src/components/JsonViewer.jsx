@@ -95,6 +95,7 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
   };
   
   // Helper function to convert position and rotation to placement format in JSON string
+  // and dimension properties to a dimensions object, also removing redundant unit fields
   const convertPositionRotationToPlacement = (jsonString) => {
     // Create a new JSON object to work with
     const jsonObj = JSON.parse(jsonString);
@@ -105,16 +106,30 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       jsonObj.world.placement = placement;
       delete jsonObj.world.position;
       delete jsonObj.world.rotation;
+      
+      // Convert dimension properties to dimensions object for world
+      if (jsonObj.world.size) {
+        jsonObj.world.dimensions = createDimensionsObject(jsonObj.world);
+      }
     }
     
     // Process all volumes
     if (jsonObj.volumes && Array.isArray(jsonObj.volumes)) {
       jsonObj.volumes.forEach(volume => {
+        // Convert position and rotation to placement
         if (volume.position) {
           const placement = createPlacementObject(volume.position, volume.rotation);
           volume.placement = placement;
           delete volume.position;
           delete volume.rotation;
+        }
+        
+        // Convert dimension properties to dimensions object
+        volume.dimensions = createDimensionsObject(volume);
+        
+        // Remove redundant unit field at the top level since it's already in dimensions and placement
+        if (volume.unit) {
+          delete volume.unit;
         }
       });
     }
@@ -122,6 +137,131 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     // Convert back to JSON string with custom replacer for placement objects
     const jsonWithMarkers = JSON.stringify(jsonObj, placementReplacer, 2);
     return formatPlacementJson(jsonWithMarkers);
+  };
+  
+  // Create a dimensions object based on the geometry type
+  const createDimensionsObject = (geometry) => {
+    const dimensions = {};
+    
+    // Default unit if not specified
+    const unit = geometry.size?.unit || 'cm';
+    dimensions.unit = unit;
+    
+    switch(geometry.type) {
+      case 'box':
+        if (geometry.size) {
+          dimensions.x = geometry.size.x;
+          dimensions.y = geometry.size.y;
+          dimensions.z = geometry.size.z;
+          delete geometry.size;
+        }
+        break;
+        
+      case 'sphere':
+        if (geometry.radius !== undefined) {
+          dimensions.radius = geometry.radius;
+          delete geometry.radius;
+        }
+        break;
+        
+      case 'cylinder':
+        if (geometry.radius !== undefined) {
+          dimensions.radius = geometry.radius;
+          delete geometry.radius;
+        }
+        if (geometry.innerRadius !== undefined) {
+          dimensions.inner_radius = geometry.innerRadius;
+          delete geometry.innerRadius;
+        }
+        if (geometry.height !== undefined) {
+          dimensions.height = geometry.height;
+          delete geometry.height;
+        }
+        break;
+        
+      case 'trapezoid':
+        if (geometry.dx1 !== undefined) {
+          dimensions.dx1 = geometry.dx1;
+          delete geometry.dx1;
+        }
+        if (geometry.dx2 !== undefined) {
+          dimensions.dx2 = geometry.dx2;
+          delete geometry.dx2;
+        }
+        if (geometry.dy1 !== undefined) {
+          dimensions.dy1 = geometry.dy1;
+          delete geometry.dy1;
+        }
+        if (geometry.dy2 !== undefined) {
+          dimensions.dy2 = geometry.dy2;
+          delete geometry.dy2;
+        }
+        if (geometry.dz !== undefined) {
+          dimensions.dz = geometry.dz;
+          delete geometry.dz;
+        }
+        break;
+        
+      case 'torus':
+        if (geometry.majorRadius !== undefined) {
+          dimensions.major_radius = geometry.majorRadius;
+          delete geometry.majorRadius;
+        }
+        if (geometry.minorRadius !== undefined) {
+          dimensions.minor_radius = geometry.minorRadius;
+          delete geometry.minorRadius;
+        }
+        break;
+        
+      case 'ellipsoid':
+        if (geometry.xRadius !== undefined) {
+          dimensions.x_radius = geometry.xRadius;
+          delete geometry.xRadius;
+        }
+        if (geometry.yRadius !== undefined) {
+          dimensions.y_radius = geometry.yRadius;
+          delete geometry.yRadius;
+        }
+        if (geometry.zRadius !== undefined) {
+          dimensions.z_radius = geometry.zRadius;
+          delete geometry.zRadius;
+        }
+        break;
+        
+      case 'polycone':
+        if (geometry.zSections && Array.isArray(geometry.zSections)) {
+          // Extract z_sections from the zSections array
+          const zSections = geometry.zSections;
+          
+          // Create arrays for z, rmin, and rmax
+          const zValues = [];
+          const rminValues = [];
+          const rmaxValues = [];
+          
+          // Extract values from each section
+          zSections.forEach(section => {
+            zValues.push(section.z);
+            // Use rMin and rMax (capital M) as in the PropertyEditor
+            rminValues.push(section.rMin || 0);
+            rmaxValues.push(section.rMax || 0);
+          });
+          
+          // Add the arrays to dimensions
+          dimensions.z = zValues;
+          dimensions.rmin = rminValues;
+          dimensions.rmax = rmaxValues;
+          
+          // Remove the original zSections property
+          delete geometry.zSections;
+        }
+        break;
+        
+      default:
+        // For unknown types, just return an empty dimensions object
+        break;
+    }
+    
+    return dimensions;
   };
   
   // Create a placement object from position and rotation
