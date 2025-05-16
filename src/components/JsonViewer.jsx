@@ -192,6 +192,11 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           convertedVolume.color = volume.color;
         }
         
+        // Remove any unit properties
+        if (volume.unit) {
+          delete volume.unit;
+        }
+        
         // Handle union solids with components specially
         if (volume.type === 'union' && volume.components && Array.isArray(volume.components)) {
           // Create components array
@@ -226,18 +231,22 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             // Process placement for each component
             if (component.placement && Array.isArray(component.placement)) {
               convertedComponent.placement = component.placement.map(place => {
+                // Get units for conversion
+                const posUnit = place.unit || 'cm';
+                
                 const convertedPlace = {
-                  x: Number(place.x || 0),
-                  y: Number(place.y || 0),
-                  z: Number(place.z || 0)
+                  x: convertToMm(Number(place.x || 0), posUnit),
+                  y: convertToMm(Number(place.y || 0), posUnit),
+                  z: convertToMm(Number(place.z || 0), posUnit)
                 };
                 
-                // Add rotation if present
+                // Add rotation if present (convert to radians)
                 if (place.rotation) {
+                  const rotUnit = place.rotation.unit || 'deg';
                   convertedPlace.rotation = {
-                    x: Number(place.rotation.x || 0),
-                    y: Number(place.rotation.y || 0),
-                    z: Number(place.rotation.z || 0)
+                    x: convertToRadians(Number(place.rotation.x || 0), rotUnit),
+                    y: convertToRadians(Number(place.rotation.y || 0), rotUnit),
+                    z: convertToRadians(Number(place.rotation.z || 0), rotUnit)
                   };
                 }
                 
@@ -250,18 +259,21 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           
           // Add placement for the union itself
           if (volume.position) {
+            // Convert position values to mm
+            const posUnit = volume.position.unit || 'cm';
             convertedVolume.placement = [{
-              x: Number(volume.position.x || 0),
-              y: Number(volume.position.y || 0),
-              z: Number(volume.position.z || 0)
+              x: convertToMm(Number(volume.position.x || 0), posUnit),
+              y: convertToMm(Number(volume.position.y || 0), posUnit),
+              z: convertToMm(Number(volume.position.z || 0), posUnit)
             }];
             
-            // Add rotation if present
+            // Add rotation if present (convert to radians)
             if (volume.rotation) {
+              const rotUnit = volume.rotation.unit || 'deg';
               convertedVolume.placement[0].rotation = {
-                x: Number(volume.rotation.x || 0),
-                y: Number(volume.rotation.y || 0),
-                z: Number(volume.rotation.z || 0)
+                x: convertToRadians(Number(volume.rotation.x || 0), rotUnit),
+                y: convertToRadians(Number(volume.rotation.y || 0), rotUnit),
+                z: convertToRadians(Number(volume.rotation.z || 0), rotUnit)
               };
             }
           } else {
@@ -275,18 +287,21 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           
           // Convert position and rotation to placement array
           if (volume.position) {
+            // Convert position values to mm
+            const posUnit = volume.position.unit || 'cm';
             convertedVolume.placement = [{
-              x: Number(volume.position.x || 0),
-              y: Number(volume.position.y || 0),
-              z: Number(volume.position.z || 0)
+              x: convertToMm(Number(volume.position.x || 0), posUnit),
+              y: convertToMm(Number(volume.position.y || 0), posUnit),
+              z: convertToMm(Number(volume.position.z || 0), posUnit)
             }];
             
-            // Add rotation if present
+            // Add rotation if present (convert to radians)
             if (volume.rotation) {
+              const rotUnit = volume.rotation.unit || 'deg';
               convertedVolume.placement[0].rotation = {
-                x: Number(volume.rotation.x || 0),
-                y: Number(volume.rotation.y || 0),
-                z: Number(volume.rotation.z || 0)
+                x: convertToRadians(Number(volume.rotation.x || 0), rotUnit),
+                y: convertToRadians(Number(volume.rotation.y || 0), rotUnit),
+                z: convertToRadians(Number(volume.rotation.z || 0), rotUnit)
               };
             }
           } else {
@@ -302,6 +317,35 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       // Replace the original volumes with the converted ones
       jsonObj.volumes = convertedVolumes;
     }
+    
+    // Final cleanup to remove any remaining unit tags
+    const removeUnitTags = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      
+      // Remove unit property if present
+      if ('unit' in obj) {
+        delete obj.unit;
+      }
+      
+      // Process all properties recursively
+      for (const key in obj) {
+        if (obj[key] && typeof obj[key] === 'object') {
+          removeUnitTags(obj[key]);
+        }
+      }
+      
+      // Process arrays
+      if (Array.isArray(obj)) {
+        obj.forEach(item => {
+          if (item && typeof item === 'object') {
+            removeUnitTags(item);
+          }
+        });
+      }
+    };
+    
+    // Apply the cleanup to remove all unit tags
+    removeUnitTags(jsonObj);
     
     // Convert back to JSON string with custom replacer for placement objects
     const jsonWithMarkers = JSON.stringify(jsonObj, placementReplacer, 2);
