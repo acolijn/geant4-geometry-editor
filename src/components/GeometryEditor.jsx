@@ -90,6 +90,32 @@ const GeometryEditor = ({
   const [firstSolid, setFirstSolid] = useState('');
   // For union solids: second solid selection
   const [secondSolid, setSecondSolid] = useState('');
+  // For multi-component union solids: number of additional components beyond the first two
+  const [additionalComponents, setAdditionalComponents] = useState(0);
+  // For multi-component union solids: values of the additional components
+  const [additionalComponentsValues, setAdditionalComponentsValues] = useState([]);
+  
+  // Handler for adding a new component to the union
+  const handleAddComponent = () => {
+    setAdditionalComponents(prev => prev + 1);
+  };
+  
+  // Handler for removing the last component from the union
+  const handleRemoveComponent = () => {
+    if (additionalComponents > 0) {
+      setAdditionalComponents(prev => prev - 1);
+      setAdditionalComponentsValues(prev => prev.slice(0, -1));
+    }
+  };
+  
+  // Handler for changing the value of an additional component
+  const handleAdditionalComponentChange = (index, value) => {
+    setAdditionalComponentsValues(prev => {
+      const newValues = [...prev];
+      newValues[index] = value;
+      return newValues;
+    });
+  };
   
   // ===== Dialog States =====
   // Save object dialog
@@ -935,105 +961,121 @@ const GeometryEditor = ({
    * For basic geometries, it creates objects with default properties based on the type.
    */
   const handleAddGeometry = () => {
-    // For union solids, we need to validate that both solids are selected
+    // For union solids, we need to validate that at least two solids are selected
     if (newGeometryType === 'union') {
       if (!firstSolid || !secondSolid) {
         setImportAlert({
           show: true,
-          message: 'Please select both solids for the union operation.',
+          message: 'Please select at least two components for the union operation.',
           severity: 'error'
         });
         return;
       }
       
-      // Get the indices of the selected solids
-      const firstSolidIndex = parseInt(firstSolid.split('-')[1]);
-      const secondSolidIndex = parseInt(secondSolid.split('-')[1]);
+      // Collect all component selections
+      const componentSelections = [firstSolid, secondSolid, ...additionalComponentsValues.filter(v => v)];
       
-      // Get the actual solid objects
-      const firstSolidObj = geometries.volumes[firstSolidIndex];
-      const secondSolidObj = geometries.volumes[secondSolidIndex];
-      
-      if (!firstSolidObj || !secondSolidObj) {
+      // Validate that we have at least two valid components
+      if (componentSelections.length < 2) {
         setImportAlert({
           show: true,
-          message: 'One or both of the selected solids could not be found.',
+          message: 'Please select at least two components for the union operation.',
           severity: 'error'
         });
         return;
       }
       
-      // Create the union solid in a format compatible with the GeometryParser
-      // For a self-contained union solid, we need to include the complete definitions of both solids
-      // rather than just referencing them by name
+      // Get the indices and objects for all components
+      const components = [];
+      const componentIndices = [];
       
+      for (const selection of componentSelections) {
+        const index = parseInt(selection.split('-')[1]);
+        const solidObj = geometries.volumes[index];
+        
+        if (!solidObj) {
+          setImportAlert({
+            show: true,
+            message: `One of the selected components (index ${index}) could not be found.`,
+            severity: 'error'
+          });
+          return;
+        }
+        
+        components.push(solidObj);
+        componentIndices.push(index);
+      }
+      
+      // Create a name based on the components
+      const unionName = `Union_${componentIndices.join('_')}`;
+      
+      // Helper function to extract solid properties
+      const extractSolidProperties = (solid) => ({
+        type: solid.type,
+        ...(solid.size && { size: { ...solid.size } }),
+        ...(solid.radius && { radius: solid.radius }),
+        ...(solid.height && { height: solid.height }),
+        ...(solid.inner_radius && { inner_radius: solid.inner_radius }),
+        ...(solid.innerRadius && { innerRadius: solid.innerRadius }),
+        ...(solid.dx1 && { dx1: solid.dx1 }),
+        ...(solid.dx2 && { dx2: solid.dx2 }),
+        ...(solid.dy1 && { dy1: solid.dy1 }),
+        ...(solid.dy2 && { dy2: solid.dy2 }),
+        ...(solid.dz && { dz: solid.dz }),
+        ...(solid.xRadius && { xRadius: solid.xRadius }),
+        ...(solid.yRadius && { yRadius: solid.yRadius }),
+        ...(solid.zRadius && { zRadius: solid.zRadius }),
+        ...(solid.majorRadius && { majorRadius: solid.majorRadius }),
+        ...(solid.minorRadius && { minorRadius: solid.minorRadius }),
+        ...(solid.zSections && { zSections: [...solid.zSections] }),
+        ...(solid.unit && { unit: solid.unit })
+      });
+      
+      // Create the union solid with the new multi-component format
       const newGeometry = {
         type: 'union',
-        name: `Union_${firstSolidIndex}_${secondSolidIndex}`,
+        name: unionName,
         material: 'G4_AIR',
         position: { x: 0, y: 0, z: 0, unit: 'cm' },
         rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
         mother_volume: newMotherVolume,
-        // Inline definitions of the solids being combined
-        solid1: {
-          // Copy all properties of the first solid except position, rotation, and mother_volume
-          // which are specific to the placement, not the solid definition
-          type: firstSolidObj.type,
-          ...(firstSolidObj.size && { size: { ...firstSolidObj.size } }),
-          ...(firstSolidObj.radius && { radius: firstSolidObj.radius }),
-          ...(firstSolidObj.height && { height: firstSolidObj.height }),
-          ...(firstSolidObj.inner_radius && { inner_radius: firstSolidObj.inner_radius }),
-          ...(firstSolidObj.innerRadius && { innerRadius: firstSolidObj.innerRadius }),
-          ...(firstSolidObj.dx1 && { dx1: firstSolidObj.dx1 }),
-          ...(firstSolidObj.dx2 && { dx2: firstSolidObj.dx2 }),
-          ...(firstSolidObj.dy1 && { dy1: firstSolidObj.dy1 }),
-          ...(firstSolidObj.dy2 && { dy2: firstSolidObj.dy2 }),
-          ...(firstSolidObj.dz && { dz: firstSolidObj.dz }),
-          ...(firstSolidObj.xRadius && { xRadius: firstSolidObj.xRadius }),
-          ...(firstSolidObj.yRadius && { yRadius: firstSolidObj.yRadius }),
-          ...(firstSolidObj.zRadius && { zRadius: firstSolidObj.zRadius }),
-          ...(firstSolidObj.majorRadius && { majorRadius: firstSolidObj.majorRadius }),
-          ...(firstSolidObj.minorRadius && { minorRadius: firstSolidObj.minorRadius }),
-          ...(firstSolidObj.zSections && { zSections: [...firstSolidObj.zSections] }),
-          ...(firstSolidObj.unit && { unit: firstSolidObj.unit })
-        },
-        solid2: {
-          // Copy all properties of the second solid except position, rotation, and mother_volume
-          type: secondSolidObj.type,
-          ...(secondSolidObj.size && { size: { ...secondSolidObj.size } }),
-          ...(secondSolidObj.radius && { radius: secondSolidObj.radius }),
-          ...(secondSolidObj.height && { height: secondSolidObj.height }),
-          ...(secondSolidObj.inner_radius && { inner_radius: secondSolidObj.inner_radius }),
-          ...(secondSolidObj.innerRadius && { innerRadius: secondSolidObj.innerRadius }),
-          ...(secondSolidObj.dx1 && { dx1: secondSolidObj.dx1 }),
-          ...(secondSolidObj.dx2 && { dx2: secondSolidObj.dx2 }),
-          ...(secondSolidObj.dy1 && { dy1: secondSolidObj.dy1 }),
-          ...(secondSolidObj.dy2 && { dy2: secondSolidObj.dy2 }),
-          ...(secondSolidObj.dz && { dz: secondSolidObj.dz }),
-          ...(secondSolidObj.xRadius && { xRadius: secondSolidObj.xRadius }),
-          ...(secondSolidObj.yRadius && { yRadius: secondSolidObj.yRadius }),
-          ...(secondSolidObj.zRadius && { zRadius: secondSolidObj.zRadius }),
-          ...(secondSolidObj.majorRadius && { majorRadius: secondSolidObj.majorRadius }),
-          ...(secondSolidObj.minorRadius && { minorRadius: secondSolidObj.minorRadius }),
-          ...(secondSolidObj.zSections && { zSections: [...secondSolidObj.zSections] }),
-          ...(secondSolidObj.unit && { unit: secondSolidObj.unit })
-        },
-        // Relative position of the second solid with respect to the first
-        // Set a default offset along the z-axis so the solids don't completely overlap
+        
+        // For backward compatibility, keep solid1 and solid2 for the first two components
+        solid1: extractSolidProperties(components[0]),
+        solid2: extractSolidProperties(components[1]),
+        
+        // Add the new components array for multi-component unions
+        components: components.map((component, index) => ({
+          name: component.name || `Component_${index + 1}`,
+          shape: component.type,
+          dimensions: extractSolidProperties(component),
+          placement: [
+            { 
+              x: 0, 
+              y: 0, 
+              z: index * 5, // Stagger components along z-axis for visibility
+              rotation: { x: 0, y: 0, z: 0 }
+            }
+          ]
+        })),
+        
+        // Relative position of the second solid with respect to the first (for backward compatibility)
         relative_position: { x: 0, y: 0, z: 5, unit: 'cm' },
         relative_rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
-        // Store the volume indices for the editor's reference
+        
+        // Store component indices for the editor's reference
         _editorData: {
-          firstSolidIndex,
-          secondSolidIndex
+          componentIndices
         }
       };
       
       onAddGeometry(newGeometry);
       
-      // Reset the solid selections after creating the union
+      // Reset all selections after creating the union
       setFirstSolid('');
       setSecondSolid('');
+      setAdditionalComponents(0);
+      setAdditionalComponentsValues([]);
       return;
     }
     
@@ -1294,6 +1336,11 @@ const GeometryEditor = ({
         setFirstSolid={setFirstSolid}
         secondSolid={secondSolid}
         setSecondSolid={setSecondSolid}
+        additionalComponents={additionalComponents}
+        additionalComponentsValues={additionalComponentsValues}
+        handleAddComponent={handleAddComponent}
+        handleRemoveComponent={handleRemoveComponent}
+        handleAdditionalComponentChange={handleAdditionalComponentChange}
         geometries={geometries}
         handleAddGeometry={handleAddGeometry}
         setLoadObjectDialogOpen={setLoadObjectDialogOpen}

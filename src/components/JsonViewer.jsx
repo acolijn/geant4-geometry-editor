@@ -168,23 +168,139 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     
     // Process all volumes
     if (jsonObj.volumes && Array.isArray(jsonObj.volumes)) {
+      // Create a new array to hold the converted volumes
+      const convertedVolumes = [];
+      
       jsonObj.volumes.forEach(volume => {
-        // Convert position and rotation to placement
-        if (volume.position) {
-          const placement = createPlacementObject(volume.position, volume.rotation);
-          volume.placement = placement;
-          delete volume.position;
-          delete volume.rotation;
+        // Create a new volume object with the converted format
+        const convertedVolume = {};
+        
+        // Copy the name
+        convertedVolume.name = volume.name;
+        
+        // Convert mother_volume to parent
+        convertedVolume.parent = volume.mother_volume || 'World';
+        
+        // Convert type to shape
+        convertedVolume.shape = volume.type;
+        
+        // Copy material
+        convertedVolume.material = volume.material;
+        
+        // Add color if available
+        if (volume.color) {
+          convertedVolume.color = volume.color;
         }
         
-        // Convert dimension properties to dimensions object
-        volume.dimensions = createDimensionsObject(volume);
-        
-        // Remove redundant unit field at the top level since it's already in dimensions and placement
-        if (volume.unit) {
-          delete volume.unit;
+        // Handle union solids with components specially
+        if (volume.type === 'union' && volume.components && Array.isArray(volume.components)) {
+          // Create components array
+          convertedVolume.components = [];
+          
+          // Process each component in the union
+          volume.components.forEach(component => {
+            const convertedComponent = {
+              name: component.name,
+              shape: component.shape || 'box'
+            };
+            
+            // Convert dimensions based on shape type
+            if (component.dimensions) {
+              const dims = component.dimensions;
+              
+              if (convertedComponent.shape === 'tubs' || convertedComponent.shape === 'tube') {
+                // Convert cylinder dimensions to tubs format
+                convertedComponent.dimensions = {
+                  rMin: dims.inner_radius || 0.0,
+                  rMax: dims.radius || 0.0,
+                  z: dims.height || 0.0,
+                  startAngle: 0.0,
+                  spanningAngle: 360.0
+                };
+              } else {
+                // Copy other dimensions as is
+                convertedComponent.dimensions = { ...dims };
+              }
+            }
+            
+            // Process placement for each component
+            if (component.placement && Array.isArray(component.placement)) {
+              convertedComponent.placement = component.placement.map(place => {
+                const convertedPlace = {
+                  x: Number(place.x || 0),
+                  y: Number(place.y || 0),
+                  z: Number(place.z || 0)
+                };
+                
+                // Add rotation if present
+                if (place.rotation) {
+                  convertedPlace.rotation = {
+                    x: Number(place.rotation.x || 0),
+                    y: Number(place.rotation.y || 0),
+                    z: Number(place.rotation.z || 0)
+                  };
+                }
+                
+                return convertedPlace;
+              });
+            }
+            
+            convertedVolume.components.push(convertedComponent);
+          });
+          
+          // Add placement for the union itself
+          if (volume.position) {
+            convertedVolume.placement = [{
+              x: Number(volume.position.x || 0),
+              y: Number(volume.position.y || 0),
+              z: Number(volume.position.z || 0)
+            }];
+            
+            // Add rotation if present
+            if (volume.rotation) {
+              convertedVolume.placement[0].rotation = {
+                x: Number(volume.rotation.x || 0),
+                y: Number(volume.rotation.y || 0),
+                z: Number(volume.rotation.z || 0)
+              };
+            }
+          } else {
+            // Default placement at origin
+            convertedVolume.placement = [{ x: 0.0, y: 0.0, z: 0.0 }];
+          }
+        } else {
+          // Standard non-union volumes
+          // Convert dimension properties to dimensions object
+          convertedVolume.dimensions = createDimensionsObject(volume);
+          
+          // Convert position and rotation to placement array
+          if (volume.position) {
+            convertedVolume.placement = [{
+              x: Number(volume.position.x || 0),
+              y: Number(volume.position.y || 0),
+              z: Number(volume.position.z || 0)
+            }];
+            
+            // Add rotation if present
+            if (volume.rotation) {
+              convertedVolume.placement[0].rotation = {
+                x: Number(volume.rotation.x || 0),
+                y: Number(volume.rotation.y || 0),
+                z: Number(volume.rotation.z || 0)
+              };
+            }
+          } else {
+            // Default placement at origin
+            convertedVolume.placement = [{ x: 0.0, y: 0.0, z: 0.0 }];
+          }
         }
+        
+        // Add the converted volume to the array
+        convertedVolumes.push(convertedVolume);
       });
+      
+      // Replace the original volumes with the converted ones
+      jsonObj.volumes = convertedVolumes;
     }
     
     // Convert back to JSON string with custom replacer for placement objects

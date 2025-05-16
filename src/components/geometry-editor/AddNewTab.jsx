@@ -16,7 +16,7 @@ import {
  * 
  * This component renders the UI for adding new geometry objects to the scene.
  * It includes options for importing existing objects, creating new primitive shapes,
- * and creating union solids by combining two existing objects.
+ * and creating union solids by combining two or more existing objects.
  */
 const AddNewTab = ({
   importAlert,
@@ -29,6 +29,11 @@ const AddNewTab = ({
   setFirstSolid,
   secondSolid,
   setSecondSolid,
+  additionalComponents,
+  additionalComponentsValues,
+  handleAddComponent,
+  handleRemoveComponent,
+  handleAdditionalComponentChange,
   geometries,
   handleAddGeometry,
   setLoadObjectDialogOpen,
@@ -93,49 +98,108 @@ const AddNewTab = ({
         <Box sx={{ mt: 2, mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: '4px', backgroundColor: '#f9f9f9' }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>Union Solid Configuration</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            A union solid combines two existing solids. Select the two solids to combine.
+            A union solid combines multiple existing solids. Select at least two solids to combine.
           </Typography>
           
-          <FormControl fullWidth margin="normal">
-            <InputLabel>First Solid</InputLabel>
-            <Select
-              label="First Solid"
-              value={firstSolid}
-              onChange={(e) => setFirstSolid(e.target.value)}
-            >
-              <MenuItem value=""><em>Select a solid</em></MenuItem>
-              {geometries.volumes.map((volume, index) => (
-                <MenuItem key={`first-${index}`} value={`volume-${index}`}>
-                  {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Second Solid</InputLabel>
-            <Select
-              label="Second Solid"
-              value={secondSolid}
-              onChange={(e) => setSecondSolid(e.target.value)}
-              disabled={!firstSolid} // Disable until first solid is selected
-            >
-              <MenuItem value=""><em>Select a solid</em></MenuItem>
-              {geometries.volumes.map((volume, index) => (
-                <MenuItem 
-                  key={`second-${index}`} 
-                  value={`volume-${index}`}
-                  disabled={`volume-${index}` === firstSolid} // Can't select the same solid twice
+          {/* Component selection section */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Components</Typography>
+            
+            {/* First component (always required) */}
+            <FormControl fullWidth margin="normal">
+              <InputLabel>First Component</InputLabel>
+              <Select
+                label="First Component"
+                value={firstSolid}
+                onChange={(e) => setFirstSolid(e.target.value)}
+              >
+                <MenuItem value=""><em>Select a solid</em></MenuItem>
+                {geometries.volumes.map((volume, index) => (
+                  <MenuItem key={`first-${index}`} value={`volume-${index}`}>
+                    {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            {/* Second component (always required) */}
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Second Component</InputLabel>
+              <Select
+                label="Second Component"
+                value={secondSolid}
+                onChange={(e) => setSecondSolid(e.target.value)}
+                disabled={!firstSolid} // Disable until first component is selected
+              >
+                <MenuItem value=""><em>Select a solid</em></MenuItem>
+                {geometries.volumes.map((volume, index) => (
+                  <MenuItem 
+                    key={`second-${index}`} 
+                    value={`volume-${index}`}
+                    disabled={`volume-${index}` === firstSolid} // Can't select the same solid twice
+                  >
+                    {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            {/* Additional components section */}
+            {Array.from({ length: additionalComponents }).map((_, index) => (
+              <FormControl fullWidth margin="normal" key={`additional-component-${index}`}>
+                <InputLabel>Additional Component {index + 1}</InputLabel>
+                <Select
+                  label={`Additional Component ${index + 1}`}
+                  value={additionalComponentsValues[index] || ''}
+                  onChange={(e) => handleAdditionalComponentChange(index, e.target.value)}
+                  disabled={!secondSolid} // Disable until second component is selected
                 >
-                  {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+                  <MenuItem value=""><em>Select a solid</em></MenuItem>
+                  {geometries.volumes.map((volume, volumeIndex) => (
+                    <MenuItem 
+                      key={`additional-${index}-${volumeIndex}`} 
+                      value={`volume-${volumeIndex}`}
+                      disabled={
+                        `volume-${volumeIndex}` === firstSolid || 
+                        `volume-${volumeIndex}` === secondSolid ||
+                        additionalComponentsValues.includes(`volume-${volumeIndex}`)
+                      } // Can't select duplicates
+                    >
+                      {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${volumeIndex + 1}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ))}
+            
+            {/* Add/Remove component buttons */}
+            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={handleAddComponent}
+                disabled={!secondSolid} // Disable until at least two components are selected
+                sx={{ flexGrow: 1 }}
+              >
+                Add Component
+              </Button>
+              
+              <Button 
+                variant="outlined" 
+                size="small" 
+                color="error"
+                onClick={handleRemoveComponent}
+                disabled={additionalComponents === 0} // Disable if no additional components
+                sx={{ flexGrow: 1 }}
+              >
+                Remove Component
+              </Button>
+            </Box>
+          </Box>
           
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Note: The union will create a new solid that combines the two selected solids.
-            The original solids will remain unchanged.
+            Note: The union will create a new solid that combines all selected components.
+            The original solids will remain unchanged. Components will be combined in the order they are listed.
           </Typography>
         </Box>
       )}
