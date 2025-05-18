@@ -108,49 +108,7 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   };
   
   // Check if we have the new multi-component format
-  const hasComponents = Array.isArray(object.components) && object.components.length >= 2;
-  
-  // For backward compatibility, handle the old format with solid1 and solid2
-  if (!hasComponents) {
-    // Create geometries for both solids
-    const firstGeometry = useMemo(() => createGeometry(object.solid1), [object.solid1]);
-    const secondGeometry = useMemo(() => createGeometry(object.solid2), [object.solid2]);
-    
-    // Create materials for both solids
-    const firstMaterial = useMemo(() => createMaterial(0), [isSelected]);
-    const secondMaterial = useMemo(() => createMaterial(1), [isSelected]);
-    
-    // Get relative position and rotation for the second solid
-    const relativePosition = object.relative_position ? [
-      object.relative_position.x || 0,
-      object.relative_position.y || 0,
-      object.relative_position.z || 0
-    ] : [0, 0, 5]; // Default offset along z-axis if not specified
-    
-    const relativeRotX = THREE.MathUtils.degToRad(object.relative_rotation?.x || 0);
-    const relativeRotY = THREE.MathUtils.degToRad(object.relative_rotation?.y || 0);
-    const relativeRotZ = THREE.MathUtils.degToRad(object.relative_rotation?.z || 0);
-    
-    return (
-      <group
-        ref={groupRef}
-        position={position}
-        rotation={[rotX, rotY, rotZ]}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick && onClick();
-        }}
-      >
-        {/* First solid */}
-        <mesh geometry={firstGeometry} material={firstMaterial} />
-        
-        {/* Second solid with relative position and rotation */}
-        <group position={relativePosition} rotation={[relativeRotX, relativeRotY, relativeRotZ]}>
-          <mesh geometry={secondGeometry} material={secondMaterial} />
-        </group>
-      </group>
-    );
-  }
+  //const hasComponents = Array.isArray(object.components) && object.components.length >= 2;
   
   // Handle the new multi-component format
   return (
