@@ -21,6 +21,21 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return JSON.stringify(data, null, 2);
   };
   
+  // Helper function to convert lengths to mm
+  const convertToMm = (value, unit) => {
+    if (unit === 'cm') return value * 10;
+    if (unit === 'm') return value * 1000;
+    if (unit === 'mm') return value;
+    // Default to assuming cm if unit is not specified or unknown
+    return value * 10;
+  };
+
+  // Helper function to convert angles to radians
+  const convertToRadians = (value, unit) => {
+    if (unit === 'deg') return value * (Math.PI / 180);
+    return value; // Already in radians
+  };
+  
   // Helper function to mark placement objects for single-line formatting
   const formatPlacement = (placement) => {
     // Create a special object with a custom toString method
@@ -181,8 +196,8 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
         // Convert mother_volume to parent
         convertedVolume.parent = volume.mother_volume || 'World';
         
-        // Convert type to shape
-        convertedVolume.shape = volume.type;
+        // Keep type as type (not shape)
+        convertedVolume.type = volume.type;
         
         // Copy material
         convertedVolume.material = volume.material;
@@ -204,53 +219,60 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           
           // Process each component in the union
           volume.components.forEach(component => {
-            const convertedComponent = {
+            // Create a temporary volume object that mimics a regular volume
+            const tempVolume = {
               name: component.name,
-              shape: component.shape || 'box'
+              type: component.shape || 'box'
             };
             
-            // Convert dimensions based on shape type
+            // If the component has dimensions, add them to the temp volume
             if (component.dimensions) {
+              // Map dimensions properties to the temp volume
               const dims = component.dimensions;
               
-              if (convertedComponent.shape === 'tubs' || convertedComponent.shape === 'tube') {
-                // Convert cylinder dimensions to tubs format
-                convertedComponent.dimensions = {
-                  rMin: dims.inner_radius || 0.0,
-                  rMax: dims.radius || 0.0,
-                  z: dims.height || 0.0,
-                  startAngle: 0.0,
-                  spanningAngle: 360.0
-                };
-              } else {
-                // Copy other dimensions as is
-                convertedComponent.dimensions = { ...dims };
-              }
+              // Copy all dimension properties to the temp volume
+              Object.keys(dims).forEach(key => {
+                if (key !== 'type') { // Skip the 'type' property
+                  tempVolume[key] = dims[key];
+                }
+              });
+            }
+            
+            // Create a converted component using the same logic as regular volumes
+            const convertedComponent = {
+              name: tempVolume.name,
+              type: tempVolume.type
+            };
+            
+            // Process dimensions using the same function as regular volumes
+            convertedComponent.dimensions = createDimensionsObject(tempVolume);
+            
+            // Add any additional properties needed for the component
+            if (component.material) {
+              convertedComponent.material = component.material;
             }
             
             // Process placement for each component
             if (component.placement && Array.isArray(component.placement)) {
+              // Create placement array using the same logic as for regular volumes
               convertedComponent.placement = component.placement.map(place => {
-                // Get units for conversion
-                const posUnit = place.unit || 'cm';
-                
-                const convertedPlace = {
-                  x: convertToMm(Number(place.x || 0), posUnit),
-                  y: convertToMm(Number(place.y || 0), posUnit),
-                  z: convertToMm(Number(place.z || 0), posUnit)
+                // Create a temporary position and rotation objects
+                const tempPos = {
+                  x: place.x || 0,
+                  y: place.y || 0,
+                  z: place.z || 0,
+                  unit: 'cm'
                 };
                 
-                // Add rotation if present (convert to radians)
-                if (place.rotation) {
-                  const rotUnit = place.rotation.unit || 'deg';
-                  convertedPlace.rotation = {
-                    x: convertToRadians(Number(place.rotation.x || 0), rotUnit),
-                    y: convertToRadians(Number(place.rotation.y || 0), rotUnit),
-                    z: convertToRadians(Number(place.rotation.z || 0), rotUnit)
-                  };
-                }
+                const tempRot = place.rotation ? {
+                  x: place.rotation.x || 0,
+                  y: place.rotation.y || 0,
+                  z: place.rotation.z || 0,
+                  unit: place.rotation.unit || 'deg'
+                } : null;
                 
-                return convertedPlace;
+                // Use the same createPlacementObject function as for regular volumes
+                return createPlacementObject(tempPos, tempRot);
               });
             }
             
@@ -352,25 +374,44 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return formatPlacementJson(jsonWithMarkers);
   };
   
-  // Helper function to convert lengths to mm
-  const convertToMm = (value, unit) => {
-    if (unit === 'cm') return value * 10;
-    if (unit === 'm') return value * 1000;
-    return value; // Already in mm
-  };
-
-  // Helper function to convert angles to radians
-  const convertToRadians = (value, unit) => {
-    if (unit === 'deg') return value * (Math.PI / 180);
-    return value; // Already in radians
+  // Create a placement object from position and rotation
+  const createPlacementObject = (position, rotation) => {
+    // Always use cm as the default unit for conversion if not specified
+    const posUnit = 'cm';
+    const placement = {
+      x: convertToMm(position?.x ?? 0, posUnit),
+      y: convertToMm(position?.y ?? 0, posUnit),
+      z: convertToMm(position?.z ?? 0, posUnit)
+    };
+    
+    // Add rotation only if it exists and any value is non-zero
+    const hasRotation = rotation && (
+      (rotation.x && rotation.x !== 0) || 
+      (rotation.y && rotation.y !== 0) || 
+      (rotation.z && rotation.z !== 0)
+    );
+    
+    if (hasRotation) {
+      const rotUnit = rotation?.unit || 'deg';
+      placement.rotation = {
+        x: convertToRadians(rotation?.x ?? 0, rotUnit),
+        y: convertToRadians(rotation?.y ?? 0, rotUnit),
+        z: convertToRadians(rotation?.z ?? 0, rotUnit)
+      };
+    }
+    
+    // Mark this as a special placement object
+    placement._isPlacement = true;
+    
+    return placement;
   };
 
   // Create a dimensions object based on the geometry type
   const createDimensionsObject = (geometry) => {
     const dimensions = {};
     
-    // Get the unit to convert from
-    const unit = geometry.size?.unit || 'cm';
+    // Always use cm as the default unit for conversion if not specified
+    const unit = 'cm';
     
     switch(geometry.type) {
       case 'box':
@@ -487,37 +528,6 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     }
     
     return dimensions;
-  };
-  
-  // Create a placement object from position and rotation
-  const createPlacementObject = (position, rotation) => {
-    const posUnit = position?.unit || 'cm';
-    const placement = {
-      x: convertToMm(position?.x ?? 0, posUnit),
-      y: convertToMm(position?.y ?? 0, posUnit),
-      z: convertToMm(position?.z ?? 0, posUnit)
-    };
-    
-    // Add rotation only if it exists and any value is non-zero
-    const hasRotation = rotation && (
-      (rotation.x && rotation.x !== 0) || 
-      (rotation.y && rotation.y !== 0) || 
-      (rotation.z && rotation.z !== 0)
-    );
-    
-    if (hasRotation) {
-      const rotUnit = rotation?.unit || 'deg';
-      placement.rotation = {
-        x: convertToRadians(rotation?.x ?? 0, rotUnit),
-        y: convertToRadians(rotation?.y ?? 0, rotUnit),
-        z: convertToRadians(rotation?.z ?? 0, rotUnit)
-      };
-    }
-    
-    // Mark this as a special placement object
-    placement._isPlacement = true;
-    
-    return placement;
   };
   
   // Custom replacer function for JSON.stringify to format placement objects

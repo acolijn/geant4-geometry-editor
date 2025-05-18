@@ -1096,34 +1096,28 @@ const GeometryEditor = ({
     } else if (newGeometryType === 'cylinder') {
       newGeometry.radius = 5;
       newGeometry.height = 10;
-      newGeometry.inner_radius = 0;
-      newGeometry.unit = 'cm'; // Add unit information for cylinder dimensions
+      newGeometry.innerRadius = 0; // Changed from inner_radius to innerRadius for consistency
     } else if (newGeometryType === 'sphere') {
       newGeometry.radius = 5;
-      newGeometry.unit = 'cm'; // Add unit information for sphere dimensions
     } else if (newGeometryType === 'trapezoid') {
       newGeometry.dx1 = 5; // Half-length in x at -z/2
       newGeometry.dx2 = 5; // Half-length in x at +z/2
       newGeometry.dy1 = 5; // Half-length in y at -z/2
       newGeometry.dy2 = 5; // Half-length in y at +z/2
       newGeometry.dz = 5;  // Half-length in z
-      newGeometry.unit = 'cm';
     } else if (newGeometryType === 'torus') {
       newGeometry.majorRadius = 5;
       newGeometry.minorRadius = 1;
-      newGeometry.unit = 'cm';
     } else if (newGeometryType === 'ellipsoid') {
       newGeometry.xRadius = 5;
       newGeometry.yRadius = 3;
       newGeometry.zRadius = 4;
-      newGeometry.unit = 'cm';
     } else if (newGeometryType === 'polycone') {
       newGeometry.zSections = [
         { z: -5, rMin: 0, rMax: 3 },
         { z: 0, rMin: 0, rMax: 5 },
         { z: 5, rMin: 0, rMax: 2 }
       ];
-      newGeometry.unit = 'cm';
     }
     
     onAddGeometry(newGeometry);

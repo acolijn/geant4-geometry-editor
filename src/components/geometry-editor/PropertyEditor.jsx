@@ -400,8 +400,8 @@ const PropertyEditor = ({
             />
             <TextField
               label="Unit"
-              value={selectedObject?.size?.unit || 'cm'}
-              onChange={(e) => handlePropertyChange('size.unit', e.target.value)}
+              value="cm"
+              disabled
               size="small"
             />
           </Box>
@@ -430,33 +430,53 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
           </Box>
-          <TextField
-            label="Inner Radius"
-            type="number"
-            value={selectedObject?.innerRadius || 0}
-            onChange={(e) => handlePropertyChange('innerRadius', e.target.value, false)}
-            onFocus={handleInputFocus}
-            size="small"
-            sx={{ mb: 1 }}
-            inputProps={{ step: 'any', min: 0 }}
-          />
+          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+            <TextField
+              label="Inner Radius"
+              type="number"
+              value={selectedObject?.innerRadius || 0}
+              onChange={(e) => handlePropertyChange('innerRadius', e.target.value, false)}
+              onFocus={handleInputFocus}
+              size="small"
+              inputProps={{ step: 'any', min: 0 }}
+            />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
+          </Box>
         </>
       )}
       
       {selectedObject?.type === 'sphere' && (
         <>
           <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
-          <TextField
-            label="Radius"
-            type="number"
-            value={selectedObject?.radius || 0}
-            onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
-            onFocus={handleInputFocus}
-            size="small"
-            fullWidth
-            inputProps={{ step: 'any', min: 0 }}
-          />
+          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+            <TextField
+              label="Radius"
+              type="number"
+              value={selectedObject?.radius || 0}
+              onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
+              onFocus={handleInputFocus}
+              size="small"
+              inputProps={{ step: 'any', min: 0 }}
+            />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
+          </Box>
         </>
       )}
       
@@ -482,6 +502,12 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <TextField
@@ -502,18 +528,30 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
           </Box>
-          <TextField
-            label="dz (Half-length in Z)"
-            type="number"
-            value={selectedObject?.dz || 0}
-            onChange={(e) => handlePropertyChange('dz', e.target.value, false)}
-            onFocus={handleInputFocus}
-            size="small"
-            fullWidth
-            inputProps={{ step: 'any', min: 0 }}
-            sx={{ mb: 1 }}
-          />
+          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+            <TextField
+              label="dz (Half-length in Z)"
+              type="number"
+              value={selectedObject?.dz || 0}
+              onChange={(e) => handlePropertyChange('dz', e.target.value, false)}
+              onFocus={handleInputFocus}
+              size="small"
+              inputProps={{ step: 'any', min: 0 }}
+            />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
+          </Box>
         </>
       )}
       
@@ -548,6 +586,12 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
+            />
           </Box>
         </>
       )}
@@ -573,6 +617,12 @@ const PropertyEditor = ({
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
+            />
+            <TextField
+              label="Unit"
+              value="cm"
+              disabled
+              size="small"
             />
           </Box>
         </>
@@ -624,6 +674,12 @@ const PropertyEditor = ({
                 onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
+              />
+              <TextField
+                label="Unit"
+                value="cm"
+                disabled
+                size="small"
               />
               <Button 
                 variant="outlined" 
