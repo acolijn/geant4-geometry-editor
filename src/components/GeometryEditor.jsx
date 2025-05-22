@@ -298,73 +298,64 @@ const GeometryEditor = ({
     
     // Process the main object
     if (processedData.object) {
-      // Handle placement (position and rotation)
-      if (processedData.object.placement) {
-        if (!processedData.object.position) {
-          processedData.object.position = {
-            x: processedData.object.placement.x || 0,
-            y: processedData.object.placement.y || 0,
-            z: processedData.object.placement.z || 0
-          };
-        }
-        
-        if (processedData.object.placement.rotation && !processedData.object.rotation) {
-          processedData.object.rotation = {
-            x: processedData.object.placement.rotation.x || 0,
-            y: processedData.object.placement.rotation.y || 0,
-            z: processedData.object.placement.rotation.z || 0
-          };
-        }
-        
-        // Remove the placement property
-        delete processedData.object.placement;
+      // We require the placement property to be present
+      if (!processedData.object.placement) {
+        throw new Error('Object is missing required placement property');
       }
       
-      // Handle dimensions
-      if (processedData.object.dimensions) {
-        const { dimensions, type } = processedData.object;
-        
-        // Convert dimensions to the appropriate properties based on object type
-        if (type === 'box') {
-          if (!processedData.object.size) {
-            processedData.object.size = {
-              x: dimensions.x || 10,
-              y: dimensions.y || 10,
-              z: dimensions.z || 10
-            };
-          }
-        } else if (type === 'sphere') {
-          if (dimensions.radius !== undefined) {
-            processedData.object.radius = dimensions.radius;
-          }
-        } else if (type === 'cylinder') {
-          if (dimensions.radius !== undefined) {
-            processedData.object.radius = dimensions.radius;
-          }
-          if (dimensions.inner_radius !== undefined) {
-            processedData.object.innerRadius = dimensions.inner_radius;
-          }
-          if (dimensions.height !== undefined) {
-            processedData.object.height = dimensions.height;
-          }
-        } else if (type === 'trapezoid') {
-          if (dimensions.dx1 !== undefined) processedData.object.dx1 = dimensions.dx1;
-          if (dimensions.dx2 !== undefined) processedData.object.dx2 = dimensions.dx2;
-          if (dimensions.dy1 !== undefined) processedData.object.dy1 = dimensions.dy1;
-          if (dimensions.dy2 !== undefined) processedData.object.dy2 = dimensions.dy2;
-          if (dimensions.dz !== undefined) processedData.object.dz = dimensions.dz;
-        } else if (type === 'torus') {
-          if (dimensions.major_radius !== undefined) processedData.object.majorRadius = dimensions.major_radius;
-          if (dimensions.minor_radius !== undefined) processedData.object.minorRadius = dimensions.minor_radius;
-        } else if (type === 'ellipsoid') {
-          if (dimensions.x_radius !== undefined) processedData.object.xRadius = dimensions.x_radius;
-          if (dimensions.y_radius !== undefined) processedData.object.yRadius = dimensions.y_radius;
-          if (dimensions.z_radius !== undefined) processedData.object.zRadius = dimensions.z_radius;
-        }
-        
-        // Remove the dimensions property
-        delete processedData.object.dimensions;
+      // Convert placement to position and rotation
+      processedData.object.position = {
+        x: processedData.object.placement.x || 0,
+        y: processedData.object.placement.y || 0,
+        z: processedData.object.placement.z || 0
+      };
+      
+      processedData.object.rotation = {
+        x: processedData.object.placement.rotation?.x || 0,
+        y: processedData.object.placement.rotation?.y || 0,
+        z: processedData.object.placement.rotation?.z || 0
+      };
+      
+      // Remove the placement property
+      delete processedData.object.placement;
+      
+      // We require the dimensions property to be present
+      if (!processedData.object.dimensions) {
+        throw new Error('Object is missing required dimensions property');
       }
+      
+      const { dimensions, type } = processedData.object;
+      
+      // Convert dimensions to the appropriate properties based on object type
+      if (type === 'box') {
+        processedData.object.size = {
+          x: dimensions.x || 10,
+          y: dimensions.y || 10,
+          z: dimensions.z || 10
+        };
+      } else if (type === 'sphere') {
+        processedData.object.radius = dimensions.radius;
+      } else if (type === 'cylinder') {
+        processedData.object.radius = dimensions.radius;
+        processedData.object.innerRadius = dimensions.inner_radius || 0;
+        processedData.object.height = dimensions.height;
+      } else if (type === 'trapezoid') {
+        processedData.object.dx1 = dimensions.dx1;
+        processedData.object.dx2 = dimensions.dx2;
+        processedData.object.dy1 = dimensions.dy1;
+        processedData.object.dy2 = dimensions.dy2;
+        processedData.object.dz = dimensions.dz;
+      } else if (type === 'torus') {
+        processedData.object.majorRadius = dimensions.major_radius;
+        processedData.object.minorRadius = dimensions.minor_radius;
+      } else if (type === 'ellipsoid') {
+        processedData.object.xRadius = dimensions.x_radius;
+        processedData.object.yRadius = dimensions.y_radius;
+        processedData.object.zRadius = dimensions.z_radius;
+      }
+      
+      // Remove the dimensions property
+      delete processedData.object.dimensions;
       
       // Convert parent to mother_volume if needed
       if (processedData.object.parent && !processedData.object.mother_volume) {
@@ -376,73 +367,64 @@ const GeometryEditor = ({
     // Process all descendants
     if (processedData.descendants && Array.isArray(processedData.descendants)) {
       processedData.descendants = processedData.descendants.map(descendant => {
-        // Handle placement (position and rotation)
-        if (descendant.placement) {
-          if (!descendant.position) {
-            descendant.position = {
-              x: descendant.placement.x || 0,
-              y: descendant.placement.y || 0,
-              z: descendant.placement.z || 0
-            };
-          }
-          
-          if (descendant.placement.rotation && !descendant.rotation) {
-            descendant.rotation = {
-              x: descendant.placement.rotation.x || 0,
-              y: descendant.placement.rotation.y || 0,
-              z: descendant.placement.rotation.z || 0
-            };
-          }
-          
-          // Remove the placement property
-          delete descendant.placement;
+        // We require the placement property to be present
+        if (!descendant.placement) {
+          throw new Error('Descendant is missing required placement property');
         }
         
-        // Handle dimensions
-        if (descendant.dimensions) {
-          const { dimensions, type } = descendant;
-          
-          // Convert dimensions to the appropriate properties based on object type
-          if (type === 'box') {
-            if (!descendant.size) {
-              descendant.size = {
-                x: dimensions.x || 10,
-                y: dimensions.y || 10,
-                z: dimensions.z || 10
-              };
-            }
-          } else if (type === 'sphere') {
-            if (dimensions.radius !== undefined) {
-              descendant.radius = dimensions.radius;
-            }
-          } else if (type === 'cylinder') {
-            if (dimensions.radius !== undefined) {
-              descendant.radius = dimensions.radius;
-            }
-            if (dimensions.inner_radius !== undefined) {
-              descendant.innerRadius = dimensions.inner_radius;
-            }
-            if (dimensions.height !== undefined) {
-              descendant.height = dimensions.height;
-            }
-          } else if (type === 'trapezoid') {
-            if (dimensions.dx1 !== undefined) descendant.dx1 = dimensions.dx1;
-            if (dimensions.dx2 !== undefined) descendant.dx2 = dimensions.dx2;
-            if (dimensions.dy1 !== undefined) descendant.dy1 = dimensions.dy1;
-            if (dimensions.dy2 !== undefined) descendant.dy2 = dimensions.dy2;
-            if (dimensions.dz !== undefined) descendant.dz = dimensions.dz;
-          } else if (type === 'torus') {
-            if (dimensions.major_radius !== undefined) descendant.majorRadius = dimensions.major_radius;
-            if (dimensions.minor_radius !== undefined) descendant.minorRadius = dimensions.minor_radius;
-          } else if (type === 'ellipsoid') {
-            if (dimensions.x_radius !== undefined) descendant.xRadius = dimensions.x_radius;
-            if (dimensions.y_radius !== undefined) descendant.yRadius = dimensions.y_radius;
-            if (dimensions.z_radius !== undefined) descendant.zRadius = dimensions.z_radius;
-          }
-          
-          // Remove the dimensions property
-          delete descendant.dimensions;
+        // Convert placement to position and rotation
+        descendant.position = {
+          x: descendant.placement.x || 0,
+          y: descendant.placement.y || 0,
+          z: descendant.placement.z || 0
+        };
+        
+        descendant.rotation = {
+          x: descendant.placement.rotation?.x || 0,
+          y: descendant.placement.rotation?.y || 0,
+          z: descendant.placement.rotation?.z || 0
+        };
+        
+        // Remove the placement property
+        delete descendant.placement;
+        
+        // We require the dimensions property to be present
+        if (!descendant.dimensions) {
+          throw new Error('Descendant is missing required dimensions property');
         }
+        
+        const { dimensions, type } = descendant;
+        
+        // Convert dimensions to the appropriate properties based on object type
+        if (type === 'box') {
+          descendant.size = {
+            x: dimensions.x || 10,
+            y: dimensions.y || 10,
+            z: dimensions.z || 10
+          };
+        } else if (type === 'sphere') {
+          descendant.radius = dimensions.radius;
+        } else if (type === 'cylinder') {
+          descendant.radius = dimensions.radius;
+          descendant.innerRadius = dimensions.inner_radius || 0;
+          descendant.height = dimensions.height;
+        } else if (type === 'trapezoid') {
+          descendant.dx1 = dimensions.dx1;
+          descendant.dx2 = dimensions.dx2;
+          descendant.dy1 = dimensions.dy1;
+          descendant.dy2 = dimensions.dy2;
+          descendant.dz = dimensions.dz;
+        } else if (type === 'torus') {
+          descendant.majorRadius = dimensions.major_radius;
+          descendant.minorRadius = dimensions.minor_radius;
+        } else if (type === 'ellipsoid') {
+          descendant.xRadius = dimensions.x_radius;
+          descendant.yRadius = dimensions.y_radius;
+          descendant.zRadius = dimensions.z_radius;
+        }
+        
+        // Remove the dimensions property
+        delete descendant.dimensions;
         
         // Convert parent to mother_volume if needed
         if (descendant.parent && !descendant.mother_volume) {
@@ -472,12 +454,10 @@ const GeometryEditor = ({
       // Process the loaded object data
       console.log('Loaded object data:', objectData);
       
-      // Check if the object is in the standardized format
-      const isStandardized = objectData.metadata?.formatVersion === '2.0';
-      console.log(`Object format: ${isStandardized ? 'standardized' : 'legacy'}`);
-      
-      // Process the object if it's in the standardized format
-      const processedData = isStandardized ? processStandardizedFormat(objectData) : objectData;
+      // Process the object to convert from standardized format to internal format
+      // We assume all objects are in the standardized format
+      const processedData = processStandardizedFormat(objectData);
+      console.log('Processed standardized format to internal format');
       
       // Apply structured naming convention to the object and its descendants
       const structuredObjectData = applyStructuredNaming(processedData);

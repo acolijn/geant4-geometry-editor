@@ -132,19 +132,13 @@ export const loadObject = async (fileName) => {
       throw new Error(`Object "${fileName}" not found`);
     }
     
-    // Check if the object is already in the standardized format
-    const isStandardized = data.metadata?.formatVersion === '2.0';
-    
-    // If the object is not in the standardized format, it's an older format
-    // that needs to be loaded as is (no conversion needed since we're using the new format now)
-    
-    console.log(`Object "${fileName}" loaded successfully. Format: ${isStandardized ? 'standardized' : 'legacy'}`);
+    // We assume all objects are in the standardized format
+    console.log(`Object "${fileName}" loaded successfully in standardized format`);
     
     return {
       success: true,
       data,
-      message: `Object "${fileName}" loaded successfully`,
-      isStandardized
+      message: `Object "${fileName}" loaded successfully`
     };
   } catch (error) {
     console.error(`Error loading object ${fileName}:`, error);
