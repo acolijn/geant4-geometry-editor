@@ -9,14 +9,12 @@
 
 // Length conversion factors to mm (internal unit)
 const LENGTH_CONVERSION_FACTORS = {
+  //micrometer
+  um: 0.001,       // micrometer
   mm: 1.0,         // millimeter (base unit)
   cm: 10.0,        // centimeter
   m: 1000.0,       // meter
-  km: 1000000.0,   // kilometer
   in: 25.4,        // inch
-  ft: 304.8,       // foot
-  yd: 914.4,       // yard
-  mi: 1609344.0    // mile
 };
 
 // Angle conversion factors to rad (internal unit)
