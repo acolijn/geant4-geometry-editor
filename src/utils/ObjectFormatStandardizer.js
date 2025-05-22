@@ -58,14 +58,15 @@ const createDimensionsObject = (volume) => {
     case 'cylinder':
       if (volume.radius !== undefined) {
         dimensions.radius = Number(volume.radius);
-        
-        if (volume.innerRadius !== undefined) {
-          dimensions.inner_radius = Number(volume.innerRadius);
-        }
-        
-        if (volume.height !== undefined) {
-          dimensions.height = Number(volume.height);
-        }
+      }
+      
+      // Handle inner radius (use innerRadius property only)
+      if (volume.innerRadius !== undefined) {
+        dimensions.inner_radius = Number(volume.innerRadius);
+      }
+      
+      if (volume.height !== undefined) {
+        dimensions.height = Number(volume.height);
       }
       break;
       
@@ -112,20 +113,34 @@ const standardizeVolumeFormat = (volume) => {
   standardizedVolume.dimensions = createDimensionsObject(standardizedVolume);
   
   // Remove dimension properties that are now in the dimensions object
-  if (standardizedVolume.size) delete standardizedVolume.size;
-  if (standardizedVolume.radius) delete standardizedVolume.radius;
-  if (standardizedVolume.innerRadius) delete standardizedVolume.innerRadius;
-  if (standardizedVolume.height) delete standardizedVolume.height;
-  if (standardizedVolume.dx1) delete standardizedVolume.dx1;
-  if (standardizedVolume.dx2) delete standardizedVolume.dx2;
-  if (standardizedVolume.dy1) delete standardizedVolume.dy1;
-  if (standardizedVolume.dy2) delete standardizedVolume.dy2;
-  if (standardizedVolume.dz) delete standardizedVolume.dz;
-  if (standardizedVolume.majorRadius) delete standardizedVolume.majorRadius;
-  if (standardizedVolume.minorRadius) delete standardizedVolume.minorRadius;
-  if (standardizedVolume.xRadius) delete standardizedVolume.xRadius;
-  if (standardizedVolume.yRadius) delete standardizedVolume.yRadius;
-  if (standardizedVolume.zRadius) delete standardizedVolume.zRadius;
+  // Make sure to delete all properties, regardless of their case style
+  
+  // Box properties
+  delete standardizedVolume.size;
+  
+  // Sphere and cylinder properties
+  delete standardizedVolume.radius;
+  
+  // Cylinder specific properties
+  delete standardizedVolume.innerRadius;
+  delete standardizedVolume.inner_radius;
+  delete standardizedVolume.height;
+  
+  // Trapezoid properties
+  delete standardizedVolume.dx1;
+  delete standardizedVolume.dx2;
+  delete standardizedVolume.dy1;
+  delete standardizedVolume.dy2;
+  delete standardizedVolume.dz;
+  
+  // Torus properties
+  delete standardizedVolume.majorRadius;
+  delete standardizedVolume.minorRadius;
+  
+  // Ellipsoid properties
+  delete standardizedVolume.xRadius;
+  delete standardizedVolume.yRadius;
+  delete standardizedVolume.zRadius;
   
   // Convert mother_volume to parent
   if (standardizedVolume.mother_volume) {

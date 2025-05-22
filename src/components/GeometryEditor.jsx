@@ -337,6 +337,7 @@ const GeometryEditor = ({
         processedData.object.radius = dimensions.radius;
       } else if (type === 'cylinder') {
         processedData.object.radius = dimensions.radius;
+        // Only use the snake_case version from the standardized format
         processedData.object.innerRadius = dimensions.inner_radius || 0;
         processedData.object.height = dimensions.height;
       } else if (type === 'trapezoid') {
@@ -406,6 +407,7 @@ const GeometryEditor = ({
           descendant.radius = dimensions.radius;
         } else if (type === 'cylinder') {
           descendant.radius = dimensions.radius;
+          // Only use the snake_case version from the standardized format
           descendant.innerRadius = dimensions.inner_radius || 0;
           descendant.height = dimensions.height;
         } else if (type === 'trapezoid') {
