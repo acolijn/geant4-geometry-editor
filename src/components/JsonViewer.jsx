@@ -226,12 +226,89 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
         convertedVolumes.push(convertedVolume);
       });
       
-      // Replace the original volumes with the converted ones
-      jsonObj.volumes = convertedVolumes;
+      // Sort volumes to ensure parents come before children
+      const sortedVolumes = sortVolumesByHierarchy(convertedVolumes);
+      
+      // Replace the original volumes with the sorted, converted ones
+      jsonObj.volumes = sortedVolumes;
     };
 
     const jsonWithMarkers = JSON.stringify(jsonObj, null, 2);
     return jsonWithMarkers;
+  };
+  
+  // Sort volumes to ensure parents come before children in the output JSON
+  const sortVolumesByHierarchy = (volumes) => {
+    // Create a map of volume names to their indices
+    const volumeMap = {};
+    volumes.forEach((volume, index) => {
+      volumeMap[volume.name] = index;
+    });
+    
+    // Create a dependency graph
+    const dependencies = {};
+    volumes.forEach(volume => {
+      dependencies[volume.name] = [];
+      
+      // Add parent as a dependency if it exists
+      if (volume.parent && volume.parent !== 'world') {
+        dependencies[volume.name].push(volume.parent);
+      }
+    });
+    
+    // Topological sort function
+    const sortedNames = [];
+    const visited = {};
+    const temp = {}; // For cycle detection
+    
+    const visit = (name) => {
+      // If we've already processed this node, skip
+      if (visited[name]) return;
+      
+      // If we're in the middle of processing this node, we have a cycle
+      if (temp[name]) {
+        console.warn(`Circular dependency detected in geometry: ${name}`);
+        return;
+      }
+      
+      // Mark as being processed
+      temp[name] = true;
+      
+      // Process all dependencies first
+      if (dependencies[name]) {
+        dependencies[name].forEach(dep => {
+          // Only visit if the dependency exists in our volume list
+          if (volumeMap[dep] !== undefined) {
+            visit(dep);
+          }
+        });
+      }
+      
+      // Mark as processed and add to sorted list
+      temp[name] = false;
+      visited[name] = true;
+      sortedNames.push(name);
+    };
+    
+    // Start with the world volume if it exists
+    if (volumeMap['world'] !== undefined) {
+      visit('world');
+    }
+    
+    // Process all other volumes
+    volumes.forEach(volume => {
+      visit(volume.name);
+    });
+    
+    // Create the sorted array based on the topological sort
+    const sortedVolumes = [];
+    sortedNames.forEach(name => {
+      if (volumeMap[name] !== undefined) {
+        sortedVolumes.push(volumes[volumeMap[name]]);
+      }
+    });
+    
+    return sortedVolumes;
   };
   
   const geometryJson = generateGeometryJson();
