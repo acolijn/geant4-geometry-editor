@@ -168,37 +168,16 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           convertedVolume.components = [];
           
           // Process each component in the union
-          volume.components.forEach(component => {
-            // Create a temporary volume object that mimics a regular volume
-            const tempVolume = {
-              name: component.name,
-              type: component.shape || 'box'
-            };
-            
-            // If the component has dimensions, add them to the temp volume
-            if (component.dimensions) {
-              // Map dimensions properties to the temp volume
-              const dims = component.dimensions;
-              
-              // Copy all dimension properties to the temp volume
-              Object.keys(dims).forEach(key => {
-                if (key !== 'type') { // Skip the 'type' property
-                  tempVolume[key] = dims[key];
-                }
-              });
-            }
-            
+          volume.components.forEach(component => {            
             // Create a converted component using the same logic as regular volumes
-            const convertedComponent = {
-              name: tempVolume.name,
-              type: tempVolume.type
-            };
+            const convertedComponent = {};
+            convertedComponent.name = component.name;
+            convertedComponent.type = component.shape;
             
             // Process dimensions using the same function as regular volumes
             //convertedComponent.dimensions = createDimensionsObject(tempVolume);
             convertedComponent.dimensions = createDimensionsObject(component);
 
-            
             // Add any additional properties needed for the component
             if (component.material) {
               convertedComponent.material = component.material;
