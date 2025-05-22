@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -12,6 +12,7 @@ import {
   Menu
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../../utils/UnitConverter';
 
 /**
  * PropertyEditor Component
@@ -33,8 +34,12 @@ const PropertyEditor = ({
   handleNumberKeyDown
 }) => {
   // State for the menu
-  const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const menuOpen = Boolean(menuAnchorEl);
+  
+  // State for display units (these don't affect storage, only display)
+  const [lengthUnit, setLengthUnit] = useState('cm');
+  const [angleUnit, setAngleUnit] = useState('deg');
   
   const handleMenuOpen = (event) => {
     event.stopPropagation();
@@ -59,22 +64,38 @@ const PropertyEditor = ({
 
 
   // Handle property changes
-  const handlePropertyChange = (key, value) => {
+  const handlePropertyChange = (key, value, isString = false) => {
     const selectedObject = getSelectedGeometryObject();
     if (!selectedObject) return;
   
-    const isNumberField = typeof value === 'string' && /^-?\\d*\\.?\\d*$/.test(value);
+    // Determine if this is a numeric field that needs unit conversion
+    const isNumberField = !isString && typeof value === 'string' && /^-?\d*\.?\d*$/.test(value);
   
-    const keys = key.split('.');
-    const updatedObject = { ...selectedObject };
-  
+    // Parse the value if it's a number
     let finalValue = value;
-    if (!isNumberField) {
+    if (isNumberField) {
+      const parsed = parseFloat(value);
+      if (!isNaN(parsed)) {
+        // Determine if this is a length or angle property
+        const isAngle = key.includes('rotation');
+        
+        // Convert to internal units (mm or rad)
+        finalValue = toInternalUnit(
+          parsed, 
+          isAngle ? angleUnit : lengthUnit,
+          isAngle ? 'angle' : 'length'
+        );
+      }
+    } else if (!isString) {
       const parsed = parseFloat(value);
       if (!isNaN(parsed)) {
         finalValue = parsed;
       }
     }
+  
+    // Update the object with the converted value
+    const keys = key.split('.');
+    const updatedObject = { ...selectedObject };
   
     if (keys.length === 1) {
       updatedObject[key] = finalValue;
@@ -84,6 +105,11 @@ const PropertyEditor = ({
         ...updatedObject[outer],
         [inner]: finalValue
       };
+      
+      // Remove unit property as it's no longer needed
+      if (updatedObject[outer].unit) {
+        delete updatedObject[outer].unit;
+      }
     }
   
     onUpdateGeometry(selectedGeometry, updatedObject);
@@ -288,7 +314,10 @@ const PropertyEditor = ({
         <TextField
           label="X"
           type="number"
-          value={selectedObject?.position?.x ?? 0}
+          value={selectedObject?.position?.x !== undefined 
+            ? fromInternalUnit(selectedObject.position.x, lengthUnit, 'length')
+            : 0
+          }
           onChange={(e) => handlePropertyChange('position.x', e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
@@ -298,7 +327,10 @@ const PropertyEditor = ({
         <TextField
           label="Y"
           type="number"
-          value={selectedObject?.position?.y ?? 0}
+          value={selectedObject?.position?.y !== undefined 
+            ? fromInternalUnit(selectedObject.position.y, lengthUnit, 'length')
+            : 0
+          }
           onChange={(e) => handlePropertyChange('position.y', e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
@@ -308,19 +340,29 @@ const PropertyEditor = ({
         <TextField
           label="Z"
           type="number"
-          value={selectedObject?.position?.z ?? 0}
+          value={selectedObject?.position?.z !== undefined 
+            ? fromInternalUnit(selectedObject.position.z, lengthUnit, 'length')
+            : 0
+          }
           onChange={(e) => handlePropertyChange('position.z', e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
           inputProps={{ step: 'any' }}
         />
-        <TextField
-          label="Unit"
-          value={selectedObject?.position?.unit || 'cm'}
-          onChange={(e) => handlePropertyChange('position.unit', e.target.value)}
-          size="small"
-        />
+        <FormControl size="small">
+          <InputLabel>Unit</InputLabel>
+          <Select
+            value={lengthUnit}
+            label="Unit"
+            onChange={(e) => setLengthUnit(e.target.value)}
+            size="small"
+          >
+            {getAvailableUnits('length').map(unit => (
+              <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
       
       <Typography variant="subtitle1" sx={{ mt: 2 }}>Rotation</Typography>
@@ -331,7 +373,10 @@ const PropertyEditor = ({
         <TextField
           label="X"
           type="number"
-          value={selectedObject?.rotation?.x ?? 0}
+          value={selectedObject?.rotation?.x !== undefined 
+            ? fromInternalUnit(selectedObject.rotation.x, angleUnit, 'angle')
+            : 0
+          }
           onChange={(e) => handlePropertyChange('rotation.x', e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
@@ -341,7 +386,10 @@ const PropertyEditor = ({
         <TextField
           label="Y"
           type="number"
-          value={selectedObject?.rotation?.y ?? 0}
+          value={selectedObject?.rotation?.y !== undefined 
+            ? fromInternalUnit(selectedObject.rotation.y, angleUnit, 'angle')
+            : 0
+          }
           onChange={(e) => handlePropertyChange('rotation.y', e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
@@ -351,19 +399,29 @@ const PropertyEditor = ({
         <TextField
           label="Z"
           type="number"
-          value={selectedObject?.rotation?.z ?? 0}
+          value={selectedObject?.rotation?.z !== undefined 
+            ? fromInternalUnit(selectedObject.rotation.z, angleUnit, 'angle')
+            : 0
+          }
           onChange={(e) => handlePropertyChange('rotation.z', e.target.value)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
           inputProps={{ step: 'any' }}
         />
-        <TextField
-          label="Unit"
-          value={selectedObject?.rotation?.unit || 'deg'}
-          onChange={(e) => handlePropertyChange('rotation.unit', e.target.value)}
-          size="small"
-        />
+        <FormControl size="small">
+          <InputLabel>Unit</InputLabel>
+          <Select
+            value={angleUnit}
+            label="Unit"
+            onChange={(e) => setAngleUnit(e.target.value)}
+            size="small"
+          >
+            {getAvailableUnits('angle').map(unit => (
+              <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
       
       {/* Render type-specific properties */}
@@ -374,8 +432,11 @@ const PropertyEditor = ({
             <TextField
               label="X"
               type="number"
-              value={selectedObject?.size?.x || 0}
-              onChange={(e) => handlePropertyChange('size.x', e.target.value, false)}
+              value={selectedObject?.size?.x !== undefined 
+                ? fromInternalUnit(selectedObject.size.x, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('size.x', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -383,8 +444,11 @@ const PropertyEditor = ({
             <TextField
               label="Y"
               type="number"
-              value={selectedObject?.size?.y || 0}
-              onChange={(e) => handlePropertyChange('size.y', e.target.value, false)}
+              value={selectedObject?.size?.y !== undefined 
+                ? fromInternalUnit(selectedObject.size.y, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('size.y', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -392,18 +456,28 @@ const PropertyEditor = ({
             <TextField
               label="Z"
               type="number"
-              value={selectedObject?.size?.z || 0}
-              onChange={(e) => handlePropertyChange('size.z', e.target.value, false)}
+              value={selectedObject?.size?.z !== undefined 
+                ? fromInternalUnit(selectedObject.size.z, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('size.z', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </>
       )}
@@ -415,8 +489,11 @@ const PropertyEditor = ({
             <TextField
               label="Radius"
               type="number"
-              value={selectedObject?.radius || 0}
-              onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
+              value={selectedObject?.radius !== undefined 
+                ? fromInternalUnit(selectedObject.radius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('radius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -424,35 +501,55 @@ const PropertyEditor = ({
             <TextField
               label="Height"
               type="number"
-              value={selectedObject?.height || 0}
-              onChange={(e) => handlePropertyChange('height', e.target.value, false)}
+              value={selectedObject?.height !== undefined 
+                ? fromInternalUnit(selectedObject.height, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('height', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <TextField
               label="Inner Radius"
               type="number"
-              value={selectedObject?.innerRadius || 0}
-              onChange={(e) => handlePropertyChange('innerRadius', e.target.value, false)}
+              value={selectedObject?.innerRadius !== undefined 
+                ? fromInternalUnit(selectedObject.innerRadius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('innerRadius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </>
       )}
@@ -464,18 +561,28 @@ const PropertyEditor = ({
             <TextField
               label="Radius"
               type="number"
-              value={selectedObject?.radius || 0}
-              onChange={(e) => handlePropertyChange('radius', e.target.value, false)}
+              value={selectedObject?.radius !== undefined 
+                ? fromInternalUnit(selectedObject.radius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('radius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </>
       )}
@@ -487,8 +594,11 @@ const PropertyEditor = ({
             <TextField
               label="dx1 (X at -z/2)"
               type="number"
-              value={selectedObject?.dx1 || 0}
-              onChange={(e) => handlePropertyChange('dx1', e.target.value, false)}
+              value={selectedObject?.dx1 !== undefined 
+                ? fromInternalUnit(selectedObject.dx1, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('dx1', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -496,25 +606,38 @@ const PropertyEditor = ({
             <TextField
               label="dx2 (X at +z/2)"
               type="number"
-              value={selectedObject?.dx2 || 0}
-              onChange={(e) => handlePropertyChange('dx2', e.target.value, false)}
+              value={selectedObject?.dx2 !== undefined 
+                ? fromInternalUnit(selectedObject.dx2, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('dx2', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <TextField
               label="dy1 (Y at -z/2)"
               type="number"
-              value={selectedObject?.dy1 || 0}
-              onChange={(e) => handlePropertyChange('dy1', e.target.value, false)}
+              value={selectedObject?.dy1 !== undefined 
+                ? fromInternalUnit(selectedObject.dy1, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('dy1', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -522,35 +645,55 @@ const PropertyEditor = ({
             <TextField
               label="dy2 (Y at +z/2)"
               type="number"
-              value={selectedObject?.dy2 || 0}
-              onChange={(e) => handlePropertyChange('dy2', e.target.value, false)}
+              value={selectedObject?.dy2 !== undefined 
+                ? fromInternalUnit(selectedObject.dy2, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('dy2', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <TextField
               label="dz (Half-length in Z)"
               type="number"
-              value={selectedObject?.dz || 0}
-              onChange={(e) => handlePropertyChange('dz', e.target.value, false)}
+              value={selectedObject?.dz !== undefined 
+                ? fromInternalUnit(selectedObject.dz, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('dz', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </>
       )}
@@ -562,8 +705,11 @@ const PropertyEditor = ({
             <TextField
               label="X Radius"
               type="number"
-              value={selectedObject?.xRadius || 0}
-              onChange={(e) => handlePropertyChange('xRadius', e.target.value, false)}
+              value={selectedObject?.xRadius !== undefined 
+                ? fromInternalUnit(selectedObject.xRadius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('xRadius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -571,8 +717,11 @@ const PropertyEditor = ({
             <TextField
               label="Y Radius"
               type="number"
-              value={selectedObject?.yRadius || 0}
-              onChange={(e) => handlePropertyChange('yRadius', e.target.value, false)}
+              value={selectedObject?.yRadius !== undefined 
+                ? fromInternalUnit(selectedObject.yRadius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('yRadius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -580,18 +729,28 @@ const PropertyEditor = ({
             <TextField
               label="Z Radius"
               type="number"
-              value={selectedObject?.zRadius || 0}
-              onChange={(e) => handlePropertyChange('zRadius', e.target.value, false)}
+              value={selectedObject?.zRadius !== undefined 
+                ? fromInternalUnit(selectedObject.zRadius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('zRadius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </>
       )}
@@ -603,8 +762,11 @@ const PropertyEditor = ({
             <TextField
               label="Major Radius"
               type="number"
-              value={selectedObject?.majorRadius || 0}
-              onChange={(e) => handlePropertyChange('majorRadius', e.target.value, false)}
+              value={selectedObject?.majorRadius !== undefined 
+                ? fromInternalUnit(selectedObject.majorRadius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('majorRadius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -612,18 +774,28 @@ const PropertyEditor = ({
             <TextField
               label="Minor Radius"
               type="number"
-              value={selectedObject?.minorRadius || 0}
-              onChange={(e) => handlePropertyChange('minorRadius', e.target.value, false)}
+              value={selectedObject?.minorRadius !== undefined 
+                ? fromInternalUnit(selectedObject.minorRadius, lengthUnit, 'length')
+                : 0
+              }
+              onChange={(e) => handlePropertyChange('minorRadius', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
-              label="Unit"
-              value="cm"
-              disabled
-              size="small"
-            />
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </>
       )}
@@ -634,16 +806,36 @@ const PropertyEditor = ({
           <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
             Define the sections of the polycone along the z-axis
           </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+            <FormControl size="small" sx={{ width: '80px' }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={lengthUnit}
+                label="Unit"
+                onChange={(e) => setLengthUnit(e.target.value)}
+                size="small"
+              >
+                {getAvailableUnits('length').map(unit => (
+                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
           {selectedObject?.zSections && selectedObject?.zSections.map((section, index) => (
             <Box key={`section-${index}`} sx={{ display: 'flex', gap: 1, mb: 1, border: '1px solid #eee', p: 1, borderRadius: '4px' }}>
               <TextField
                 label="Z Position"
                 type="number"
-                value={section.z || 0}
+                value={section.z !== undefined 
+                  ? fromInternalUnit(section.z, lengthUnit, 'length')
+                  : 0
+                }
                 onChange={(e) => {
                   const newSections = [...selectedObject?.zSections];
-                  newSections[index] = { ...newSections[index], z: parseFloat(e.target.value) || 0 };
-                  handlePropertyChange('zSections', newSections);
+                  // Convert to internal units (mm)
+                  const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
+                  newSections[index] = { ...newSections[index], z: valueInMm };
+                  handlePropertyChange('zSections', newSections, true);
                 }}
                 onFocus={handleInputFocus}
                 size="small"
@@ -652,11 +844,16 @@ const PropertyEditor = ({
               <TextField
                 label="Min Radius"
                 type="number"
-                value={section.rMin || 0}
+                value={section.rMin !== undefined 
+                  ? fromInternalUnit(section.rMin, lengthUnit, 'length')
+                  : 0
+                }
                 onChange={(e) => {
                   const newSections = [...selectedObject?.zSections];
-                  newSections[index] = { ...newSections[index], rMin: parseFloat(e.target.value) || 0 };
-                  handlePropertyChange('zSections', newSections);
+                  // Convert to internal units (mm)
+                  const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
+                  newSections[index] = { ...newSections[index], rMin: valueInMm };
+                  handlePropertyChange('zSections', newSections, true);
                 }}
                 onFocus={handleInputFocus}
                 size="small"
@@ -665,21 +862,20 @@ const PropertyEditor = ({
               <TextField
                 label="Max Radius"
                 type="number"
-                value={section.rMax || 0}
+                value={section.rMax !== undefined 
+                  ? fromInternalUnit(section.rMax, lengthUnit, 'length')
+                  : 0
+                }
                 onChange={(e) => {
                   const newSections = [...selectedObject?.zSections];
-                  newSections[index] = { ...newSections[index], rMax: parseFloat(e.target.value) || 0 };
-                  handlePropertyChange('zSections', newSections);
+                  // Convert to internal units (mm)
+                  const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
+                  newSections[index] = { ...newSections[index], rMax: valueInMm };
+                  handlePropertyChange('zSections', newSections, true);
                 }}
                 onFocus={handleInputFocus}
                 size="small"
                 inputProps={{ step: 'any', min: 0 }}
-              />
-              <TextField
-                label="Unit"
-                value="cm"
-                disabled
-                size="small"
               />
               <Button 
                 variant="outlined" 
@@ -689,7 +885,7 @@ const PropertyEditor = ({
                   if (selectedObject?.zSections?.length > 2) {
                     const newSections = [...selectedObject?.zSections];
                     newSections.splice(index, 1);
-                    handlePropertyChange('zSections', newSections);
+                    handlePropertyChange('zSections', newSections, true);
                   }
                 }}
                 disabled={selectedObject?.zSections?.length <= 2}
@@ -703,9 +899,17 @@ const PropertyEditor = ({
             size="small"
             onClick={() => {
               const newSections = [...(selectedObject?.zSections || [])];
-              const lastZ = newSections.length > 0 ? newSections[newSections.length - 1].z + 5 : 0;
-              newSections.push({ z: lastZ, rMin: 0, rMax: 5 });
-              handlePropertyChange('zSections', newSections);
+              // Get the last Z position in internal units (mm)
+              const lastZInMm = newSections.length > 0 ? newSections[newSections.length - 1].z : 0;
+              // Add 5 units in the current display unit, converted to mm
+              const incrementInMm = toInternalUnit(5, lengthUnit, 'length');
+              // Create new section with values in mm
+              newSections.push({ 
+                z: lastZInMm + incrementInMm, 
+                rMin: 0, 
+                rMax: toInternalUnit(5, lengthUnit, 'length') 
+              });
+              handlePropertyChange('zSections', newSections, true);
             }}
             sx={{ mb: 1 }}
           >
