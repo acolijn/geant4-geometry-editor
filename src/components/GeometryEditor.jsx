@@ -1192,8 +1192,7 @@ const GeometryEditor = ({
         ...(solid.zRadius && { zRadius: solid.zRadius }),
         ...(solid.majorRadius && { majorRadius: solid.majorRadius }),
         ...(solid.minorRadius && { minorRadius: solid.minorRadius }),
-        ...(solid.zSections && { zSections: [...solid.zSections] }),
-        ...(solid.unit && { unit: solid.unit })
+        ...(solid.zSections && { zSections: [...solid.zSections] })
       });
       
       // Create the union solid with the new multi-component format
@@ -1201,8 +1200,8 @@ const GeometryEditor = ({
         type: 'union',
         name: unionName,
         material: 'G4_AIR',
-        position: { x: 0, y: 0, z: 0, unit: 'cm' },
-        rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
         mother_volume: newMotherVolume,
         
         // For backward compatibility, keep solid1 and solid2 for the first two components
@@ -1225,8 +1224,8 @@ const GeometryEditor = ({
         })),
         
         // Relative position of the second solid with respect to the first (for backward compatibility)
-        relative_position: { x: 0, y: 0, z: 5, unit: 'cm' },
-        relative_rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
+        relative_position: { x: 0, y: 0, z: 5 },
+        relative_rotation: { x: 0, y: 0, z: 0 },
         
         // Store component indices for the editor's reference
         _editorData: {
@@ -1250,38 +1249,38 @@ const GeometryEditor = ({
       // Special naming for PMT objects
       name: newGeometryType.toLowerCase() === 'pmt' ? 'PMT' : `New${newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1)}`,
       material: 'G4_AIR',
-      position: { x: 0, y: 0, z: 0, unit: 'cm' },
-      rotation: { x: 0, y: 0, z: 0, unit: 'deg' },
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
       mother_volume: newMotherVolume // Use the selected mother volume
     };
     
     // Add specific properties based on geometry type
     if (newGeometryType === 'box') {
-      newGeometry.size = { x: 10, y: 10, z: 10, unit: 'cm' };
+      newGeometry.size = { x: 100, y: 100, z: 100};
     } else if (newGeometryType === 'cylinder') {
-      newGeometry.radius = 5;
-      newGeometry.height = 10;
+      newGeometry.radius = 50;
+      newGeometry.height = 100;
       newGeometry.innerRadius = 0; // Changed from inner_radius to innerRadius for consistency
     } else if (newGeometryType === 'sphere') {
-      newGeometry.radius = 5;
+      newGeometry.radius = 50;
     } else if (newGeometryType === 'trapezoid') {
-      newGeometry.dx1 = 5; // Half-length in x at -z/2
-      newGeometry.dx2 = 5; // Half-length in x at +z/2
-      newGeometry.dy1 = 5; // Half-length in y at -z/2
-      newGeometry.dy2 = 5; // Half-length in y at +z/2
-      newGeometry.dz = 5;  // Half-length in z
+      newGeometry.dx1 = 50; // Half-length in x at -z/2
+      newGeometry.dx2 = 50; // Half-length in x at +z/2
+      newGeometry.dy1 = 50; // Half-length in y at -z/2
+      newGeometry.dy2 = 50; // Half-length in y at +z/2
+      newGeometry.dz = 50;  // Half-length in z
     } else if (newGeometryType === 'torus') {
-      newGeometry.majorRadius = 5;
-      newGeometry.minorRadius = 1;
+      newGeometry.majorRadius = 50;
+      newGeometry.minorRadius = 10;
     } else if (newGeometryType === 'ellipsoid') {
-      newGeometry.xRadius = 5;
-      newGeometry.yRadius = 3;
-      newGeometry.zRadius = 4;
+      newGeometry.xRadius = 50;
+      newGeometry.yRadius = 30;
+      newGeometry.zRadius = 40;
     } else if (newGeometryType === 'polycone') {
       newGeometry.zSections = [
-        { z: -5, rMin: 0, rMax: 3 },
-        { z: 0, rMin: 0, rMax: 5 },
-        { z: 5, rMin: 0, rMax: 2 }
+        { z: -50, rMin: 0, rMax: 30 },
+        { z: 0, rMin: 0, rMax: 50 },
+        { z: 50, rMin: 0, rMax: 20 }
       ];
     }
     

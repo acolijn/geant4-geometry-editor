@@ -121,9 +121,8 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       delete jsonObj.world.rotation;
       
       // Convert dimension properties to dimensions object for world
-      if (jsonObj.world.size) {
-        jsonObj.world.dimensions = createDimensionsObject(jsonObj.world);
-      }
+      jsonObj.world.dimensions = createDimensionsObject(jsonObj.world);
+      delete jsonObj.world.size;
       
       // Remove the unit field if it exists
       if (jsonObj.world.unit) {

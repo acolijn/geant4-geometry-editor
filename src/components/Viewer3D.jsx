@@ -29,14 +29,29 @@ function CoordinateSystem() {
 }
 
 // Camera setup component
-function CameraSetup({ setFrontViewCamera }) {
+function CameraSetup({ setFrontViewCamera, worldSize }) {
   const { camera } = useThree();
+  
+  // Calculate camera distance based on world size
+  const calculateCameraDistance = () => {
+    // Get the maximum dimension of the world volume
+    const maxDimension = Math.max(
+      worldSize?.x || 2000,
+      worldSize?.y || 2000,
+      worldSize?.z || 2000
+    );
+    
+    // Set camera distance to be 1.75x the maximum dimension
+    // This provides enough space to view the entire world volume
+    return -1.75 * maxDimension;
+  };
   
   // Set front view on initial load with z-axis pointing upward
   useEffect(() => {
     // Position camera to look at the scene from the front (y-axis)
     // with z-axis pointing upward
-    camera.position.set(0, -250, 0);
+    const cameraDistance = calculateCameraDistance();
+    camera.position.set(0, cameraDistance, 0);
     camera.lookAt(0, 0, 0);
     camera.up.set(0, 0, 1); // Set z-axis as the up direction
     
@@ -44,7 +59,7 @@ function CameraSetup({ setFrontViewCamera }) {
     if (setFrontViewCamera) {
       setFrontViewCamera(camera);
     }
-  }, [camera, setFrontViewCamera]);
+  }, [camera, setFrontViewCamera, worldSize]);
   
   return null;
 }
@@ -53,7 +68,7 @@ function CameraSetup({ setFrontViewCamera }) {
 
 
 // Simple Scene component with flat object structure
-function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd }) {
+function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize }) {
   // Track which objects are source objects (objects that have been loaded from files)
   const [sourceObjects, setSourceObjects] = useState({});
   
@@ -576,13 +591,13 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 10]} intensity={1} />
       <CoordinateSystem />
-      <CameraSetup setFrontViewCamera={setFrontViewCamera} />
+      <CameraSetup setFrontViewCamera={setFrontViewCamera} worldSize={worldSize} />
       
       {/* World volume - rendered as a non-interactive wireframe */}
       <mesh
         visible
         userData={{ isWorldVolume: true }}
-        scale={[geometries.world.size?.x || 100, geometries.world.size?.y || 100, geometries.world.size?.z || 100]}
+        scale={[geometries.world.size?.x || 1000, geometries.world.size?.y || 1000, geometries.world.size?.z || 1000]}
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshBasicMaterial color="#aaaaaa" wireframe={true} transparent={true} opacity={0.3} />
@@ -804,10 +819,24 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   // Instance tracking functionality has been removed for a cleaner implementation
   // The update handler will be reimplemented in a simpler way
   
+  // Calculate camera distance based on world size
+  const calculateCameraDistance = () => {
+    // Get the maximum dimension of the world volume
+    const maxDimension = Math.max(
+      geometries.world.size?.x || 2000,
+      geometries.world.size?.y || 2000,
+      geometries.world.size?.z || 2000
+    );
+    
+    // Set camera distance to be 1.75x the maximum dimension
+    return -1.75 * maxDimension;
+  };
+
   // Function to set front view
   const setFrontView = () => {
     if (frontViewCamera) {
-      frontViewCamera.position.set(0, -250, 0);
+      const cameraDistance = calculateCameraDistance();
+      frontViewCamera.position.set(0, cameraDistance, 0);
       frontViewCamera.lookAt(0, 0, 0);
       frontViewCamera.up.set(0, 0, 1); // Maintain z-axis as up direction
       frontViewCamera.updateProjectionMatrix();
@@ -1050,6 +1079,12 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
         <Canvas 
           style={{ background: '#f0f0f0' }} 
           onClick={handleCanvasClick}
+          camera={{
+            position: [0, calculateCameraDistance(), 0], 
+            fov: 50, 
+            near: 0.1, 
+            far: Math.abs(calculateCameraDistance()) * 4
+          }}
         >
           <Scene 
             geometries={geometries} 
@@ -1058,8 +1093,9 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
             setFrontViewCamera={setFrontViewCamera}
             transformMode={transformMode}
             onTransformEnd={handleTransformEnd}
+            worldSize={geometries.world.size}
           />
-          <OrbitControls makeDefault enableDamping={false} />
+          <OrbitControls makeDefault enableDamping={false} maxDistance={5000} />
         </Canvas>
       </div>
     </div>

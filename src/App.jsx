@@ -39,22 +39,19 @@ const defaultGeometry = {
     name: 'World',
     material: 'G4_AIR',
     size: {
-      x: 200.0,
-      y: 200.0,
-      z: 200.0,
-      unit: 'cm'
+      x: 2000.0,
+      y: 2000.0,
+      z: 2000.0,
     },
     position: {
       x: 0.0,
       y: 0.0,
       z: 0.0,
-      unit: 'cm'
     },
     rotation: {
       x: 0.0,
       y: 0.0,
       z: 0.0,
-      unit: 'deg'
     }
   },
   volumes: []
@@ -310,19 +307,19 @@ function App() {
       // Ensure size property exists
       if (!mainObject.size) {
         console.warn('IMPORT WARNING - Box missing size property, adding default');
-        mainObject.size = { x: 10, y: 10, z: 10, unit: 'cm' };
+        mainObject.size = { x: 10, y: 10, z: 10 };
       }
       
       // Ensure position property exists
       if (!mainObject.position) {
         console.warn('IMPORT WARNING - Box missing position property, adding default');
-        mainObject.position = { x: 0, y: 0, z: 0, unit: 'cm' };
+        mainObject.position = { x: 0, y: 0, z: 0 };
       }
       
       // Ensure rotation property exists
       if (!mainObject.rotation) {
         console.warn('IMPORT WARNING - Box missing rotation property, adding default');
-        mainObject.rotation = { x: 0, y: 0, z: 0, unit: 'deg' };
+        mainObject.rotation = { x: 0, y: 0, z: 0 };
       }
     }
     
@@ -382,16 +379,16 @@ function App() {
           }
         } else if (processedDesc.type === 'box') {
           if (!processedDesc.size) {
-            processedDesc.size = { x: 10, y: 10, z: 10, unit: 'cm' };
+            processedDesc.size = { x: 10, y: 10, z: 10 };
           }
         }
         
         // Ensure position and rotation
         if (!processedDesc.position) {
-          processedDesc.position = { x: 0, y: 0, z: 0, unit: 'cm' };
+          processedDesc.position = { x: 0, y: 0, z: 0 };
         }
         if (!processedDesc.rotation) {
-          processedDesc.rotation = { x: 0, y: 0, z: 0, unit: 'deg' };
+          processedDesc.rotation = { x: 0, y: 0, z: 0 };
         }
         
         // Check if the name already exists
