@@ -4,7 +4,7 @@ The Geant4 Geometry Editor exports geometry and material configurations in JSON 
 
 ## Geometry JSON
 
-The geometry JSON file contains the complete definition of your detector geometry, including the world volume and all other volumes.
+The geometry JSON file contains the complete definition of your detector geometry, including the world volume and all other volumes. The volumes are automatically sorted to ensure parent volumes are defined before their children, which is essential for proper Geant4 geometry construction.
 
 ### Structure
 
@@ -14,7 +14,7 @@ The geometry JSON file contains the complete definition of your detector geometr
     // World volume properties
   },
   "volumes": [
-    // Array of volume objects
+    // Array of volume objects (sorted by hierarchy)
   ]
 }
 ```
@@ -28,30 +28,27 @@ The world volume is defined as a JSON object with the following properties:
   "type": "box",
   "name": "World",
   "material": "G4_AIR",
-  "size": {
+  "dimensions": {
     "x": 200.0,
     "y": 200.0,
-    "z": 200.0,
-    "unit": "cm"
+    "z": 200.0
   },
-  "position": {
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
-  },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   }
 }
 ```
 
 ### Volume Objects
 
-Each volume in the `volumes` array is defined as a JSON object with properties depending on its type:
+Each volume in the `volumes` array is defined as a JSON object with properties depending on its type. All volumes use the standardized format with `dimensions` and `placement` objects. Volumes are automatically sorted to ensure parent volumes are defined before their children.
 
 #### Box
 
@@ -60,25 +57,22 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "box",
   "name": "DetectorBox",
   "material": "G4_Si",
-  "size": {
+  "dimensions": {
     "x": 10.0,
     "y": 10.0,
-    "z": 1.0,
-    "unit": "cm"
+    "z": 1.0
   },
-  "position": {
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
 ```
 
@@ -89,23 +83,22 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "cylinder",
   "name": "DetectorCylinder",
   "material": "G4_Si",
-  "radius": 5.0,
-  "height": 10.0,
-  "inner_radius": 0.0,
-  "unit": "cm",
-  "position": {
+  "dimensions": {
+    "radius": 5.0,
+    "height": 10.0,
+    "inner_radius": 0.0
+  },
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
 ```
 
@@ -116,21 +109,20 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "sphere",
   "name": "DetectorSphere",
   "material": "G4_Si",
-  "radius": 5.0,
-  "unit": "cm",
-  "position": {
+  "dimensions": {
+    "radius": 5.0
+  },
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
 ```
 
@@ -141,22 +133,22 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "ellipsoid",
   "name": "DetectorEllipsoid",
   "material": "G4_Si",
-  "xRadius": 5.0,
-  "yRadius": 3.0,
-  "zRadius": 7.0,
-  "position": {
+  "dimensions": {
+    "x_radius": 5.0,
+    "y_radius": 3.0,
+    "z_radius": 7.0
+  },
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
 ```
 
@@ -167,21 +159,21 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "torus",
   "name": "DetectorTorus",
   "material": "G4_Si",
-  "majorRadius": 10.0,
-  "minorRadius": 2.0,
-  "position": {
+  "dimensions": {
+    "major_radius": 10.0,
+    "minor_radius": 2.0
+  },
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
 ```
 
@@ -192,24 +184,24 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "trapezoid",
   "name": "DetectorTrapezoid",
   "material": "G4_Si",
-  "dx1": 5.0,
-  "dx2": 7.0,
-  "dy1": 3.0,
-  "dy2": 4.0,
-  "dz": 6.0,
-  "position": {
+  "dimensions": {
+    "dx1": 5.0,
+    "dx2": 7.0,
+    "dy1": 3.0,
+    "dy2": 4.0,
+    "dz": 6.0
+  },
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
 ```
 
@@ -220,59 +212,79 @@ Each volume in the `volumes` array is defined as a JSON object with properties d
   "type": "polycone",
   "name": "DetectorPolycone",
   "material": "G4_Si",
-  "zSections": [
-    { "z": -10.0, "rMin": 0.0, "rMax": 5.0 },
-    { "z": -5.0, "rMin": 0.0, "rMax": 7.0 },
-    { "z": 5.0, "rMin": 0.0, "rMax": 7.0 },
-    { "z": 10.0, "rMin": 0.0, "rMax": 5.0 }
-  ],
-  "position": {
+  "dimensions": {
+    "z": [0.0, 5.0, 10.0],
+    "rmin": [0.0, 1.0, 2.0],
+    "rmax": [5.0, 7.0, 8.0]
+  },
+  "placement": {
     "x": 0.0,
     "y": 0.0,
     "z": 0.0,
-    "unit": "cm"
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
   },
-  "rotation": {
-    "x": 0.0,
-    "y": 0.0,
-    "z": 0.0,
-    "unit": "deg"
-  },
-  "mother_volume": "World"
+  "parent": "World"
 }
+```
+
+#### Polyhedra
+
+```json
+{
+  "type": "polyhedra",
+  "name": "DetectorPolyhedra",
+  "material": "G4_Si",
+  "dimensions": {
+    "z": [0.0, 5.0, 10.0],
+    "rmin": [0.0, 1.0, 2.0],
+    "rmax": [5.0, 7.0, 8.0]
+  },
+  "placement": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0,
+    "rotation": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
+  },
+  "parent": "World"
+}
+```
+
+
 ```
 
 ### Common Properties
 
 All volume objects share these common properties:
 
-- **type**: The shape type ("box", "cylinder", "sphere", "ellipsoid", "torus", "trapezoid", "polycone")
+- **type**: The shape type ("box", "cylinder", "sphere", "ellipsoid", "torus", "trapezoid", "polycone", "polyhedra")
 - **name**: A unique identifier for the volume
 - **material**: The material name (must be defined in the materials JSON)
-- **position**: The position of the volume's center relative to its mother volume
-- **rotation**: The rotation angles around the x, y, and z axes (applied sequentially in Geant4 order)
-- **mother_volume**: The name of the parent volume (except for the world volume)
+- **dimensions**: An object containing dimension properties specific to the volume type
+- **placement**: The position and rotation of the volume relative to its parent
+  - **x, y, z**: Position coordinates
+  - **rotation**: Rotation angles around the x, y, and z axes (applied sequentially in Geant4 order)
+- **parent**: The name of the parent volume (except for the world volume)
+
+### Hierarchical Ordering
+
+The volumes in the JSON output are automatically sorted to ensure that parent volumes are defined before their children. This is essential for proper geometry construction in Geant4, as a volume must exist before another volume can be placed inside it.
 
 ### Units
 
-Units can be specified in two ways:
+All measurements in the JSON file use standard units:
 
-1. As a property of vectors (position, size):
-   ```json
-   "position": {
-     "x": 0.0,
-     "y": 0.0,
-     "z": 0.0,
-     "unit": "cm"
-   }
-   ```
+- Length: millimeters (mm) for all dimensions and positions
+- Angle: radians (rad) for all rotations
 
-2. As a direct property of the volume (for radius, height):
-   ```json
-   "radius": 5.0,
-   "height": 10.0,
-   "unit": "cm"
-   ```
+The standardized format eliminates the need for explicit unit specifications, as all values are automatically converted to these standard units during export and import.
 
 ## Materials JSON
 

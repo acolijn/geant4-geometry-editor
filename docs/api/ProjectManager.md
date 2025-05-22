@@ -31,17 +31,57 @@ The ProjectManager component handles project management functionality in the Gea
 <dd><p>Load a compound object by filename</p></dd>
 </dl>
 
+## Constants
+
+<dl>
+<dt><a href="#createPlacementObject">`createPlacementObject`</a> ⇒ <code>Object</code></dt>
+<dd><p>Create a placement object from position and rotation</p></dd>
+<dt><a href="#createDimensionsObject">`createDimensionsObject`</a> ⇒ <code>Object</code></dt>
+<dd><p>Create a dimensions object based on the volume type</p></dd>
+<dt><a href="#standardizeObjectFormat">`standardizeObjectFormat`</a> ⇒ <code>Object</code></dt>
+<dd><p>Standardize an object and all its descendants to use the consistent format</p></dd>
+<dt><a href="#restoreOriginalFormat">`restoreOriginalFormat`</a> ⇒ <code>Object</code></dt>
+<dd><p>Restore the original format of an object loaded from the library</p></dd>
+<dt><a href="#saveObject">`saveObject`</a> ⇒ <code>Promise.&lt;Object&gt;</code></dt>
+<dd><p>Save a compound object to the objects directory</p></dd>
+<dt><a href="#listObjects">`listObjects`</a> ⇒ <code>Promise.&lt;Array&gt;</code></dt>
+<dd><p>Get a list of all available objects</p></dd>
+<dt><a href="#loadObject">`loadObject`</a> ⇒ <code>Promise.&lt;Object&gt;</code></dt>
+<dd><p>Load a compound object by filename</p></dd>
+<dt><a href="#toInternalUnit">`toInternalUnit`</a> ⇒ <code>number</code></dt>
+<dd><p>Convert a value from a display unit to the internal unit (mm or rad)</p></dd>
+<dt><a href="#fromInternalUnit">`fromInternalUnit`</a> ⇒ <code>number</code></dt>
+<dd><p>Convert a value from the internal unit (mm or rad) to a display unit</p></dd>
+<dt><a href="#getAvailableUnits">`getAvailableUnits`</a> ⇒ <code>Array.&lt;string&gt;</code></dt>
+<dd><p>Get the available units for a specific type</p></dd>
+<dt><a href="#formatValueWithUnit">`formatValueWithUnit`</a> ⇒ <code>string</code></dt>
+<dd><p>Format a value with its unit for display</p></dd>
+</dl>
+
 ## Functions
 
 <dl>
 <dt><a href="#GeometryEditor">`GeometryEditor(props)`</a></dt>
 <dd><p>Main GeometryEditor component</p></dd>
+<dt><a href="#AddNewTab">`AddNewTab()`</a></dt>
+<dd><p>AddNewTab Component</p>
+<p>This component renders the UI for adding new geometry objects to the scene.
+It includes options for importing existing objects, creating new primitive shapes,
+and creating union solids by combining two or more existing objects.</p></dd>
 <dt><a href="#HitCollectionsDialog">`HitCollectionsDialog(props)`</a></dt>
 <dd><p>Dialog component for managing hit collections</p></dd>
 <dt><a href="#LoadObjectDialog">`LoadObjectDialog()`</a></dt>
 <dd><p>Dialog for loading a compound object from the objects directory</p></dd>
+<dt><a href="#PropertyEditor">`PropertyEditor()`</a></dt>
+<dd><p>PropertyEditor Component</p>
+<p>This component renders the property editor panel for the selected geometry object.
+It handles different types of geometries (world, volumes) and displays
+the relevant properties for each type. The property editor allows users to modify
+properties like position, rotation, dimensions, and material.</p></dd>
 <dt><a href="#SaveObjectDialog">`SaveObjectDialog()`</a></dt>
 <dd><p>Dialog for saving a compound object with name and description</p></dd>
+<dt><a href="#UpdateObjectsDialog">`UpdateObjectsDialog()`</a></dt>
+<dd><p>Dialog for updating instances of objects in the scene</p></dd>
 <dt><a href="#radToDeg">`radToDeg(r)`</a> ⇒ <code>number</code></dt>
 <dd><p>Convert radians to degrees</p></dd>
 <dt><a href="#degToRad">`degToRad(d)`</a> ⇒ <code>number</code></dt>
@@ -49,9 +89,61 @@ The ProjectManager component handles project management functionality in the Gea
 <dt><a href="#debugObject">`debugObject(prefix, object)`</a></dt>
 <dd><p>Debug helper function to log object details
 Useful for diagnosing positioning and rotation issues</p></dd>
-<dt><a href="#UpdateObjectsDialog">`UpdateObjectsDialog()`</a></dt>
-<dd><p>Dialog for updating instances of objects in the scene</p></dd>
+<dt><a href="#standardizeVolumeFormat">`standardizeVolumeFormat(volume)`</a> ⇒ <code>Object</code></dt>
+<dd><p>Standardize a volume object to use the consistent format</p></dd>
 </dl>
+
+<a name="createPlacementObject"></a>
+
+## `createPlacementObject` ⇒ <code>Object</code>
+<p>Create a placement object from position and rotation</p>
+
+**Kind**: global constant  
+**Returns**: <code>Object</code> - <ul>
+<li>The standardized placement object</li>
+</ul>  
+**Params**
+
+- volume <code>Object</code> - <p>The volume object containing position and rotation</p>
+
+<a name="createDimensionsObject"></a>
+
+## `createDimensionsObject` ⇒ <code>Object</code>
+<p>Create a dimensions object based on the volume type</p>
+
+**Kind**: global constant  
+**Returns**: <code>Object</code> - <ul>
+<li>The standardized dimensions object</li>
+</ul>  
+**Params**
+
+- volume <code>Object</code> - <p>The volume object</p>
+
+<a name="standardizeObjectFormat"></a>
+
+## `standardizeObjectFormat` ⇒ <code>Object</code>
+<p>Standardize an object and all its descendants to use the consistent format</p>
+
+**Kind**: global constant  
+**Returns**: <code>Object</code> - <ul>
+<li>The standardized object data</li>
+</ul>  
+**Params**
+
+- objectData <code>Object</code> - <p>The object data containing the main object and its descendants</p>
+
+<a name="restoreOriginalFormat"></a>
+
+## `restoreOriginalFormat` ⇒ <code>Object</code>
+<p>Restore the original format of an object loaded from the library</p>
+
+**Kind**: global constant  
+**Returns**: <code>Object</code> - <ul>
+<li>The object data in the original format</li>
+</ul>  
+**Params**
+
+- standardizedData <code>Object</code> - <p>The standardized object data</p>
 
 <a name="saveObject"></a>
 
@@ -90,6 +182,57 @@ Useful for diagnosing positioning and rotation issues</p></dd>
 
 - fileName <code>string</code> - <p>The name of the file to load</p>
 
+<a name="toInternalUnit"></a>
+
+## `toInternalUnit` ⇒ <code>number</code>
+<p>Convert a value from a display unit to the internal unit (mm or rad)</p>
+
+**Kind**: global constant  
+**Returns**: <code>number</code> - <p>The converted value in the internal unit (mm or rad)</p>  
+**Params**
+
+- value <code>number</code> - <p>The value to convert</p>
+- fromUnit <code>string</code> - <p>The unit to convert from</p>
+- type <code>string</code> - <p>The type of unit ('length' or 'angle')</p>
+
+<a name="fromInternalUnit"></a>
+
+## `fromInternalUnit` ⇒ <code>number</code>
+<p>Convert a value from the internal unit (mm or rad) to a display unit</p>
+
+**Kind**: global constant  
+**Returns**: <code>number</code> - <p>The converted value in the specified unit</p>  
+**Params**
+
+- value <code>number</code> - <p>The value to convert (in mm or rad)</p>
+- toUnit <code>string</code> - <p>The unit to convert to</p>
+- type <code>string</code> - <p>The type of unit ('length' or 'angle')</p>
+
+<a name="getAvailableUnits"></a>
+
+## `getAvailableUnits` ⇒ <code>Array.&lt;string&gt;</code>
+<p>Get the available units for a specific type</p>
+
+**Kind**: global constant  
+**Returns**: <code>Array.&lt;string&gt;</code> - <p>Array of available unit names</p>  
+**Params**
+
+- type <code>string</code> - <p>The type of unit ('length' or 'angle')</p>
+
+<a name="formatValueWithUnit"></a>
+
+## `formatValueWithUnit` ⇒ <code>string</code>
+<p>Format a value with its unit for display</p>
+
+**Kind**: global constant  
+**Returns**: <code>string</code> - <p>The formatted value with unit</p>  
+**Params**
+
+- value <code>number</code> - <p>The value to format (in internal units)</p>
+- unit <code>string</code> - <p>The unit to display</p>
+- type <code>string</code> - <p>The type of unit ('length' or 'angle')</p>
+- precision <code>number</code> - <p>The number of decimal places to show</p>
+
 <a name="GeometryEditor"></a>
 
 ## `GeometryEditor(props)`
@@ -117,6 +260,7 @@ Useful for diagnosing positioning and rotation issues</p></dd>
     * [`~handleMenuOpen(event)`](#GeometryEditor..handleMenuOpen)
     * [`~simplifyObjectNames(objectData)`](#GeometryEditor..simplifyObjectNames) ⇒ <code>Object</code>
         * [`~extractComponentName(structuredName)`](#GeometryEditor..simplifyObjectNames..extractComponentName) ⇒ <code>string</code>
+    * [`~processStandardizedFormat(objectData)`](#GeometryEditor..processStandardizedFormat) ⇒ <code>Object</code>
     * [`~handleLoadObject(objectData)`](#GeometryEditor..handleLoadObject) ⇒ <code>Object</code>
     * [`~applyStructuredNaming(objectData)`](#GeometryEditor..applyStructuredNaming) ⇒ <code>Object</code>
     * [`~handleMenuClose(event)`](#GeometryEditor..handleMenuClose)
@@ -128,9 +272,7 @@ Useful for diagnosing positioning and rotation issues</p></dd>
     * [`~handlePropertyChange(property, value, allowNegative, isStringProperty)`](#GeometryEditor..handlePropertyChange)
         * [`~processedValue`](#GeometryEditor..handlePropertyChange..processedValue)
     * [`~handleAddGeometry()`](#GeometryEditor..handleAddGeometry)
-    * [`~renderPropertyEditor()`](#GeometryEditor..renderPropertyEditor) ⇒ <code>JSX.Element</code>
     * [`~handleImportFromFileSystem()`](#GeometryEditor..handleImportFromFileSystem) ⇒ <code>Promise.&lt;void&gt;</code>
-    * [`~renderAddNewTab()`](#GeometryEditor..renderAddNewTab) ⇒ <code>JSX.Element</code>
 
 <a name="GeometryEditor..handleCloseAlert"></a>
 
@@ -191,13 +333,26 @@ This function extracts just the ComponentName part for cleaner exports.</p>
 
 - structuredName <code>string</code> - <p>The structured name to process</p>
 
+<a name="GeometryEditor..processStandardizedFormat"></a>
+
+### `GeometryEditor~processStandardizedFormat(objectData)` ⇒ <code>Object</code>
+<p>Process an object with standardized format (placement and dimensions)</p>
+<p>This function converts an object with standardized format (using placement and dimensions)
+to the internal format used by the application (using position, rotation, and direct dimension properties).</p>
+
+**Kind**: inner method of [<code>GeometryEditor</code>](#GeometryEditor)  
+**Returns**: <code>Object</code> - <p>The processed object data</p>  
+**Params**
+
+- objectData <code>Object</code> - <p>The object data to process</p>
+
 <a name="GeometryEditor..handleLoadObject"></a>
 
 ### `GeometryEditor~handleLoadObject(objectData)` ⇒ <code>Object</code>
 <p>Handle loading an object from the library</p>
 <p>This function processes object data loaded from the library, applies structured naming
-to ensure consistency, and adds the object to the scene. It also displays a success
-or error notification to provide feedback to the user.</p>
+to ensure consistency, and adds the object to the scene. It handles objects in the
+standardized format with 'placement' and 'dimensions' properties.</p>
 
 **Kind**: inner method of [<code>GeometryEditor</code>](#GeometryEditor)  
 **Returns**: <code>Object</code> - <p>An object indicating success or failure of the operation</p>  
@@ -327,17 +482,6 @@ It handles special cases for union solids, which require combining two existing 
 For basic geometries, it creates objects with default properties based on the type.</p>
 
 **Kind**: inner method of [<code>GeometryEditor</code>](#GeometryEditor)  
-<a name="GeometryEditor..renderPropertyEditor"></a>
-
-### `GeometryEditor~renderPropertyEditor()` ⇒ <code>JSX.Element</code>
-<p>Render the property editor panel</p>
-<p>This function renders the appropriate property editor UI based on the selected geometry object.
-It handles different types of geometries (world, volumes, union solids) and displays
-the relevant properties for each type. The property editor allows users to modify
-properties like position, rotation, dimensions, and material.</p>
-
-**Kind**: inner method of [<code>GeometryEditor</code>](#GeometryEditor)  
-**Returns**: <code>JSX.Element</code> - <p>The rendered property editor component</p>  
 <a name="GeometryEditor..handleImportFromFileSystem"></a>
 
 ### `GeometryEditor~handleImportFromFileSystem()` ⇒ <code>Promise.&lt;void&gt;</code>
@@ -347,18 +491,15 @@ from JSON files. It validates the imported content, adds the objects to the
 scene with the selected mother volume, and displays appropriate notifications.</p>
 
 **Kind**: inner method of [<code>GeometryEditor</code>](#GeometryEditor)  
-<a name="GeometryEditor..renderAddNewTab"></a>
+<a name="AddNewTab"></a>
 
-### `GeometryEditor~renderAddNewTab()` ⇒ <code>JSX.Element</code>
-<p>Render the &quot;Add New&quot; tab content</p>
-<p>This function renders the UI for adding new geometry objects to the scene.
+## `AddNewTab()`
+<p>AddNewTab Component</p>
+<p>This component renders the UI for adding new geometry objects to the scene.
 It includes options for importing existing objects, creating new primitive shapes,
-and creating union solids by combining two existing objects.</p>
-<p>The UI is organized into sections with appropriate controls for each type of
-geometry that can be added.</p>
+and creating union solids by combining two or more existing objects.</p>
 
-**Kind**: inner method of [<code>GeometryEditor</code>](#GeometryEditor)  
-**Returns**: <code>JSX.Element</code> - <p>The rendered Add New tab component</p>  
+**Kind**: global function  
 <a name="HitCollectionsDialog"></a>
 
 ## `HitCollectionsDialog(props)`
@@ -410,10 +551,26 @@ Updates the parent component with the new collections and closes the dialog</p>
 <p>Dialog for loading a compound object from the objects directory</p>
 
 **Kind**: global function  
+<a name="PropertyEditor"></a>
+
+## `PropertyEditor()`
+<p>PropertyEditor Component</p>
+<p>This component renders the property editor panel for the selected geometry object.
+It handles different types of geometries (world, volumes) and displays
+the relevant properties for each type. The property editor allows users to modify
+properties like position, rotation, dimensions, and material.</p>
+
+**Kind**: global function  
 <a name="SaveObjectDialog"></a>
 
 ## `SaveObjectDialog()`
 <p>Dialog for saving a compound object with name and description</p>
+
+**Kind**: global function  
+<a name="UpdateObjectsDialog"></a>
+
+## `UpdateObjectsDialog()`
+<p>Dialog for updating instances of objects in the scene</p>
 
 **Kind**: global function  
 <a name="radToDeg"></a>
@@ -450,12 +607,19 @@ Useful for diagnosing positioning and rotation issues</p>
 - prefix <code>string</code> - <p>Descriptive prefix for the log</p>
 - object <code>Object</code> - <p>The object to debug</p>
 
-<a name="UpdateObjectsDialog"></a>
+<a name="standardizeVolumeFormat"></a>
 
-## `UpdateObjectsDialog()`
-<p>Dialog for updating instances of objects in the scene</p>
+## `standardizeVolumeFormat(volume)` ⇒ <code>Object</code>
+<p>Standardize a volume object to use the consistent format</p>
 
 **Kind**: global function  
+**Returns**: <code>Object</code> - <ul>
+<li>The standardized volume object</li>
+</ul>  
+**Params**
+
+- volume <code>Object</code> - <p>The volume object to standardize</p>
+
 
 ## Usage Example
 
