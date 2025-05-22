@@ -10,7 +10,7 @@
  * @param {Object} volume - The volume object containing position and rotation
  * @returns {Object} - The standardized placement object
  */
-const createPlacementObject = (volume) => {
+export const createPlacementObject = (volume) => {
   if (!volume.position) return null;
   
   // Create placement object
@@ -37,7 +37,7 @@ const createPlacementObject = (volume) => {
  * @param {Object} volume - The volume object
  * @returns {Object} - The standardized dimensions object
  */
-const createDimensionsObject = (volume) => {
+export const createDimensionsObject = (volume) => {
   const dimensions = {};
   
   switch(volume.type) {
@@ -87,6 +87,31 @@ const createDimensionsObject = (volume) => {
       if (volume.xRadius !== undefined) dimensions.x_radius = Number(volume.xRadius);
       if (volume.yRadius !== undefined) dimensions.y_radius = Number(volume.yRadius);
       if (volume.zRadius !== undefined) dimensions.z_radius = Number(volume.zRadius);
+      break;
+
+    case 'polycone':
+      if (volume.zSections && Array.isArray(volume.zSections)) {
+        // Extract z_sections from the zSections array
+        const zSections = volume.zSections;
+        
+        // Create arrays for z, rmin, and rmax
+        const zValues = [];
+        const rminValues = [];
+        const rmaxValues = [];
+        
+        // Extract values from each section and convert to mm
+        zSections.forEach(section => {
+          zValues.push(section.z);
+          // Use rMin and rMax (capital M) as in the PropertyEditor
+          rminValues.push(section.rMin || 0);
+          rmaxValues.push(section.rMax || 0);
+        });
+        
+        // Add the arrays to dimensions
+        dimensions.z = zValues;
+        dimensions.rmin = rminValues;
+        dimensions.rmax = rmaxValues;
+      }
       break;
   }
   
@@ -141,6 +166,12 @@ const standardizeVolumeFormat = (volume) => {
   delete standardizedVolume.xRadius;
   delete standardizedVolume.yRadius;
   delete standardizedVolume.zRadius;
+  
+  // Polycone properties
+  delete standardizedVolume.zSections;
+  delete standardizedVolume.z;
+  delete standardizedVolume.rmin;
+  delete standardizedVolume.rmax;
   
   // Convert mother_volume to parent
   if (standardizedVolume.mother_volume) {
@@ -252,6 +283,18 @@ export const restoreOriginalFormat = (standardizedData) => {
           if (restoredVolume.dimensions.x_radius !== undefined) restoredVolume.xRadius = restoredVolume.dimensions.x_radius;
           if (restoredVolume.dimensions.y_radius !== undefined) restoredVolume.yRadius = restoredVolume.dimensions.y_radius;
           if (restoredVolume.dimensions.z_radius !== undefined) restoredVolume.zRadius = restoredVolume.dimensions.z_radius;
+          break;
+
+        case 'polycone':
+          if (restoredVolume.dimensions.z !== undefined) restoredVolume.z = restoredVolume.dimensions.z;
+          if (restoredVolume.dimensions.rmax !== undefined) restoredVolume.rmax = restoredVolume.dimensions.rmax;
+          if (restoredVolume.dimensions.rmin !== undefined) restoredVolume.rmin = restoredVolume.dimensions.rmin;
+          break;
+
+        case 'polyhedra':
+          if (restoredVolume.dimensions.z !== undefined) restoredVolume.z = restoredVolume.dimensions.z;
+          if (restoredVolume.dimensions.rmax !== undefined) restoredVolume.rmax = restoredVolume.dimensions.rmax;
+          if (restoredVolume.dimensions.rmin !== undefined) restoredVolume.rmin = restoredVolume.dimensions.rmin;
           break;
       }
       

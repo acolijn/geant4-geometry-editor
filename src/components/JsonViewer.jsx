@@ -9,6 +9,7 @@ import {
   Alert,
   Snackbar
 } from '@mui/material';
+import { createPlacementObject, createDimensionsObject } from '../utils/ObjectFormatStandardizer';
 
 const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMaterials, onImportPartialGeometry }) => {
   const [tabValue, setTabValue] = useState(0);
@@ -19,43 +20,6 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
   // Format the JSON with proper indentation for display
   const formatJson = (data) => {
     return JSON.stringify(data, null, 2);
-  };
-  
-  // Helper function to mark placement objects for single-line formatting
-  const formatPlacement = (placement) => {
-    // Create a special object with a custom toString method
-    // This will be used to format the placement as a single line
-    const formattedPlacement = {};
-    
-    // Add a custom toString method that will be called during JSON.stringify
-    Object.defineProperty(formattedPlacement, 'toJSON', {
-      enumerable: false,
-      value: function() {
-        // Values are already in standard units (mm for position)
-        const x = placement.x;
-        const y = placement.y;
-        const z = placement.z;
-        
-        let result = `{ "x": ${x}, "y": ${y}, "z": ${z}`;
-        
-        if (placement.rotation) {
-          const rot = placement.rotation;
-          // Rotation values are already in radians
-          const rx = rot.x;
-          const ry = rot.y;
-          const rz = rot.z;
-          result += `, "rotation": { "x": ${rx}, "y": ${ry}, "z": ${rz} }`;
-        }
-        
-        result += ` }`;
-        return result;
-      }
-    });
-    
-    // Copy all properties from the original placement
-    Object.assign(formattedPlacement, placement);
-    
-    return formattedPlacement;
   };
   
   // Ensure polycone and polyhedra z-planes are sorted
@@ -149,7 +113,9 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     
     // Process the world object
     if (jsonObj.world && jsonObj.world.position) {
-      const placement = createPlacementObject(jsonObj.world.position, jsonObj.world.rotation);
+      // const placement = createPlacementObjectX(jsonObj.world.position, jsonObj.world.rotation);
+      const placement = createPlacementObject(jsonObj.world);
+
       jsonObj.world.placement = placement;
       delete jsonObj.world.position;
       delete jsonObj.world.rotation;
@@ -229,7 +195,9 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             };
             
             // Process dimensions using the same function as regular volumes
-            convertedComponent.dimensions = createDimensionsObject(tempVolume);
+            //convertedComponent.dimensions = createDimensionsObject(tempVolume);
+            convertedComponent.dimensions = createDimensionsObject(component);
+
             
             // Add any additional properties needed for the component
             if (component.material) {
@@ -239,81 +207,19 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             // Process placement for each component
             if (component.placement && Array.isArray(component.placement)) {
               // Create placement array using the same logic as for regular volumes
-              convertedComponent.placement = component.placement.map(place => {
-                // Create a temporary position and rotation objects
-                const tempPos = {
-                  x: place.x || 0,
-                  y: place.y || 0,
-                  z: place.z || 0,
-                  unit: 'cm'
-                };
-                
-                const tempRot = place.rotation ? {
-                  x: place.rotation.x || 0,
-                  y: place.rotation.y || 0,
-                  z: place.rotation.z || 0,
-                  unit: place.rotation.unit || 'deg'
-                } : null;
-                
-                // Use the same createPlacementObject function as for regular volumes
-                return createPlacementObject(tempPos, tempRot);
-              });
+              convertedComponent.placement = createPlacementObject(component);
             }
             
             convertedVolume.components.push(convertedComponent);
           });
           
           // Add placement for the union itself
-          if (volume.position) {
-            // Convert position values to mm
-            const posUnit = volume.position.unit || 'cm';
-            convertedVolume.placement = [{
-              x: Number(volume.position.x || 0),
-              y: Number(volume.position.y || 0),
-              z: Number(volume.position.z || 0)
-            }];
-            
-            // Add rotation if present (convert to radians)
-            if (volume.rotation) {
-              const rotUnit = volume.rotation.unit || 'deg';
-              convertedVolume.placement[0].rotation = {
-                x: Number(volume.rotation.x || 0),
-                y: Number(volume.rotation.y || 0),
-                z: Number(volume.rotation.z || 0)
-              };
-            }
-          } else {
-            // Default placement at origin
-            convertedVolume.placement = [{ x: 0.0, y: 0.0, z: 0.0 }];
-          }
+          convertedVolume.placement = createPlacementObject(volume);
         } else {
           // Standard non-union volumes
           // Convert dimension properties to dimensions object
           convertedVolume.dimensions = createDimensionsObject(volume);
-          
-          // Convert position and rotation to placement array
-          if (volume.position) {
-            // Convert position values to mm
-            const posUnit = volume.position.unit || 'cm';
-            convertedVolume.placement = [{
-              x: Number(volume.position.x || 0),
-              y: Number(volume.position.y || 0),
-              z: Number(volume.position.z || 0)
-            }];
-            
-            // Add rotation if present (convert to radians)
-            if (volume.rotation) {
-              const rotUnit = volume.rotation.unit || 'deg';
-              convertedVolume.placement[0].rotation = {
-                x: Number(volume.rotation.x || 0),
-                y: Number(volume.rotation.y || 0),
-                z: Number(volume.rotation.z || 0)
-              };
-            }
-          } else {
-            // Default placement at origin
-            convertedVolume.placement = [{ x: 0.0, y: 0.0, z: 0.0 }];
-          }
+          convertedVolume.placement = createPlacementObject(volume);
         }
         
         // Add the converted volume to the array
@@ -322,230 +228,10 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
       
       // Replace the original volumes with the converted ones
       jsonObj.volumes = convertedVolumes;
-    }
-    
-    // Final cleanup to remove any remaining unit tags
-    const removeUnitTags = (obj) => {
-      if (!obj || typeof obj !== 'object') return;
-      
-      // Remove unit property if present
-      if ('unit' in obj) {
-        delete obj.unit;
-      }
-      
-      // Process all properties recursively
-      for (const key in obj) {
-        if (obj[key] && typeof obj[key] === 'object') {
-          removeUnitTags(obj[key]);
-        }
-      }
-      
-      // Process arrays
-      if (Array.isArray(obj)) {
-        obj.forEach(item => {
-          if (item && typeof item === 'object') {
-            removeUnitTags(item);
-          }
-        });
-      }
     };
-    
-    // Apply the cleanup to remove all unit tags
-    removeUnitTags(jsonObj);
-    
-    // Convert back to JSON string with custom replacer for placement objects
-    const jsonWithMarkers = JSON.stringify(jsonObj, placementReplacer, 2);
-    return formatPlacementJson(jsonWithMarkers);
-  };
-  
-  // Create a placement object from position and rotation
-  const createPlacementObject = (position, rotation) => {
-    // Always use cm as the default unit for conversion if not specified
-    const posUnit = 'cm';
-    const placement = {
-      x: position?.x ?? 0,
-      y: position?.y ?? 0,
-      z: position?.z ?? 0
-    };
-    
-    // Add rotation only if it exists and any value is non-zero
-    const hasRotation = rotation && (
-      (rotation.x && rotation.x !== 0) || 
-      (rotation.y && rotation.y !== 0) || 
-      (rotation.z && rotation.z !== 0)
-    );
-    
-    if (hasRotation) {
-      const rotUnit = rotation?.unit || 'deg';
-      placement.rotation = {
-        x: rotation?.x ?? 0,
-        y: rotation?.y ?? 0,
-        z: rotation?.z ?? 0
-      };
-    }
-    
-    // Mark this as a special placement object
-    placement._isPlacement = true;
-    
-    return placement;
-  };
 
-  // Create a dimensions object based on the geometry type
-  const createDimensionsObject = (geometry) => {
-    const dimensions = {};
-    
-    // Always use cm as the default unit for conversion if not specified
-    const unit = 'cm';
-    
-    switch(geometry.type) {
-      case 'box':
-        if (geometry.size) {
-          dimensions.x = geometry.size.x;
-          dimensions.y = geometry.size.y;
-          dimensions.z = geometry.size.z;
-          delete geometry.size;
-        }
-        break;
-        
-      case 'sphere':
-        if (geometry.radius !== undefined) {
-          dimensions.radius = geometry.radius;
-          delete geometry.radius;
-        }
-        break;
-        
-      case 'cylinder':
-        if (geometry.radius !== undefined) {
-          dimensions.radius = geometry.radius;
-          delete geometry.radius;
-        }
-        if (geometry.innerRadius !== undefined) {
-          dimensions.inner_radius = geometry.innerRadius;
-          delete geometry.innerRadius;
-        }
-        if (geometry.height !== undefined) {
-          dimensions.height = geometry.height;
-          delete geometry.height;
-        }
-        break;
-        
-      case 'trapezoid':
-        if (geometry.dx1 !== undefined) {
-          dimensions.dx1 = geometry.dx1;
-          delete geometry.dx1;
-        }
-        if (geometry.dx2 !== undefined) {
-          dimensions.dx2 = geometry.dx2;
-          delete geometry.dx2;
-        }
-        if (geometry.dy1 !== undefined) {
-          dimensions.dy1 = geometry.dy1;
-          delete geometry.dy1;
-        }
-        if (geometry.dy2 !== undefined) {
-          dimensions.dy2 = geometry.dy2;
-          delete geometry.dy2;
-        }
-        if (geometry.dz !== undefined) {
-          dimensions.dz = geometry.dz;
-          delete geometry.dz;
-        }
-        break;
-        
-      case 'torus':
-        if (geometry.majorRadius !== undefined) {
-          dimensions.major_radius = geometry.majorRadius;
-          delete geometry.majorRadius;
-        }
-        if (geometry.minorRadius !== undefined) {
-          dimensions.minor_radius = geometry.minorRadius;
-          delete geometry.minorRadius;
-        }
-        break;
-        
-      case 'ellipsoid':
-        if (geometry.xRadius !== undefined) {
-          dimensions.x_radius = geometry.xRadius;
-          delete geometry.xRadius;
-        }
-        if (geometry.yRadius !== undefined) {
-          dimensions.y_radius = geometry.yRadius;
-          delete geometry.yRadius;
-        }
-        if (geometry.zRadius !== undefined) {
-          dimensions.z_radius = geometry.zRadius;
-          delete geometry.zRadius;
-        }
-        break;
-        
-      case 'polycone':
-        if (geometry.zSections && Array.isArray(geometry.zSections)) {
-          // Extract z_sections from the zSections array
-          const zSections = geometry.zSections;
-          
-          // Create arrays for z, rmin, and rmax
-          const zValues = [];
-          const rminValues = [];
-          const rmaxValues = [];
-          
-          // Extract values from each section and convert to mm
-          zSections.forEach(section => {
-            zValues.push(section.z);
-            // Use rMin and rMax (capital M) as in the PropertyEditor
-            rminValues.push(section.rMin || 0);
-            rmaxValues.push(section.rMax || 0);
-          });
-          
-          // Add the arrays to dimensions
-          dimensions.z = zValues;
-          dimensions.rmin = rminValues;
-          dimensions.rmax = rmaxValues;
-          
-          // Remove the original zSections property
-          delete geometry.zSections;
-        }
-        break;
-        
-      default:
-        // For unknown types, just return an empty dimensions object
-        break;
-    }
-    
-    return dimensions;
-  };
-  
-  // Custom replacer function for JSON.stringify to format placement objects
-  const placementReplacer = (key, value) => {
-    // Check if this is a placement object
-    if (value && value._isPlacement === true) {
-      // Remove the marker property
-      const { _isPlacement, ...cleanPlacement } = value;
-      
-      // Create a clean object without any internal markers
-      const result = {
-        x: cleanPlacement.x,
-        y: cleanPlacement.y,
-        z: cleanPlacement.z
-      };
-      
-      // Add rotation if it exists
-      if (cleanPlacement.rotation) {
-        result.rotation = {
-          x: cleanPlacement.rotation.x,
-          y: cleanPlacement.rotation.y,
-          z: cleanPlacement.rotation.z
-        };
-      }
-      
-      return result;
-    }
-    return value;
-  };
-  
-  // Format the JSON with proper indentation for display and fix placement formatting
-  const formatPlacementJson = (jsonString) => {
-    // The JSON is already properly formatted by JSON.stringify, so we don't need to do any special formatting
-    return jsonString;
+    const jsonWithMarkers = JSON.stringify(jsonObj, null, 2);
+    return jsonWithMarkers;
   };
   
   const geometryJson = generateGeometryJson();
