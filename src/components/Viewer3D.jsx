@@ -176,11 +176,17 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     const parentRotY = parentWorld.rotation[1];
     const parentRotZ = parentWorld.rotation[2];
     
-    // Apply rotations in the correct sequence
+    // Apply rotations in the correct sequence for Geant4 (X, then Y around new Y, then Z around new Z)
+    // This is critical for compound objects to rotate correctly as a single solid
     const rotMatrix = new THREE.Matrix4();
-    rotMatrix.makeRotationX(parentRotX);
-    rotMatrix.multiply(new THREE.Matrix4().makeRotationY(parentRotY));
-    rotMatrix.multiply(new THREE.Matrix4().makeRotationZ(parentRotZ));
+    
+    // Create individual rotation matrices
+    const rotX = new THREE.Matrix4().makeRotationX(parentRotX);
+    const rotY = new THREE.Matrix4().makeRotationY(parentRotY);
+    const rotZ = new THREE.Matrix4().makeRotationZ(parentRotZ);
+    
+    // Apply in sequence: first X, then Y, then Z
+    rotMatrix.copy(rotX).multiply(rotY).multiply(rotZ);
     
     // Set parent position and rotation
     parentMatrix.setPosition(new THREE.Vector3(parentWorld.position[0], parentWorld.position[1], parentWorld.position[2]));
@@ -216,9 +222,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     // Convert back to Euler angles in degrees
     const combinedEuler = new THREE.Euler().setFromQuaternion(combinedQuat, 'XYZ');
     const combinedRotation = [
-      THREE.MathUtils.radToDeg(combinedEuler.x),
-      THREE.MathUtils.radToDeg(combinedEuler.y),
-      THREE.MathUtils.radToDeg(combinedEuler.z)
+      combinedEuler.x,
+      combinedEuler.y,
+      combinedEuler.z
     ];
     
     return {
@@ -290,10 +296,14 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     const parentRotY = parentWorld.rotation[1];
     const parentRotZ = parentWorld.rotation[2];
     
-    // Create a rotation matrix in the correct sequence (X, Y, Z)
-    parentRotMatrix.makeRotationX(parentRotX);
-    parentRotMatrix.multiply(new THREE.Matrix4().makeRotationY(parentRotY));
-    parentRotMatrix.multiply(new THREE.Matrix4().makeRotationZ(parentRotZ));
+    // Create a rotation matrix in the correct sequence for Geant4 (X, then Y around new Y, then Z around new Z)
+    // Create individual rotation matrices
+    const rotX = new THREE.Matrix4().makeRotationX(parentRotX);
+    const rotY = new THREE.Matrix4().makeRotationY(parentRotY);
+    const rotZ = new THREE.Matrix4().makeRotationZ(parentRotZ);
+    
+    // Apply in sequence: first X, then Y, then Z
+    parentRotMatrix.copy(rotX).multiply(rotY).multiply(rotZ);
     
     // Create the parent's world transformation matrix
     const parentWorldMatrix = new THREE.Matrix4().compose(
@@ -484,11 +494,16 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
             const parentRotY = parentWorld.rotation[1];
             const parentRotZ = parentWorld.rotation[2];
             
-            // Create a rotation matrix in the correct sequence (X, Y, Z)
+            // Create a rotation matrix in the correct sequence for Geant4 (X, then Y around new Y, then Z around new Z)
             const parentRotMatrix = new THREE.Matrix4();
-            parentRotMatrix.makeRotationX(parentRotX);
-            parentRotMatrix.multiply(new THREE.Matrix4().makeRotationY(parentRotY));
-            parentRotMatrix.multiply(new THREE.Matrix4().makeRotationZ(parentRotZ));
+            
+            // Create individual rotation matrices
+            const rotX = new THREE.Matrix4().makeRotationX(parentRotX);
+            const rotY = new THREE.Matrix4().makeRotationY(parentRotY);
+            const rotZ = new THREE.Matrix4().makeRotationZ(parentRotZ);
+            
+            // Apply in sequence: first X, then Y, then Z
+            parentRotMatrix.copy(rotX).multiply(rotY).multiply(rotZ);
             
             // Get the inverse of the parent's rotation matrix
             const inverseParentRotMatrix = parentRotMatrix.clone().invert();
@@ -545,15 +560,13 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       const rotY = worldTransform.rotation[1];
       const rotZ = worldTransform.rotation[2];
       
-      // Create a rotation matrix that applies rotations in the correct sequence
-      const rotationMatrix = new THREE.Matrix4();
-      rotationMatrix.makeRotationX(rotX);
-      rotationMatrix.multiply(new THREE.Matrix4().makeRotationY(rotY));
-      rotationMatrix.multiply(new THREE.Matrix4().makeRotationZ(rotZ));
+      // For compound objects, we need to preserve the original rotation values
+      // instead of converting them through matrices, which can introduce errors
+      // This ensures daughter objects don't pick up extra rotations
       
-      // Extract Euler angles from the matrix
-      const euler = new THREE.Euler();
-      euler.setFromRotationMatrix(rotationMatrix);
+      // Create Euler angles directly from the world transform rotation values
+      // This preserves the exact rotation values without matrix conversion errors
+      const euler = new THREE.Euler(rotX, rotY, rotZ, 'XYZ');
       
       return (
         <TransformableObject 
