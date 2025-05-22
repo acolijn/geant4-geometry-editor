@@ -4,13 +4,13 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
 import TransformableObject from './viewer3D/TransformableObject';
-import BoxObject from './viewer3D/BoxObject';
+/* import BoxObject from './viewer3D/BoxObject';
 import SphereObject from './viewer3D/SphereObject';
 import CylinderObject from './viewer3D/CylinderObject';
 import TrapezoidObject from './viewer3D/TrapezoidObject';
 import TorusObject from './viewer3D/TorusObject';
 import EllipsoidObject from './viewer3D/EllipsoidObject';
-import PolyconeObject from './viewer3D/PolyconeObject';
+import PolyconeObject from './viewer3D/PolyconeObject'; */
 
 // Coordinate system component
 function CoordinateSystem() {
@@ -172,9 +172,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     const parentMatrix = new THREE.Matrix4();
     
     // Set parent rotation (convert from degrees to radians)
-    const parentRotX = THREE.MathUtils.degToRad(parentWorld.rotation[0]);
-    const parentRotY = THREE.MathUtils.degToRad(parentWorld.rotation[1]);
-    const parentRotZ = THREE.MathUtils.degToRad(parentWorld.rotation[2]);
+    const parentRotX = parentWorld.rotation[0];
+    const parentRotY = parentWorld.rotation[1];
+    const parentRotZ = parentWorld.rotation[2];
     
     // Apply rotations in the correct sequence
     const rotMatrix = new THREE.Matrix4();
@@ -194,18 +194,18 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     // This is the correct way to handle nested rotations in 3D space
     const parentQuat = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(
-        THREE.MathUtils.degToRad(parentWorld.rotation[0]),
-        THREE.MathUtils.degToRad(parentWorld.rotation[1]),
-        THREE.MathUtils.degToRad(parentWorld.rotation[2]),
+        parentWorld.rotation[0],
+        parentWorld.rotation[1],
+        parentWorld.rotation[2],
         'XYZ'
       )
     );
     
     const localQuat = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(
-        THREE.MathUtils.degToRad(localRot[0]),
-        THREE.MathUtils.degToRad(localRot[1]),
-        THREE.MathUtils.degToRad(localRot[2]),
+        localRot[0],
+        localRot[1],
+        localRot[2],
         'XYZ'
       )
     );
@@ -286,9 +286,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     const parentRotMatrix = new THREE.Matrix4();
     
     // Set parent rotation (convert from degrees to radians)
-    const parentRotX = THREE.MathUtils.degToRad(parentWorld.rotation[0]);
-    const parentRotY = THREE.MathUtils.degToRad(parentWorld.rotation[1]);
-    const parentRotZ = THREE.MathUtils.degToRad(parentWorld.rotation[2]);
+    const parentRotX = parentWorld.rotation[0];
+    const parentRotY = parentWorld.rotation[1];
+    const parentRotZ = parentWorld.rotation[2];
     
     // Create a rotation matrix in the correct sequence (X, Y, Z)
     parentRotMatrix.makeRotationX(parentRotX);
@@ -312,9 +312,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     // Create quaternions for the world rotation and parent rotation
     const worldQuat = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(
-        THREE.MathUtils.degToRad(worldRot.x),
-        THREE.MathUtils.degToRad(worldRot.y),
-        THREE.MathUtils.degToRad(worldRot.z),
+        worldRot.x,
+        worldRot.y,
+        worldRot.z,
         'XYZ'
       )
     );
@@ -480,9 +480,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
           // If the parent has rotation, we need to account for that
           if (parentWorld.rotation[0] !== 0 || parentWorld.rotation[1] !== 0 || parentWorld.rotation[2] !== 0) {
             // Create a rotation matrix for the parent's rotation
-            const parentRotX = THREE.MathUtils.degToRad(parentWorld.rotation[0]);
-            const parentRotY = THREE.MathUtils.degToRad(parentWorld.rotation[1]);
-            const parentRotZ = THREE.MathUtils.degToRad(parentWorld.rotation[2]);
+            const parentRotX = parentWorld.rotation[0];
+            const parentRotY = parentWorld.rotation[1];
+            const parentRotZ = parentWorld.rotation[2];
             
             // Create a rotation matrix in the correct sequence (X, Y, Z)
             const parentRotMatrix = new THREE.Matrix4();
@@ -541,9 +541,9 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       const worldTransform = calculateWorldPosition(volume);
       
       // Apply rotation (convert from degrees to radians for Three.js)
-      const rotX = THREE.MathUtils.degToRad(worldTransform.rotation[0]);
-      const rotY = THREE.MathUtils.degToRad(worldTransform.rotation[1]);
-      const rotZ = THREE.MathUtils.degToRad(worldTransform.rotation[2]);
+      const rotX = worldTransform.rotation[0];
+      const rotY = worldTransform.rotation[1];
+      const rotZ = worldTransform.rotation[2];
       
       // Create a rotation matrix that applies rotations in the correct sequence
       const rotationMatrix = new THREE.Matrix4();
@@ -885,13 +885,12 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       };
     }
     
-    // Update rotation - ensure we're not losing any properties
+    // Update rotation - all values are now in radians
     if (updates.rotation) {
       updatedObject.rotation = {
         ...(updatedObject.rotation || {}),
-        ...updates.rotation,
-        // Ensure unit is preserved
-        unit: updates.rotation.unit || updatedObject.rotation?.unit || 'deg'
+        ...updates.rotation
+        // No unit needed as all rotation values are in radians
       };
     }
     

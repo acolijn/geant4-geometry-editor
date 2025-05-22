@@ -7,20 +7,17 @@ export const defaultGeometry = {
     size: {
       x: 200.0,
       y: 200.0,
-      z: 200.0,
-      unit: 'cm'
+      z: 200.0
     },
     position: {
       x: 0.0,
       y: 0.0,
-      z: 0.0,
-      unit: 'cm'
+      z: 0.0
     },
     rotation: {
       x: 0.0,
       y: 0.0,
-      z: 0.0,
-      unit: 'deg'
+      z: 0.0
     }
   },
   volumes: []

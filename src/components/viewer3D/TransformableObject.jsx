@@ -116,8 +116,9 @@ export default function TransformableObject({
     if (worldRotation) {
       group.rotation.set(worldRotation[0], worldRotation[1], worldRotation[2]);
     } else {
+      // All rotation values are now in radians, so we can apply them directly
       const [rx, ry, rz] = object.rotation
-        ? [degToRad(object.rotation.x), degToRad(object.rotation.y), degToRad(object.rotation.z)]
+        ? [object.rotation.x, object.rotation.y, object.rotation.z]
         : [0, 0, 0];
       group.rotation.set(rx, ry, rz);
     }
@@ -160,12 +161,11 @@ export default function TransformableObject({
         unit: object.position?.unit || 'cm'
       };
       
-      // Convert world rotation to degrees for the data model
+      // Store rotation in radians (no unit needed)
       const currentRotation = {
-        x: radToDeg(group.rotation.x),
-        y: radToDeg(group.rotation.y),
-        z: radToDeg(group.rotation.z),
-        unit: object.rotation?.unit || 'deg'
+        x: group.rotation.x,
+        y: group.rotation.y,
+        z: group.rotation.z
       };
       
       // Check if this is an intermediate object (both a mother and a daughter)
@@ -202,9 +202,9 @@ export default function TransformableObject({
             z: group.position.z
           },
           rotation: {
-            x: radToDeg(group.rotation.x),
-            y: radToDeg(group.rotation.y),
-            z: radToDeg(group.rotation.z)
+            x: group.rotation.x,
+            y: group.rotation.y,
+            z: group.rotation.z
           }
         };
       }
@@ -227,12 +227,11 @@ export default function TransformableObject({
           unit: object.position?.unit || 'cm'
         };
         
-        // Get final world rotation after drag
+        // Store final rotation in radians (no unit needed)
         const finalRotation = {
-          x: radToDeg(group.rotation.x),
-          y: radToDeg(group.rotation.y),
-          z: radToDeg(group.rotation.z),
-          unit: object.rotation?.unit || 'deg'
+          x: group.rotation.x,
+          y: group.rotation.y,
+          z: group.rotation.z
         };
         
         // Debug the final transformation

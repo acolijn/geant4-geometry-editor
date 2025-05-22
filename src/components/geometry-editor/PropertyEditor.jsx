@@ -106,8 +106,12 @@ const PropertyEditor = ({
         [inner]: finalValue
       };
       
-      // Remove unit property as it's no longer needed
-      if (updatedObject[outer].unit) {
+      // For rotation, always store in radians (no unit needed)
+      // For position, preserve the length unit
+      if (outer === 'position') {
+        updatedObject[outer].unit = lengthUnit;
+      } else if (updatedObject[outer].unit) {
+        // For other properties, remove unit as it's no longer needed
         delete updatedObject[outer].unit;
       }
     }

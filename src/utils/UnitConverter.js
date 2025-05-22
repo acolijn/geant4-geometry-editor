@@ -22,9 +22,7 @@ const LENGTH_CONVERSION_FACTORS = {
 // Angle conversion factors to rad (internal unit)
 const ANGLE_CONVERSION_FACTORS = {
   rad: 1.0,                    // radian (base unit)
-  deg: Math.PI / 180.0,        // degree
-  grad: Math.PI / 200.0,       // gradian
-  turn: Math.PI * 2.0          // turn (full circle)
+  deg: Math.PI / 180.0         // degree
 };
 
 /**
