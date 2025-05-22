@@ -21,21 +21,6 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     return JSON.stringify(data, null, 2);
   };
   
-  // Helper function to convert lengths to mm
-  const convertToMm = (value, unit) => {
-    if (unit === 'cm') return value * 10;
-    if (unit === 'm') return value * 1000;
-    if (unit === 'mm') return value;
-    // Default to assuming cm if unit is not specified or unknown
-    return value * 10;
-  };
-
-  // Helper function to convert angles to radians
-  const convertToRadians = (value, unit) => {
-    if (unit === 'deg') return value * (Math.PI / 180);
-    return value; // Already in radians
-  };
-  
   // Helper function to mark placement objects for single-line formatting
   const formatPlacement = (placement) => {
     // Create a special object with a custom toString method
@@ -46,20 +31,19 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     Object.defineProperty(formattedPlacement, 'toJSON', {
       enumerable: false,
       value: function() {
-        // Convert values to mm
-        const posUnit = placement.unit || 'cm';
-        const x = convertToMm(placement.x, posUnit);
-        const y = convertToMm(placement.y, posUnit);
-        const z = convertToMm(placement.z, posUnit);
+        // Values are already in standard units (mm for position)
+        const x = placement.x;
+        const y = placement.y;
+        const z = placement.z;
         
         let result = `{ "x": ${x}, "y": ${y}, "z": ${z}`;
         
         if (placement.rotation) {
           const rot = placement.rotation;
-          const rotUnit = rot.unit || 'deg';
-          const rx = convertToRadians(rot.x, rotUnit);
-          const ry = convertToRadians(rot.y, rotUnit);
-          const rz = convertToRadians(rot.z, rotUnit);
+          // Rotation values are already in radians
+          const rx = rot.x;
+          const ry = rot.y;
+          const rz = rot.z;
           result += `, "rotation": { "x": ${rx}, "y": ${ry}, "z": ${rz} }`;
         }
         
@@ -284,18 +268,18 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             // Convert position values to mm
             const posUnit = volume.position.unit || 'cm';
             convertedVolume.placement = [{
-              x: convertToMm(Number(volume.position.x || 0), posUnit),
-              y: convertToMm(Number(volume.position.y || 0), posUnit),
-              z: convertToMm(Number(volume.position.z || 0), posUnit)
+              x: Number(volume.position.x || 0),
+              y: Number(volume.position.y || 0),
+              z: Number(volume.position.z || 0)
             }];
             
             // Add rotation if present (convert to radians)
             if (volume.rotation) {
               const rotUnit = volume.rotation.unit || 'deg';
               convertedVolume.placement[0].rotation = {
-                x: convertToRadians(Number(volume.rotation.x || 0), rotUnit),
-                y: convertToRadians(Number(volume.rotation.y || 0), rotUnit),
-                z: convertToRadians(Number(volume.rotation.z || 0), rotUnit)
+                x: Number(volume.rotation.x || 0),
+                y: Number(volume.rotation.y || 0),
+                z: Number(volume.rotation.z || 0)
               };
             }
           } else {
@@ -312,18 +296,18 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             // Convert position values to mm
             const posUnit = volume.position.unit || 'cm';
             convertedVolume.placement = [{
-              x: convertToMm(Number(volume.position.x || 0), posUnit),
-              y: convertToMm(Number(volume.position.y || 0), posUnit),
-              z: convertToMm(Number(volume.position.z || 0), posUnit)
+              x: Number(volume.position.x || 0),
+              y: Number(volume.position.y || 0),
+              z: Number(volume.position.z || 0)
             }];
             
             // Add rotation if present (convert to radians)
             if (volume.rotation) {
               const rotUnit = volume.rotation.unit || 'deg';
               convertedVolume.placement[0].rotation = {
-                x: convertToRadians(Number(volume.rotation.x || 0), rotUnit),
-                y: convertToRadians(Number(volume.rotation.y || 0), rotUnit),
-                z: convertToRadians(Number(volume.rotation.z || 0), rotUnit)
+                x: Number(volume.rotation.x || 0),
+                y: Number(volume.rotation.y || 0),
+                z: Number(volume.rotation.z || 0)
               };
             }
           } else {
@@ -379,9 +363,9 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     // Always use cm as the default unit for conversion if not specified
     const posUnit = 'cm';
     const placement = {
-      x: convertToMm(position?.x ?? 0, posUnit),
-      y: convertToMm(position?.y ?? 0, posUnit),
-      z: convertToMm(position?.z ?? 0, posUnit)
+      x: position?.x ?? 0,
+      y: position?.y ?? 0,
+      z: position?.z ?? 0
     };
     
     // Add rotation only if it exists and any value is non-zero
@@ -394,9 +378,9 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     if (hasRotation) {
       const rotUnit = rotation?.unit || 'deg';
       placement.rotation = {
-        x: convertToRadians(rotation?.x ?? 0, rotUnit),
-        y: convertToRadians(rotation?.y ?? 0, rotUnit),
-        z: convertToRadians(rotation?.z ?? 0, rotUnit)
+        x: rotation?.x ?? 0,
+        y: rotation?.y ?? 0,
+        z: rotation?.z ?? 0
       };
     }
     
@@ -416,80 +400,80 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
     switch(geometry.type) {
       case 'box':
         if (geometry.size) {
-          dimensions.x = convertToMm(geometry.size.x, unit);
-          dimensions.y = convertToMm(geometry.size.y, unit);
-          dimensions.z = convertToMm(geometry.size.z, unit);
+          dimensions.x = geometry.size.x;
+          dimensions.y = geometry.size.y;
+          dimensions.z = geometry.size.z;
           delete geometry.size;
         }
         break;
         
       case 'sphere':
         if (geometry.radius !== undefined) {
-          dimensions.radius = convertToMm(geometry.radius, unit);
+          dimensions.radius = geometry.radius;
           delete geometry.radius;
         }
         break;
         
       case 'cylinder':
         if (geometry.radius !== undefined) {
-          dimensions.radius = convertToMm(geometry.radius, unit);
+          dimensions.radius = geometry.radius;
           delete geometry.radius;
         }
         if (geometry.innerRadius !== undefined) {
-          dimensions.inner_radius = convertToMm(geometry.innerRadius, unit);
+          dimensions.inner_radius = geometry.innerRadius;
           delete geometry.innerRadius;
         }
         if (geometry.height !== undefined) {
-          dimensions.height = convertToMm(geometry.height, unit);
+          dimensions.height = geometry.height;
           delete geometry.height;
         }
         break;
         
       case 'trapezoid':
         if (geometry.dx1 !== undefined) {
-          dimensions.dx1 = convertToMm(geometry.dx1, unit);
+          dimensions.dx1 = geometry.dx1;
           delete geometry.dx1;
         }
         if (geometry.dx2 !== undefined) {
-          dimensions.dx2 = convertToMm(geometry.dx2, unit);
+          dimensions.dx2 = geometry.dx2;
           delete geometry.dx2;
         }
         if (geometry.dy1 !== undefined) {
-          dimensions.dy1 = convertToMm(geometry.dy1, unit);
+          dimensions.dy1 = geometry.dy1;
           delete geometry.dy1;
         }
         if (geometry.dy2 !== undefined) {
-          dimensions.dy2 = convertToMm(geometry.dy2, unit);
+          dimensions.dy2 = geometry.dy2;
           delete geometry.dy2;
         }
         if (geometry.dz !== undefined) {
-          dimensions.dz = convertToMm(geometry.dz, unit);
+          dimensions.dz = geometry.dz;
           delete geometry.dz;
         }
         break;
         
       case 'torus':
         if (geometry.majorRadius !== undefined) {
-          dimensions.major_radius = convertToMm(geometry.majorRadius, unit);
+          dimensions.major_radius = geometry.majorRadius;
           delete geometry.majorRadius;
         }
         if (geometry.minorRadius !== undefined) {
-          dimensions.minor_radius = convertToMm(geometry.minorRadius, unit);
+          dimensions.minor_radius = geometry.minorRadius;
           delete geometry.minorRadius;
         }
         break;
         
       case 'ellipsoid':
         if (geometry.xRadius !== undefined) {
-          dimensions.x_radius = convertToMm(geometry.xRadius, unit);
+          dimensions.x_radius = geometry.xRadius;
           delete geometry.xRadius;
         }
         if (geometry.yRadius !== undefined) {
-          dimensions.y_radius = convertToMm(geometry.yRadius, unit);
+          dimensions.y_radius = geometry.yRadius;
           delete geometry.yRadius;
         }
         if (geometry.zRadius !== undefined) {
-          dimensions.z_radius = convertToMm(geometry.zRadius, unit);
+          dimensions.z_radius = geometry.zRadius;
           delete geometry.zRadius;
         }
         break;
@@ -506,10 +490,10 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           
           // Extract values from each section and convert to mm
           zSections.forEach(section => {
-            zValues.push(convertToMm(section.z, unit));
+            zValues.push(section.z);
             // Use rMin and rMax (capital M) as in the PropertyEditor
-            rminValues.push(convertToMm(section.rMin || 0, unit));
-            rmaxValues.push(convertToMm(section.rMax || 0, unit));
+            rminValues.push(section.rMin || 0);
+            rmaxValues.push(section.rMax || 0);
           });
           
           // Add the arrays to dimensions
