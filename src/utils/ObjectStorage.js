@@ -3,10 +3,16 @@
  * 
  * Utility for managing the storage and retrieval of compound objects
  * using the FileSystemManager to save to the <working_directory>/objects directory.
+ * 
+ * Objects are stored in a standardized format consistent with the main output JSON file,
+ * using 'placement' for position/rotation and 'dimensions' for object dimensions.
  */
 
 // Import the FileSystemManager
 import FileSystemManager from './FileSystemManager';
+
+// Import the ObjectFormatStandardizer
+import { standardizeObjectFormat, restoreOriginalFormat } from './ObjectFormatStandardizer';
 
 /**
  * Save a compound object to the objects directory
@@ -25,14 +31,18 @@ export const saveObject = async (name, description, objectData) => {
     // Sanitize the file name
     const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
     
+    // Standardize the object format to be consistent with the main output JSON file
+    const standardizedObjectData = standardizeObjectFormat(objectData);
+    
     // Add metadata to the object data
     const dataToSave = {
-      ...objectData,
+      ...standardizedObjectData,
       metadata: {
         name,
         description,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        formatVersion: '2.0' // Add format version to track the standardized format
       }
     };
     
@@ -43,7 +53,7 @@ export const saveObject = async (name, description, objectData) => {
       throw new Error('Failed to save object to file system');
     }
     
-    console.log(`Object "${name}" saved successfully to objects/${sanitizedName}.json`);
+    console.log(`Object "${name}" saved successfully to objects/${sanitizedName}.json in standardized format`);
     
     return {
       success: true,
@@ -122,10 +132,19 @@ export const loadObject = async (fileName) => {
       throw new Error(`Object "${fileName}" not found`);
     }
     
+    // Check if the object is already in the standardized format
+    const isStandardized = data.metadata?.formatVersion === '2.0';
+    
+    // If the object is not in the standardized format, it's an older format
+    // that needs to be loaded as is (no conversion needed since we're using the new format now)
+    
+    console.log(`Object "${fileName}" loaded successfully. Format: ${isStandardized ? 'standardized' : 'legacy'}`);
+    
     return {
       success: true,
       data,
-      message: `Object "${fileName}" loaded successfully`
+      message: `Object "${fileName}" loaded successfully`,
+      isStandardized
     };
   } catch (error) {
     console.error(`Error loading object ${fileName}:`, error);

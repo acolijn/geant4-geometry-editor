@@ -282,11 +282,187 @@ const GeometryEditor = ({
   };
   
   /**
+   * Process an object with standardized format (placement and dimensions)
+   * 
+   * This function converts an object with standardized format (using placement and dimensions)
+   * to the internal format used by the application (using position, rotation, and direct dimension properties).
+   * 
+   * @param {Object} objectData - The object data to process
+   * @returns {Object} The processed object data
+   */
+  const processStandardizedFormat = (objectData) => {
+    if (!objectData) return objectData;
+    
+    // Create a deep copy to avoid modifying the original
+    const processedData = JSON.parse(JSON.stringify(objectData));
+    
+    // Process the main object
+    if (processedData.object) {
+      // Handle placement (position and rotation)
+      if (processedData.object.placement) {
+        if (!processedData.object.position) {
+          processedData.object.position = {
+            x: processedData.object.placement.x || 0,
+            y: processedData.object.placement.y || 0,
+            z: processedData.object.placement.z || 0
+          };
+        }
+        
+        if (processedData.object.placement.rotation && !processedData.object.rotation) {
+          processedData.object.rotation = {
+            x: processedData.object.placement.rotation.x || 0,
+            y: processedData.object.placement.rotation.y || 0,
+            z: processedData.object.placement.rotation.z || 0
+          };
+        }
+        
+        // Remove the placement property
+        delete processedData.object.placement;
+      }
+      
+      // Handle dimensions
+      if (processedData.object.dimensions) {
+        const { dimensions, type } = processedData.object;
+        
+        // Convert dimensions to the appropriate properties based on object type
+        if (type === 'box') {
+          if (!processedData.object.size) {
+            processedData.object.size = {
+              x: dimensions.x || 10,
+              y: dimensions.y || 10,
+              z: dimensions.z || 10
+            };
+          }
+        } else if (type === 'sphere') {
+          if (dimensions.radius !== undefined) {
+            processedData.object.radius = dimensions.radius;
+          }
+        } else if (type === 'cylinder') {
+          if (dimensions.radius !== undefined) {
+            processedData.object.radius = dimensions.radius;
+          }
+          if (dimensions.inner_radius !== undefined) {
+            processedData.object.innerRadius = dimensions.inner_radius;
+          }
+          if (dimensions.height !== undefined) {
+            processedData.object.height = dimensions.height;
+          }
+        } else if (type === 'trapezoid') {
+          if (dimensions.dx1 !== undefined) processedData.object.dx1 = dimensions.dx1;
+          if (dimensions.dx2 !== undefined) processedData.object.dx2 = dimensions.dx2;
+          if (dimensions.dy1 !== undefined) processedData.object.dy1 = dimensions.dy1;
+          if (dimensions.dy2 !== undefined) processedData.object.dy2 = dimensions.dy2;
+          if (dimensions.dz !== undefined) processedData.object.dz = dimensions.dz;
+        } else if (type === 'torus') {
+          if (dimensions.major_radius !== undefined) processedData.object.majorRadius = dimensions.major_radius;
+          if (dimensions.minor_radius !== undefined) processedData.object.minorRadius = dimensions.minor_radius;
+        } else if (type === 'ellipsoid') {
+          if (dimensions.x_radius !== undefined) processedData.object.xRadius = dimensions.x_radius;
+          if (dimensions.y_radius !== undefined) processedData.object.yRadius = dimensions.y_radius;
+          if (dimensions.z_radius !== undefined) processedData.object.zRadius = dimensions.z_radius;
+        }
+        
+        // Remove the dimensions property
+        delete processedData.object.dimensions;
+      }
+      
+      // Convert parent to mother_volume if needed
+      if (processedData.object.parent && !processedData.object.mother_volume) {
+        processedData.object.mother_volume = processedData.object.parent;
+        delete processedData.object.parent;
+      }
+    }
+    
+    // Process all descendants
+    if (processedData.descendants && Array.isArray(processedData.descendants)) {
+      processedData.descendants = processedData.descendants.map(descendant => {
+        // Handle placement (position and rotation)
+        if (descendant.placement) {
+          if (!descendant.position) {
+            descendant.position = {
+              x: descendant.placement.x || 0,
+              y: descendant.placement.y || 0,
+              z: descendant.placement.z || 0
+            };
+          }
+          
+          if (descendant.placement.rotation && !descendant.rotation) {
+            descendant.rotation = {
+              x: descendant.placement.rotation.x || 0,
+              y: descendant.placement.rotation.y || 0,
+              z: descendant.placement.rotation.z || 0
+            };
+          }
+          
+          // Remove the placement property
+          delete descendant.placement;
+        }
+        
+        // Handle dimensions
+        if (descendant.dimensions) {
+          const { dimensions, type } = descendant;
+          
+          // Convert dimensions to the appropriate properties based on object type
+          if (type === 'box') {
+            if (!descendant.size) {
+              descendant.size = {
+                x: dimensions.x || 10,
+                y: dimensions.y || 10,
+                z: dimensions.z || 10
+              };
+            }
+          } else if (type === 'sphere') {
+            if (dimensions.radius !== undefined) {
+              descendant.radius = dimensions.radius;
+            }
+          } else if (type === 'cylinder') {
+            if (dimensions.radius !== undefined) {
+              descendant.radius = dimensions.radius;
+            }
+            if (dimensions.inner_radius !== undefined) {
+              descendant.innerRadius = dimensions.inner_radius;
+            }
+            if (dimensions.height !== undefined) {
+              descendant.height = dimensions.height;
+            }
+          } else if (type === 'trapezoid') {
+            if (dimensions.dx1 !== undefined) descendant.dx1 = dimensions.dx1;
+            if (dimensions.dx2 !== undefined) descendant.dx2 = dimensions.dx2;
+            if (dimensions.dy1 !== undefined) descendant.dy1 = dimensions.dy1;
+            if (dimensions.dy2 !== undefined) descendant.dy2 = dimensions.dy2;
+            if (dimensions.dz !== undefined) descendant.dz = dimensions.dz;
+          } else if (type === 'torus') {
+            if (dimensions.major_radius !== undefined) descendant.majorRadius = dimensions.major_radius;
+            if (dimensions.minor_radius !== undefined) descendant.minorRadius = dimensions.minor_radius;
+          } else if (type === 'ellipsoid') {
+            if (dimensions.x_radius !== undefined) descendant.xRadius = dimensions.x_radius;
+            if (dimensions.y_radius !== undefined) descendant.yRadius = dimensions.y_radius;
+            if (dimensions.z_radius !== undefined) descendant.zRadius = dimensions.z_radius;
+          }
+          
+          // Remove the dimensions property
+          delete descendant.dimensions;
+        }
+        
+        // Convert parent to mother_volume if needed
+        if (descendant.parent && !descendant.mother_volume) {
+          descendant.mother_volume = descendant.parent;
+          delete descendant.parent;
+        }
+        
+        return descendant;
+      });
+    }
+    
+    return processedData;
+  };
+  
+  /**
    * Handle loading an object from the library
    * 
    * This function processes object data loaded from the library, applies structured naming
-   * to ensure consistency, and adds the object to the scene. It also displays a success
-   * or error notification to provide feedback to the user.
+   * to ensure consistency, and adds the object to the scene. It handles objects in the
+   * standardized format with 'placement' and 'dimensions' properties.
    * 
    * @param {Object} objectData - The object data to load, including the main object and its descendants
    * @returns {Object} An object indicating success or failure of the operation
@@ -296,8 +472,15 @@ const GeometryEditor = ({
       // Process the loaded object data
       console.log('Loaded object data:', objectData);
       
+      // Check if the object is in the standardized format
+      const isStandardized = objectData.metadata?.formatVersion === '2.0';
+      console.log(`Object format: ${isStandardized ? 'standardized' : 'legacy'}`);
+      
+      // Process the object if it's in the standardized format
+      const processedData = isStandardized ? processStandardizedFormat(objectData) : objectData;
+      
       // Apply structured naming convention to the object and its descendants
-      const structuredObjectData = applyStructuredNaming(objectData);
+      const structuredObjectData = applyStructuredNaming(processedData);
       
       // Add the object to the scene
       handleImportPartialFromAddNew(structuredObjectData);
