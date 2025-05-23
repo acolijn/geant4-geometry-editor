@@ -354,7 +354,7 @@ const PropertyEditor = ({
           size="small"
           inputProps={{ step: 'any' }}
         />
-        <FormControl size="small">
+        <FormControl size="small" sx={{ minWidth: '90px' }}>
           <InputLabel>Unit</InputLabel>
           <Select
             value={lengthUnit}
@@ -413,7 +413,7 @@ const PropertyEditor = ({
           size="small"
           inputProps={{ step: 'any' }}
         />
-        <FormControl size="small">
+        <FormControl size="small" sx={{ minWidth: '90px' }}>
           <InputLabel>Unit</InputLabel>
           <Select
             value={angleUnit}
@@ -469,7 +469,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -514,7 +514,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -541,7 +541,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -574,7 +574,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -619,7 +619,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -658,7 +658,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -685,7 +685,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -742,7 +742,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -787,7 +787,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
@@ -811,7 +811,7 @@ const PropertyEditor = ({
             Define the sections of the polycone along the z-axis
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-            <FormControl size="small" sx={{ width: '80px' }}>
+            <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
               <Select
                 value={lengthUnit}
