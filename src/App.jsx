@@ -669,12 +669,40 @@ function App() {
         exportedMainObject.mother_volume = originalVolume.mother_volume;
         console.log(`Preserved mother_volume '${originalVolume.mother_volume}' for object '${exportedMainObject.name}'`);
       }
+      
+      // Explicitly preserve hit collection information
+      if (originalVolume.isActive) {
+        exportedMainObject.isActive = originalVolume.isActive;
+        console.log(`Preserved isActive status for object '${exportedMainObject.name}'`);
+      }
+      
+      if (originalVolume.hitsCollectionName) {
+        exportedMainObject.hitsCollectionName = originalVolume.hitsCollectionName;
+        console.log(`Preserved hitsCollectionName '${originalVolume.hitsCollectionName}' for object '${exportedMainObject.name}'`);
+      }
     }
+    
+    // Process descendants to ensure hit collection information is preserved
+    const processedDescendants = allDescendants.map(descendant => {
+      // Create a deep copy to avoid modifying the original
+      const processedDescendant = { ...descendant };
+      
+      // Ensure hit collection properties are explicitly preserved
+      if (descendant.isActive !== undefined) {
+        processedDescendant.isActive = descendant.isActive;
+      }
+      
+      if (descendant.hitsCollectionName) {
+        processedDescendant.hitsCollectionName = descendant.hitsCollectionName;
+      }
+      
+      return processedDescendant;
+    });
     
     // Return the main object and all its descendants
     return {
       object: exportedMainObject,
-      descendants: allDescendants,
+      descendants: processedDescendants,
       isWorld,
       _sourceId: mainObject._sourceId // Include the source ID at the top level for easy access
     };

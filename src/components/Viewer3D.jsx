@@ -729,6 +729,9 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
       // Check if this node has children
       const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
       
+      // Check if volume is active (has isActive flag and hitsCollectionName)
+      const isActive = volume.isActive && volume.hitsCollectionName;
+      
       return (
         <React.Fragment key={key}>
           <div 
@@ -768,7 +771,27 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
             {/* If no children, add spacing to align with nodes that have the toggle */}
             {!hasChildren && <span style={{ width: '16px', marginRight: '5px' }}></span>}
             <span style={{ marginRight: '5px' }}>{icon}</span>
-            {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+            <span style={{ display: 'flex', alignItems: 'center' }}>
+              {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+              {isActive && (
+                <span 
+                  style={{ 
+                    marginLeft: '8px', 
+                    backgroundColor: '#4caf50', 
+                    color: 'white', 
+                    fontSize: '0.7rem', 
+                    padding: '2px 6px', 
+                    borderRadius: '10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    height: '16px'
+                  }}
+                  title={`Active: ${volume.hitsCollectionName}`}
+                >
+                  {volume.hitsCollectionName}
+                </span>
+              )}
+            </span>
           </div>
           {/* Only render children if node is expanded */}
           {expandedNodes[key] && renderVolumeTree(key, level + 1)}

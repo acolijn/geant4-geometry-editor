@@ -156,6 +156,15 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           convertedVolume.color = volume.color;
         }
         
+        // Add hit collection information for individual volumes
+        if (volume.isActive) {
+          convertedVolume.isActive = volume.isActive;
+        }
+        
+        if (volume.hitsCollectionName) {
+          convertedVolume.hitsCollectionName = volume.hitsCollectionName;
+        }
+        
         // Remove any unit properties
         if (volume.unit) {
           delete volume.unit;
