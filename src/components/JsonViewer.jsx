@@ -151,10 +151,20 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
         // Copy material
         convertedVolume.material = volume.material;
         
-        // Add color if available
+        // Add color from material or use volume-specific color if available
         if (volume.color) {
-          convertedVolume.color = volume.color;
+          // If volume has its own color, use that
+          convertedVolume.color = Array.isArray(volume.color) ? volume.color : [volume.color.r, volume.color.g, volume.color.b, volume.color.opacity || 1.0];
+        } else if (volume.material && materials[volume.material] && materials[volume.material].color) {
+          // Otherwise use the material's color
+          convertedVolume.color = materials[volume.material].color;
+        } else {
+          // Default color if no material color is defined
+          convertedVolume.color = [0.7, 0.7, 0.7, 1.0];
         }
+        
+        // Add visibility property (default to true if not specified)
+        convertedVolume.visible = volume.visible !== undefined ? volume.visible : true;
         
         // Add hit collection information for individual volumes
         if (volume.isActive) {
@@ -189,6 +199,21 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             // Add any additional properties needed for the component
             if (component.material) {
               convertedComponent.material = component.material;
+              
+              // Add color from material or use component-specific color if available
+              if (component.color) {
+                // If component has its own color, use that
+                convertedComponent.color = Array.isArray(component.color) ? component.color : [component.color.r, component.color.g, component.color.b, component.color.opacity || 1.0];
+              } else if (component.material && materials[component.material] && materials[component.material].color) {
+                // Otherwise use the material's color
+                convertedComponent.color = materials[component.material].color;
+              } else {
+                // Default color if no material color is defined
+                convertedComponent.color = [0.7, 0.7, 0.7, 1.0];
+              }
+              
+              // Add visibility property (default to true if not specified)
+              convertedComponent.visible = component.visible !== undefined ? component.visible : true;
             }
             
             // Process placement for each component
@@ -204,7 +229,6 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
           convertedVolume.placement = createPlacementObject(volume);
         } else {
           // Standard non-union volumes
-          // Convert dimension properties to dimensions object
           convertedVolume.dimensions = createDimensionsObject(volume);
           convertedVolume.placement = createPlacementObject(volume);
         }

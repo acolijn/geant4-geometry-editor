@@ -34,26 +34,31 @@ export const defaultMaterials = {
     "temperature_unit": "kelvin",
     "composition": {
       "Xe": 1.0
-    }
+    },
+    "color": [0.0, 0.5, 1.0, 0.3]
   },
   "G4_AIR": {
     "type": "nist",
     "density": 0.00120479,
-    "density_unit": "g/cm3"
+    "density_unit": "g/cm3",
+    "color": [0.9, 0.9, 1.0, 0.1]
   },
   "G4_WATER": {
     "type": "nist",
     "density": 1.0,
-    "density_unit": "g/cm3"
+    "density_unit": "g/cm3",
+    "color": [0.0, 0.0, 0.8, 0.3]
   },
   "G4_Al": {
     "type": "nist",
     "density": 2.699,
-    "density_unit": "g/cm3"
+    "density_unit": "g/cm3",
+    "color": [0.8, 0.8, 0.8, 1.0]
   },
   "G4_PLASTIC_SC_VINYLTOLUENE": {
     "type": "nist",
     "density": 1.032,
-    "density_unit": "g/cm3"
+    "density_unit": "g/cm3",
+    "color": [0.2, 0.8, 0.2, 1.0]
   }
 };
