@@ -26,13 +26,6 @@ import PolyconeObject from './PolyconeObject.jsx';
 import UnionObject from './UnionObject.jsx';
 
 /**
- * Convert degrees to radians
- * @param {number} d - Angle in degrees
- * @returns {number} Angle in radians
- */
-const degToRad = (d) => THREE.MathUtils.degToRad(d);
-
-/**
  * Debug helper function to log object details
  * Useful for diagnosing positioning and rotation issues
  * 
@@ -320,7 +313,7 @@ export default function TransformableObject({
     // Debug the object being rendered
     console.log(`Rendering ${objectKey} (${object.type})`, {
       position: worldPosition || (object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0]),
-      rotation: worldRotation || (object.rotation ? [degToRad(object.rotation.x), degToRad(object.rotation.y), degToRad(object.rotation.z)] : [0, 0, 0])
+      rotation: worldRotation || (object.rotation ? [object.rotation.x, object.rotation.y, object.rotation.z] : [0, 0, 0])
     });
     
     // Render the appropriate object type
