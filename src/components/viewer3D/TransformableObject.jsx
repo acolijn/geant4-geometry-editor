@@ -26,13 +26,6 @@ import PolyconeObject from './PolyconeObject.jsx';
 import UnionObject from './UnionObject.jsx';
 
 /**
- * Convert radians to degrees
- * @param {number} r - Angle in radians
- * @returns {number} Angle in degrees
- */
-const radToDeg = (r) => THREE.MathUtils.radToDeg(r);
-
-/**
  * Convert degrees to radians
  * @param {number} d - Angle in degrees
  * @returns {number} Angle in radians
@@ -126,7 +119,7 @@ export default function TransformableObject({
     // Store the current position for comparison during dragging
     lastPositionRef.current = { 
       position: worldPosition ? { x: worldPosition[0], y: worldPosition[1], z: worldPosition[2] } : { ...object.position },
-      rotation: worldRotation ? { x: radToDeg(worldRotation[0]), y: radToDeg(worldRotation[1]), z: radToDeg(worldRotation[2]) } : { ...object.rotation }
+      rotation: worldRotation ? { x: worldRotation[0], y: worldRotation[1], z: worldRotation[2] } : { ...object.rotation }
     };
   }, [object.position, object.rotation, worldPosition, worldRotation, isDragging, objectKey]);
 

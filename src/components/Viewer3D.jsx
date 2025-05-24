@@ -348,13 +348,17 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
         x: localPos.x,
         y: localPos.y,
         z: localPos.z,
-        unit: volume.position?.unit || 'cm'
+        //unit: volume.position?.unit || 'cm'
       },
       rotation: {
-        x: THREE.MathUtils.radToDeg(localEuler.x),
-        y: THREE.MathUtils.radToDeg(localEuler.y),
-        z: THREE.MathUtils.radToDeg(localEuler.z),
-        unit: volume.rotation?.unit || 'deg'
+        // This is wrong!
+        //x: THREE.MathUtils.radToDeg(localEuler.x),
+        //y: THREE.MathUtils.radToDeg(localEuler.y),
+        //z: THREE.MathUtils.radToDeg(localEuler.z),
+        // This is good!
+        x: localEuler.x,
+        y: localEuler.y,
+        z: localEuler.z        
       }
     };
   };
