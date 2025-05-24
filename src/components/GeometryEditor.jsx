@@ -550,18 +550,37 @@ const GeometryEditor = ({
           descendants: []
         });
         
-        // Find all descendants of this instance by checking mother_volume references
-        geometries.volumes.forEach((volume, index) => {
-          // Check if this volume has the current instance as its mother
-          if (volume.mother_volume === instance.name) {
-            console.log('Found direct child:', volume.name, 'of', instance.name);
-            // Direct child - add to descendants
-            topLevelInstances[topLevelInstances.length - 1].descendants.push({
-              id: `volume-${index}`,
-              object: volume
-            });
-          }
-        });
+        // Find all descendants recursively
+        const findAllDescendants = (parentName, allVolumes, currentDepth = 0, maxDepth = 10) => {
+          if (currentDepth >= maxDepth) return []; // Prevent infinite recursion
+          
+          const directDescendants = [];
+          
+          // Find direct children
+          allVolumes.forEach((volume, index) => {
+            if (volume.mother_volume === parentName) {
+              console.log(`Found descendant at depth ${currentDepth}:`, volume.name, 'of', parentName);
+              
+              // Add this descendant
+              directDescendants.push({
+                id: `volume-${index}`,
+                object: volume
+              });
+              
+              // Find this descendant's children recursively
+              const childDescendants = findAllDescendants(volume.name, allVolumes, currentDepth + 1, maxDepth);
+              directDescendants.push(...childDescendants);
+            }
+          });
+          
+          return directDescendants;
+        };
+        
+        // Find all descendants of this instance
+        const allDescendants = findAllDescendants(instance.name, geometries.volumes);
+        topLevelInstances[topLevelInstances.length - 1].descendants.push(...allDescendants);
+        
+        console.log(`Found ${allDescendants.length} total descendants for ${instance.name}`);
       });
       
       console.log('Top level instances with descendants:', topLevelInstances);
@@ -575,8 +594,8 @@ const GeometryEditor = ({
         const originalObject = topInstance.object;
         console.log('Updating top-level object:', originalObject.name);
         
-        // Only preserve the name, position, rotation, and mother_volume of the original object
-        // Everything else should come from the template
+        // Preserve the name, position, rotation, and mother_volume of the original object
+        // Take all other properties from the template
         const preservedProps = {
           name: originalObject.name,
           position: { ...originalObject.position },
@@ -587,8 +606,30 @@ const GeometryEditor = ({
         // Create a new object with the template properties
         const updatedObject = {
           ...templateData.object,  // Start with template properties
-          ...preservedProps       // Override with preserved properties
+          ...preservedProps,      // Override with preserved properties
+          // Keep the original position and rotation
+          // Copy dimensions from the template
+          dimensions: templateData.object.dimensions ? { ...templateData.object.dimensions } : originalObject.dimensions
         };
+        
+        // Special handling for box dimensions
+        if (updatedObject.type === 'box') {
+          // Ensure dimensions are properly set for box objects
+          if (templateData.object.dimensions && Object.keys(templateData.object.dimensions).length > 0) {
+            // Log the dimensions from the template
+            console.log('Box dimensions from template:', templateData.object.dimensions);
+            
+            // Explicitly set dimensions for box objects
+            updatedObject.dimensions = { ...templateData.object.dimensions };
+            
+            // Also set size property for backward compatibility
+            updatedObject.size = {
+              x: templateData.object.dimensions.x || 0,
+              y: templateData.object.dimensions.y || 0,
+              z: templateData.object.dimensions.z || 0
+            };
+          }
+        }
         
         console.log('Original object:', originalObject);
         console.log('Template object:', templateData.object);
@@ -650,9 +691,39 @@ const GeometryEditor = ({
               const updatedDesc = {
                 ...templateDesc,       // Start with ALL template properties
                 name: originalDesc.name,
-                mother_volume: originalDesc.mother_volume
-                // Use the template's position and rotation exactly as defined
+                mother_volume: originalDesc.mother_volume,
+                // Explicitly copy position and rotation from the template if they exist
+                position: templateDesc.placement ? { 
+                  x: templateDesc.placement.x,
+                  y: templateDesc.placement.y,
+                  z: templateDesc.placement.z
+                } : originalDesc.position,
+                rotation: templateDesc.placement?.rotation ? {
+                  x: templateDesc.placement.rotation.x,
+                  y: templateDesc.placement.rotation.y,
+                  z: templateDesc.placement.rotation.z
+                } : originalDesc.rotation,
+                // Copy dimensions from the template
+                dimensions: templateDesc.dimensions ? { ...templateDesc.dimensions } : originalDesc.dimensions,
+                // For cylinder, map radius and height directly for backward compatibility
+                ...(templateDesc.dimensions?.radius ? { radius: templateDesc.dimensions.radius } : {}),
+                ...(templateDesc.dimensions?.height ? { height: templateDesc.dimensions.height } : {})
               };
+              
+              // Special handling for box dimensions in descendants
+              if (updatedDesc.type === 'box' && templateDesc.dimensions) {
+                // Ensure dimensions are properly set for box objects
+                if (Object.keys(templateDesc.dimensions).length > 0) {
+                  console.log(`Box dimensions from template for descendant ${originalDesc.name}:`, templateDesc.dimensions);
+                  
+                  // Also set size property for backward compatibility
+                  updatedDesc.size = {
+                    x: templateDesc.dimensions.x || 0,
+                    y: templateDesc.dimensions.y || 0,
+                    z: templateDesc.dimensions.z || 0
+                  };
+                }
+              }
               
               console.log('Updated descendant:', updatedDesc);
               

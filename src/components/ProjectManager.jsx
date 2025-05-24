@@ -36,11 +36,67 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import CategoryIcon from '@mui/icons-material/Category';
 import fileSystemManager from '../utils/FileSystemManager';
+import { standardizeProjectData, restoreProjectData } from '../utils/ObjectFormatStandardizer';
 // LocalStorageManager has been removed to avoid browser storage usage
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
 
 const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, handleImportPartialFromAddNew, compactMode = false }) => {
+  // Extract an object and all its descendants - comprehensive version
+  const extractObjectWithDescendants = (selectedObject, geometriesData) => {
+    // Get the main object
+    const mainObject = { ...selectedObject };
+    const isWorld = mainObject.name === geometriesData.world.name;
+    
+    // Find all descendants recursively
+    const findDescendants = (parentName, allVolumes) => {
+      return allVolumes.filter(volume => volume.mother_volume === parentName);
+    };
+    
+    // Start with direct children
+    let descendants = findDescendants(mainObject.name, geometriesData.volumes);
+    let allDescendants = [...descendants];
+    
+    // Find descendants of descendants (recursive)
+    for (let i = 0; i < descendants.length; i++) {
+      const childDescendants = findDescendants(descendants[i].name, geometriesData.volumes);
+      if (childDescendants.length > 0) {
+        allDescendants = [...allDescendants, ...childDescendants];
+        descendants = [...descendants, ...childDescendants];
+      }
+    }
+    
+    // Generate a source ID if one doesn't exist
+    if (!mainObject._sourceId) {
+      mainObject._sourceId = `source-${mainObject.name}-${Date.now()}`;
+      console.log(`Generated new source ID for ${mainObject.name}: ${mainObject._sourceId}`);
+    }
+    
+    // Process descendants to ensure hit collection information is preserved
+    const processedDescendants = allDescendants.map(descendant => {
+      // Create a deep copy to avoid modifying the original
+      const processedDescendant = { ...descendant };
+      
+      // Ensure hit collection properties are explicitly preserved
+      if (descendant.isActive !== undefined) {
+        processedDescendant.isActive = descendant.isActive;
+      }
+      
+      if (descendant.hitsCollectionName) {
+        processedDescendant.hitsCollectionName = descendant.hitsCollectionName;
+      }
+      
+      return processedDescendant;
+    });
+    
+    // Return the main object and all its descendants
+    return {
+      object: mainObject,
+      descendants: processedDescendants,
+      isWorld,
+      _sourceId: mainObject._sourceId // Include the source ID at the top level for easy access
+    };
+  };
   // UI state
   const [currentTab, setCurrentTab] = useState(0);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -310,13 +366,9 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
 
     setIsLoading(true);
     try {
-      // Create project data object
-      const projectData = {
-        geometries,
-        materials,
-        hitCollections
-      };
-
+      // Standardize project data for storage
+      const standardizedData = standardizeProjectData(geometries, materials, hitCollections);
+      
       // Create metadata
       const metadata = {
         description: projectDescription,
@@ -324,10 +376,10 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
         updatedAt: new Date().toISOString()
       };
 
-      // Save project to storage
+      // Save standardized project data to storage
       const success = await storageManager.saveProject(
         projectName.trim(),
-        projectData,
+        standardizedData,
         metadata
       );
 
@@ -357,27 +409,6 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Extract object with descendants function
-  const extractObjectWithDescendants = (mainObject, geometries) => {
-    // Get all descendants
-    const allDescendants = [];
-    const isWorld = mainObject.name === geometries.world.name;
-    
-    // Find all volumes that have this object as mother_volume
-    geometries.volumes.forEach(volume => {
-      if (volume.mother_volume === mainObject.name) {
-        allDescendants.push({ ...volume });
-      }
-    });
-    
-    // Return the main object and all its descendants
-    return {
-      object: { ...mainObject },
-      descendants: allDescendants,
-      isWorld
-    };
   };
 
   // Save the selected object
@@ -424,7 +455,6 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
           throw new Error('Invalid selection');
         }
 
-        // Extract the object and its descendants
         const { object, descendants } = extractObjectWithDescendants(selectedObject, geometries);
 
         // Create the object data
@@ -484,15 +514,34 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
     setIsLoading(true);
     try {
       const projectData = await storageManager.loadProject(projectName);
-      if (projectData) {
-        // Extract hitCollections if they exist in the saved project
-        const loadedHitCollections = projectData.geometry.hitCollections || ['MyHitsCollection'];
-        onLoadProject(projectData.geometry.geometries, projectData.geometry.materials, loadedHitCollections);
+      
+      // Check if the project data is in the new standardized format
+      if (projectData && projectData.geometry && 
+          (projectData.geometry.geometries?.world?.dimensions || 
+           (projectData.geometry.geometries?.volumes && 
+            projectData.geometry.geometries.volumes.length > 0 && 
+            projectData.geometry.geometries.volumes[0].dimensions))) {
+        
+        // Project is in the new format, proceed with restoration
+        const restoredData = restoreProjectData(projectData.geometry);
+        
+        // Extract components from restored data
+        const { geometries: restoredGeometries, materials: restoredMaterials, hitCollections: restoredHitCollections } = restoredData;
+        
+        // Load the project with restored data
+        onLoadProject(restoredGeometries, restoredMaterials, restoredHitCollections);
         setLoadDialogOpen(false);
         setAlert({
           open: true,
           message: `Project "${projectName}" loaded successfully`,
           severity: 'success'
+        });
+      } else if (projectData && projectData.geometry) {
+        // Project is in the old format
+        setAlert({
+          open: true,
+          message: `Project "${projectName}" is in an outdated format and cannot be loaded. Please create a new project.`,
+          severity: 'error'
         });
       } else {
         setAlert({
@@ -558,7 +607,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
       }
       
       // Add type-specific properties if missing
-      if (mainObject.type === 'box' && !mainObject.size) {
+/*       if (mainObject.type === 'box' && !mainObject.size) {
         console.warn('Box missing size property, adding default');
         mainObject.size = { x: 10, y: 10, z: 10, unit: 'cm' };
       } else if (mainObject.type === 'cylinder') {
@@ -577,7 +626,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
       } else if (mainObject.type === 'sphere' && !mainObject.radius) {
         console.warn('Sphere missing radius, adding default');
         mainObject.radius = 5;
-      }
+      } */
       
       // Now use the existing import function with the validated data
       if (typeof handleImportPartialFromAddNew === 'function') {

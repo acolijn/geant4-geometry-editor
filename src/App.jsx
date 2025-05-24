@@ -19,6 +19,7 @@ import MaterialsEditor from './components/MaterialsEditor';
 import JsonViewer from './components/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
+import { standardizeProjectData, restoreProjectData } from './utils/ObjectFormatStandardizer';
 import './App.css';
 
 // Create a theme
@@ -40,46 +41,9 @@ function App() {
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
   
-  // Load materials from localStorage on initial load
-  useEffect(() => {
-    try {
-      // Try to load materials from localStorage
-      const savedMaterials = localStorage.getItem('geant4-materials');
-      if (savedMaterials) {
-        const parsedMaterials = JSON.parse(savedMaterials);
-        
-        // Ensure all materials have color properties
-        const materialsWithColors = Object.entries(parsedMaterials).reduce((acc, [key, material]) => {
-          // If material doesn't have a color, assign a default color based on material type
-          if (!material.color) {
-            if (defaultMaterials[key] && defaultMaterials[key].color) {
-              // Use default color from our predefined materials if available
-              material.color = defaultMaterials[key].color;
-            } else {
-              // Otherwise assign a default gray color
-              material.color = [0.7, 0.7, 0.7, 1.0];
-            }
-          }
-          acc[key] = material;
-          return acc;
-        }, {});
-        
-        setMaterials(materialsWithColors);
-      }
-    } catch (error) {
-      console.error('Error loading materials from localStorage:', error);
-    }
-  }, []);
+  // No localStorage loading - starting with default values
   
-  // Save geometries and materials to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('geant4-geometries', JSON.stringify(geometries));
-      localStorage.setItem('geant4-materials', JSON.stringify(materials));
-    } catch (error) {
-      console.error('Error saving data:', error);
-    }
-  }, [geometries, materials]);
+  // No localStorage saving
   
   // Handle updating a geometry
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false) => {
@@ -581,7 +545,7 @@ function App() {
     setMaterials(importedMaterials);
   };
   
-  // Extract a specific object and all its descendants
+  // Extract an object and all its descendants
   const extractObjectWithDescendants = (objectId) => {
     let mainObject;
     let isWorld = false;

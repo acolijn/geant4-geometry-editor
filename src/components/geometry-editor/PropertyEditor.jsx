@@ -114,6 +114,16 @@ const PropertyEditor = ({
         // For other properties, remove unit as it's no longer needed
         delete updatedObject[outer].unit;
       }
+      
+      // Special handling for box dimensions - update both dimensions and size
+      if (outer === 'dimensions' && updatedObject.type === 'box') {
+        // Ensure size property exists and is updated to match dimensions
+        if (!updatedObject.size) {
+          updatedObject.size = {};
+        }
+        updatedObject.size[inner] = finalValue;
+        console.log(`Updated box ${inner} dimension to ${finalValue} and synchronized with size property`);
+      }
     }
   
     onUpdateGeometry(selectedGeometry, updatedObject);
@@ -431,16 +441,18 @@ const PropertyEditor = ({
       {/* Render type-specific properties */}
       {selectedObject?.type === 'box' && (
         <>
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>Size</Typography>
+          <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <TextField
               label="X"
               type="number"
-              value={selectedObject?.size?.x !== undefined 
-                ? fromInternalUnit(selectedObject.size.x, lengthUnit, 'length')
-                : 0
+              value={selectedObject?.dimensions?.x !== undefined 
+                ? fromInternalUnit(selectedObject.dimensions.x, lengthUnit, 'length')
+                : (selectedObject?.size?.x !== undefined 
+                  ? fromInternalUnit(selectedObject.size.x, lengthUnit, 'length')
+                  : 0)
               }
-              onChange={(e) => handlePropertyChange('size.x', e.target.value)}
+              onChange={(e) => handlePropertyChange('dimensions.x', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -448,11 +460,13 @@ const PropertyEditor = ({
             <TextField
               label="Y"
               type="number"
-              value={selectedObject?.size?.y !== undefined 
-                ? fromInternalUnit(selectedObject.size.y, lengthUnit, 'length')
-                : 0
+              value={selectedObject?.dimensions?.y !== undefined 
+                ? fromInternalUnit(selectedObject.dimensions.y, lengthUnit, 'length')
+                : (selectedObject?.size?.y !== undefined 
+                  ? fromInternalUnit(selectedObject.size.y, lengthUnit, 'length')
+                  : 0)
               }
-              onChange={(e) => handlePropertyChange('size.y', e.target.value)}
+              onChange={(e) => handlePropertyChange('dimensions.y', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -460,11 +474,13 @@ const PropertyEditor = ({
             <TextField
               label="Z"
               type="number"
-              value={selectedObject?.size?.z !== undefined 
-                ? fromInternalUnit(selectedObject.size.z, lengthUnit, 'length')
-                : 0
+              value={selectedObject?.dimensions?.z !== undefined 
+                ? fromInternalUnit(selectedObject.dimensions.z, lengthUnit, 'length')
+                : (selectedObject?.size?.z !== undefined 
+                  ? fromInternalUnit(selectedObject.size.z, lengthUnit, 'length')
+                  : 0)
               }
-              onChange={(e) => handlePropertyChange('size.z', e.target.value)}
+              onChange={(e) => handlePropertyChange('dimensions.z', e.target.value)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}

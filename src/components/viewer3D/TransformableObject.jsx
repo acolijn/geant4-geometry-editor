@@ -301,7 +301,7 @@ export default function TransformableObject({
   // Debug log the object properties to help diagnose rendering issues
   console.log(`RENDER - Object ${object.name} of type ${object.type}:`, {
     objectProps: object,
-    size: object.size,
+    dimensions: object.dimensions,
     innerRadius: object.innerRadius,
     inner_radius: object.inner_radius,
     worldPosition,
@@ -309,14 +309,15 @@ export default function TransformableObject({
   });
   
   // Force a default size for box objects if size is missing
-  let boxSize = [1, 1, 1];
+  /*let boxSize = [1, 1, 1];
   if (object.type === 'box') {
-    if (object.size) {
-      boxSize = [object.size.x || 1, object.size.y || 1, object.size.z || 1];
+    console.log(`RENDER - Box object ${object.name} dimensions:`, object.dimensions);
+    if (object.dimensions) {
+      boxSize = [object.dimensions.x || 1, object.dimensions.y || 1, object.dimensions.z || 1];
     } else {
-      console.warn(`RENDER WARNING - Box object ${object.name} missing size property, using default size`);
+      console.warn(`RENDER WARNING - Box object ${object.name} missing dimensions property, using default size`);
     }
-  }
+  }*/
   
   // Create a group for the transform controls
   const renderObject = () => {
