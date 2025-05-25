@@ -29,17 +29,11 @@ export function convertToMultiplePlacements(geometry) {
     if (volume._compoundId) {
       if (!compoundGroups[volume._compoundId]) {
         compoundGroups[volume._compoundId] = {
-          rootVolumes: [],
-          components: []
+          volumes: []
         };
       }
       
-      // Check if this is a root volume (parent is World)
-      if (volume.mother_volume === 'World' || !volume.mother_volume) {
-        compoundGroups[volume._compoundId].rootVolumes.push(volume);
-      } else {
-        compoundGroups[volume._compoundId].components.push(volume);
-      }
+      compoundGroups[volume._compoundId].volumes.push(volume);
     } else {
       // This is a standalone volume
       standaloneVolumes.push(volume);
@@ -55,11 +49,57 @@ export function convertToMultiplePlacements(geometry) {
   
   // Process compound objects
   Object.entries(compoundGroups).forEach(([compoundId, group]) => {
-    if (group.rootVolumes.length > 0) {
-      // Create a compound object
-      const compoundObject = createCompoundObject(group.rootVolumes[0], group.rootVolumes, group.components);
-      convertedGeometry.volumes.push(compoundObject);
+    // Find the root volumes of this compound (those that are either top-level or have a parent from a different compound)
+    const rootVolumes = group.volumes.filter(volume => {
+      if (!volume.mother_volume) return true;
+      if (volume.mother_volume === 'World') return true;
+      
+      // Check if the mother volume is part of the same compound
+      const motherVolume = geometry.volumes.find(v => v.name === volume.mother_volume);
+      return !motherVolume || motherVolume._compoundId !== compoundId;
+    });
+    
+    // If no root volumes found, use the first volume as the root
+    // This handles the case where all volumes in the compound are daughters of other objects
+    if (rootVolumes.length === 0 && group.volumes.length > 0) {
+      rootVolumes.push(group.volumes[0]);
     }
+    
+    // Group root volumes by their base name (without indices)
+    const rootGroups = {};
+    rootVolumes.forEach(volume => {
+      const baseName = volume.name.replace(/_\d+$/, '');
+      if (!rootGroups[baseName]) {
+        rootGroups[baseName] = [];
+      }
+      rootGroups[baseName].push(volume);
+    });
+    
+    // Process each root group
+    Object.entries(rootGroups).forEach(([baseName, instances]) => {
+      // Create a compound object for this group
+      const compoundObject = createCompoundObject(
+        instances[0],  // Use the first instance as the template
+        instances,      // All instances of this root
+        group.volumes    // All volumes in this compound
+      );
+      
+      // Set the parent for the compound object based on the mother_volume of the first instance
+      // This ensures that compound objects that are daughters of other objects are placed correctly
+      const firstInstance = instances[0];
+      if (firstInstance.mother_volume && firstInstance.mother_volume !== 'World') {
+        // Update all placements to have the correct parent
+        compoundObject.placements.forEach(placement => {
+          placement.parent = firstInstance.mother_volume.replace(/_\d+$/, '');
+        });
+        
+        // Log that we're setting a non-World parent for this compound object
+        console.log(`Setting parent '${firstInstance.mother_volume.replace(/_\d+$/, '')}' for compound object '${compoundObject.name}'`);
+      }
+      
+      // Add the compound object to the result
+      convertedGeometry.volumes.push(compoundObject);
+    });
   });
   
   // Add hits collections if they exist
@@ -247,75 +287,65 @@ function createCompoundObject(rootVolume, rootInstances, components) {
   // Build a hierarchy of components
   const hierarchy = new Map();
   templateComponents.forEach((component, baseName) => {
-    const parentBaseName = component.mother_volume.replace(/_\d+$/, '');
+    // Skip the root component itself
+    if (baseName === rootVolume.name.replace(/_\d+$/, '')) return;
+    
+    // Get the parent base name
+    let parentBaseName = component.mother_volume?.replace(/_\d+$/, '');
+    
+    // If the parent isn't in this compound, set the parent to the root
+    if (!parentBaseName || !templateComponents.has(parentBaseName)) {
+      parentBaseName = rootVolume.name.replace(/_\d+$/, '');
+    }
+    
     if (!hierarchy.has(parentBaseName)) {
       hierarchy.set(parentBaseName, []);
     }
     hierarchy.get(parentBaseName).push(baseName);
   });
   
-  // Process direct children of the root
+  // Process all components recursively, starting with direct children of the root
   const rootBaseName = rootVolume.name.replace(/_\d+$/, '');
-  const directChildren = hierarchy.get(rootBaseName) || [];
   
-  directChildren.forEach(childName => {
-    const template = templateComponents.get(childName);
-    if (!template) return;
+  // Function to recursively process components and their children
+  const processComponentHierarchy = (parentName, parentBaseName) => {
+    const children = hierarchy.get(parentBaseName) || [];
     
-    // Create the component object with a single placement
-    const componentObject = {
-      type: template.type,
-      name: childName,
-      material: template.material,
-      color: convertColor(template.color),
-      visible: template.visible !== undefined ? template.visible : true,
-      ...(template.isActive && { hitCollection: template.hitsCollectionName || "DefaultHitCollection" }),
-      dimensions: convertDimensions(template),
-      placements: [{
-        x: template.position?.x || 0,
-        y: template.position?.y || 0,
-        z: template.position?.z || 0,
-        rotation: {
-          x: template.rotation?.x || 0,
-          y: template.rotation?.y || 0,
-          z: template.rotation?.z || 0
-        },
-        parent: rootComponent.name
-      }]
-    };
-    
-    compoundObject.components.push(componentObject);
-    
-    // Process children of this component (grandchildren of root)
-    const grandchildren = hierarchy.get(childName) || [];
-    grandchildren.forEach(grandchildName => {
-      const grandchildTemplate = templateComponents.get(grandchildName);
-      if (!grandchildTemplate) return;
+    children.forEach(childName => {
+      const template = templateComponents.get(childName);
+      if (!template) return;
       
-      const grandchildObject = {
-        type: grandchildTemplate.type,
-        name: grandchildName,
-        material: grandchildTemplate.material,
-        color: convertColor(grandchildTemplate.color),
-        visible: grandchildTemplate.visible !== undefined ? grandchildTemplate.visible : true,
-        ...(grandchildTemplate.isActive && { hitCollection: grandchildTemplate.hitsCollectionName || "DefaultHitCollection" }),
-        dimensions: convertDimensions(grandchildTemplate),
+      // Create the component object with a single placement
+      const componentObject = {
+        type: template.type,
+        name: childName,
+        material: template.material,
+        color: convertColor(template.color),
+        visible: template.visible !== undefined ? template.visible : true,
+        ...(template.isActive && { hitCollection: template.hitsCollectionName || "DefaultHitCollection" }),
+        dimensions: convertDimensions(template),
         placements: [{
-          x: grandchildTemplate.position?.x || 0,
-          y: grandchildTemplate.position?.y || 0,
-          z: grandchildTemplate.position?.z || 0,
+          x: template.position?.x || 0,
+          y: template.position?.y || 0,
+          z: template.position?.z || 0,
           rotation: {
-            x: grandchildTemplate.rotation?.x || 0,
-            y: grandchildTemplate.rotation?.y || 0,
-            z: grandchildTemplate.rotation?.z || 0
+            x: template.rotation?.x || 0,
+            y: template.rotation?.y || 0,
+            z: template.rotation?.z || 0
           },
-          parent: childName
+          parent: parentName
         }]
       };
       
-      compoundObject.components.push(grandchildObject);
+      compoundObject.components.push(componentObject);
+      
+      // Recursively process children of this component
+      processComponentHierarchy(childName, childName);
     });
-  });
+  };
+  
+  // Start the recursive processing with the root component
+  processComponentHierarchy(rootComponent.name, rootBaseName);
   
   return compoundObject;
 }
