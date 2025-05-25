@@ -50,3 +50,6 @@ jsdoc-*.log
 !/scripts/generate-api-docs.js
 !/scripts/serve-docs.sh
 !/scripts/.gitignore
+
+# Temporary files directory
+/tmp/
