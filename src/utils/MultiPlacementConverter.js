@@ -154,11 +154,27 @@ function convertStandardVolume(volume) {
  * @returns {Object} - The compound object
  */
 function createCompoundObject(rootVolume, rootInstances, components) {
-  // Get the base name for the compound object (without indices)
-  // This should be the type name from the metadata or the name without index
-  const compoundName = rootVolume._compoundId ? 
-    rootVolume._compoundId.replace('compound-', '').split('-')[0] : 
-    rootVolume.name.replace(/_\d+$/, '');
+  // Get the name for the compound object from the _compoundId
+  // The _compoundId now contains the original object name from the save dialog
+  // Format is: compound-{savedName}-{type}
+  let compoundName;
+  
+  if (rootVolume._compoundId) {
+    // Extract the original object name from the compound ID
+    const match = rootVolume._compoundId.match(/^compound-(.+?)-[^-]+$/);
+    if (match && match[1]) {
+      compoundName = match[1];
+      console.log(`Using saved object name from _compoundId: ${compoundName}`);
+    } else {
+      // If the pattern doesn't match, just use the first part after 'compound-'
+      compoundName = rootVolume._compoundId.replace('compound-', '').split('-')[0];
+      console.log(`Extracted name from _compoundId: ${compoundName}`);
+    }
+  } else {
+    // Fall back to the base name without index if no compound ID is available
+    compoundName = rootVolume.name.replace(/_\d+$/, '');
+    console.log(`Falling back to instance name: ${compoundName}`);
+  }
   
   // Create the compound object
   const compoundObject = {
@@ -203,108 +219,102 @@ function createCompoundObject(rootVolume, rootInstances, components) {
   
   compoundObject.components.push(rootComponent);
   
-  // Group direct children by their base name (without indices)
-  const componentGroups = {};
-  
-  // Filter to only include direct children of the root volume
-  const directChildren = components.filter(component => {
-    const parentBaseName = component.mother_volume.replace(/_\d+$/, '');
-    const rootBaseName = rootVolume.name.replace(/_\d+$/, '');
-    return parentBaseName === rootBaseName;
-  });
-  
-  directChildren.forEach(component => {
-    // Extract the base name (remove the index suffix)
-    const baseName = component.name.replace(/_\d+$/, '');
-    
-    if (!componentGroups[baseName]) {
-      componentGroups[baseName] = [];
+  // For a compound object, we only need to consider a single instance of the PMT
+  // First, find all the unique component types that belong to this compound
+  const componentTypes = new Set();
+  components.forEach(component => {
+    if (component._compoundId === rootVolume._compoundId) {
+      const baseName = component.name.replace(/_\d+$/, '');
+      componentTypes.add(baseName);
     }
-    
-    componentGroups[baseName].push(component);
   });
   
-  // Process each direct child component group
-  Object.entries(componentGroups).forEach(([baseName, instances]) => {
-    // Use the first instance as the template
-    const template = instances[0];
+  // Find the first instance of each component
+  // We'll use these as templates for the component definitions
+  const templateComponents = new Map();
+  componentTypes.forEach(baseName => {
+    // Find the first component with this base name
+    const component = components.find(c => 
+      c._compoundId === rootVolume._compoundId && 
+      c.name.replace(/_\d+$/, '') === baseName
+    );
     
-    // Create the component
+    if (component) {
+      templateComponents.set(baseName, component);
+    }
+  });
+  
+  // Build a hierarchy of components
+  const hierarchy = new Map();
+  templateComponents.forEach((component, baseName) => {
+    const parentBaseName = component.mother_volume.replace(/_\d+$/, '');
+    if (!hierarchy.has(parentBaseName)) {
+      hierarchy.set(parentBaseName, []);
+    }
+    hierarchy.get(parentBaseName).push(baseName);
+  });
+  
+  // Process direct children of the root
+  const rootBaseName = rootVolume.name.replace(/_\d+$/, '');
+  const directChildren = hierarchy.get(rootBaseName) || [];
+  
+  directChildren.forEach(childName => {
+    const template = templateComponents.get(childName);
+    if (!template) return;
+    
+    // Create the component object with a single placement
     const componentObject = {
       type: template.type,
-      name: baseName,
+      name: childName,
       material: template.material,
       color: convertColor(template.color),
       visible: template.visible !== undefined ? template.visible : true,
       ...(template.isActive && { hitCollection: template.hitsCollectionName || "DefaultHitCollection" }),
       dimensions: convertDimensions(template),
-      placements: instances.map(instance => {
-        return {
-          x: instance.position?.x || 0,
-          y: instance.position?.y || 0,
-          z: instance.position?.z || 0,
-          rotation: {
-            x: instance.rotation?.x || 0,
-            y: instance.rotation?.y || 0,
-            z: instance.rotation?.z || 0
-          },
-          parent: rootComponent.name
-        };
-      })
+      placements: [{
+        x: template.position?.x || 0,
+        y: template.position?.y || 0,
+        z: template.position?.z || 0,
+        rotation: {
+          x: template.rotation?.x || 0,
+          y: template.rotation?.y || 0,
+          z: template.rotation?.z || 0
+        },
+        parent: rootComponent.name
+      }]
     };
     
     compoundObject.components.push(componentObject);
     
-    // Now process any children of this component (grandchildren of root)
-    const childComponents = components.filter(comp => {
-      const parentBaseName = comp.mother_volume.replace(/_\d+$/, '');
-      return parentBaseName === baseName;
+    // Process children of this component (grandchildren of root)
+    const grandchildren = hierarchy.get(childName) || [];
+    grandchildren.forEach(grandchildName => {
+      const grandchildTemplate = templateComponents.get(grandchildName);
+      if (!grandchildTemplate) return;
+      
+      const grandchildObject = {
+        type: grandchildTemplate.type,
+        name: grandchildName,
+        material: grandchildTemplate.material,
+        color: convertColor(grandchildTemplate.color),
+        visible: grandchildTemplate.visible !== undefined ? grandchildTemplate.visible : true,
+        ...(grandchildTemplate.isActive && { hitCollection: grandchildTemplate.hitsCollectionName || "DefaultHitCollection" }),
+        dimensions: convertDimensions(grandchildTemplate),
+        placements: [{
+          x: grandchildTemplate.position?.x || 0,
+          y: grandchildTemplate.position?.y || 0,
+          z: grandchildTemplate.position?.z || 0,
+          rotation: {
+            x: grandchildTemplate.rotation?.x || 0,
+            y: grandchildTemplate.rotation?.y || 0,
+            z: grandchildTemplate.rotation?.z || 0
+          },
+          parent: childName
+        }]
+      };
+      
+      compoundObject.components.push(grandchildObject);
     });
-    
-    if (childComponents.length > 0) {
-      // Group by base name
-      const childGroups = {};
-      
-      childComponents.forEach(child => {
-        const childBaseName = child.name.replace(/_\d+$/, '');
-        
-        if (!childGroups[childBaseName]) {
-          childGroups[childBaseName] = [];
-        }
-        
-        childGroups[childBaseName].push(child);
-      });
-      
-      // Process each child group
-      Object.entries(childGroups).forEach(([childName, childInstances]) => {
-        const childTemplate = childInstances[0];
-        
-        const childObject = {
-          type: childTemplate.type,
-          name: childName,
-          material: childTemplate.material,
-          color: convertColor(childTemplate.color),
-          visible: childTemplate.visible !== undefined ? childTemplate.visible : true,
-          ...(childTemplate.isActive && { hitCollection: childTemplate.hitsCollectionName || "DefaultHitCollection" }),
-          dimensions: convertDimensions(childTemplate),
-          placements: childInstances.map(child => {
-            return {
-              x: child.position?.x || 0,
-              y: child.position?.y || 0,
-              z: child.position?.z || 0,
-              rotation: {
-                x: child.rotation?.x || 0,
-                y: child.rotation?.y || 0,
-                z: child.rotation?.z || 0
-              },
-              parent: baseName
-            };
-          })
-        };
-        
-        compoundObject.components.push(childObject);
-      });
-    }
   });
   
   return compoundObject;

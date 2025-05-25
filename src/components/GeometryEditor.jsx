@@ -253,7 +253,13 @@ const GeometryEditor = ({
       // Simplify object names before saving
       const simplifiedObjectData = simplifyObjectNames(objectData);
       
-      // Save the object with simplified names
+      // Update the compound ID to include the saved object name
+      // This ensures the compound ID contains the name given in the save dialog
+      const updatedCompoundId = `compound-${name}-${simplifiedObjectData.object.type}`;
+      console.log(`Updated compound ID to include saved name: ${updatedCompoundId}`);
+      simplifiedObjectData._compoundId = updatedCompoundId;
+      
+      // Save the object with simplified names and updated compound ID
       const result = await saveObject(name, description, simplifiedObjectData);
       
       if (result.success) {
