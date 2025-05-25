@@ -223,6 +223,18 @@ function App() {
       console.log(`IMPORT - Generated new source ID: ${mainObject._sourceId}`);
     }
     
+    // Preserve the compound ID if it exists
+    if (content._compoundId) {
+      mainObject._compoundId = content._compoundId;
+      console.log(`IMPORT - Preserved compound ID from import data: ${content._compoundId}`);
+    } else if (mainObject._compoundId) {
+      console.log(`IMPORT - Using existing compound ID from object: ${mainObject._compoundId}`);
+    } else {
+      // Generate a new compound ID if none exists
+      mainObject._compoundId = `compound-${mainObject.name}-${mainObject.type}`;
+      console.log(`IMPORT - Generated new compound ID: ${mainObject._compoundId}`);
+    }
+    
     // Store the original name for special handling of PMT objects
     const isPMTObject = originalMainName === 'PMT';
     
@@ -265,9 +277,13 @@ function App() {
     console.log('IMPORT - Main object details after processing:', mainObject);
     
     // CRITICAL FIX: Directly add the main object to the volumes array
+    // Ensure we preserve all metadata including _compoundId
     updatedGeometries.volumes.push(mainObject);
     const addedMainName = mainObject.name;
     const mainObjectIndex = updatedGeometries.volumes.length - 1;
+    
+    // Debug: Log the added object to verify _compoundId is present
+    console.log('IMPORT - Added object with _compoundId:', updatedGeometries.volumes[mainObjectIndex]);
     
     // Register the main object with the instance tracker as a compound object
     const mainObjectId = `volume-${mainObjectIndex}`;
@@ -332,7 +348,7 @@ function App() {
         return processedDesc;
       });
       
-      // Second pass: update mother_volume references
+      // Second pass: update mother_volume references and preserve compound IDs
       const finalDescendants = processedDescendants.map(desc => {
         const finalDesc = { ...desc };
         
@@ -346,6 +362,12 @@ function App() {
           finalDesc.mother_volume = addedMainName;
         }
         
+        // Preserve the compound ID from the main object for all descendants
+        if (mainObject._compoundId) {
+          finalDesc._compoundId = mainObject._compoundId;
+          console.log(`IMPORT - Added compound ID ${mainObject._compoundId} to descendant ${finalDesc.name}`);
+        }
+        
         return finalDesc;
       });
       
@@ -354,10 +376,14 @@ function App() {
         console.log(`IMPORT - Adding descendant ${index + 1}/${finalDescendants.length}:`, desc);
         
         // Add the descendant to the volumes array
+        // Ensure we preserve all metadata including _compoundId
         updatedGeometries.volumes.push(desc);
         
         // Get the index of the descendant in the volumes array
         const descendantIndex = updatedGeometries.volumes.length - 1;
+        
+        // Debug: Log the added descendant to verify _compoundId is present
+        console.log('IMPORT - Added descendant with _compoundId:', updatedGeometries.volumes[descendantIndex]);
         
         // Instance tracking functionality has been removed for a cleaner implementation
         // Descendant tracking will be reimplemented in a simpler way
@@ -585,10 +611,24 @@ function App() {
       console.log(`Generated new source ID for ${mainObject.name}: ${mainObject._sourceId}`);
     }
     
+    // Check if the object already has a compound ID (from a previous save)
+    // If it does, preserve it to maintain the relationship between all instances
+    // If not, generate a new one
+    let compoundId = mainObject._compoundId;
+    if (!compoundId) {
+      // Generate a stable compound ID based on the object name (without timestamp)
+      // This ensures the ID remains consistent when overwriting
+      compoundId = `compound-${mainObject.name}-${mainObject.type}`;
+      console.log(`Generated new _compoundId ${compoundId} for ${mainObject.name}`);
+    } else {
+      console.log(`Preserving existing _compoundId ${compoundId} for ${mainObject.name}`);
+    }
+    
     // Ensure the mother_volume property is included for the main object if it exists
     // This fixes the issue where the top-level object of a compound object doesn't have its mother_volume in the exported JSON
     // We need to make sure the mother_volume is explicitly preserved
-    const exportedMainObject = { ...mainObject };
+    const exportedMainObject = { ...mainObject, _compoundId: compoundId };
+    console.log(`Using _compoundId ${compoundId} for main object ${exportedMainObject.name}`);
     
     // For volumes (not the world), ensure the mother_volume is explicitly set in the exported object
     if (!isWorld && objectId.startsWith('volume-')) {
@@ -612,9 +652,11 @@ function App() {
     }
     
     // Process descendants to ensure hit collection information is preserved
+    // and add the compound ID to all descendants
     const processedDescendants = allDescendants.map(descendant => {
       // Create a deep copy to avoid modifying the original
-      const processedDescendant = { ...descendant };
+      const processedDescendant = { ...descendant, _compoundId: compoundId };
+      console.log(`Added _compoundId ${compoundId} to descendant ${descendant.name}`);
       
       // Ensure hit collection properties are explicitly preserved
       if (descendant.isActive !== undefined) {
@@ -633,7 +675,8 @@ function App() {
       object: exportedMainObject,
       descendants: processedDescendants,
       isWorld,
-      _sourceId: mainObject._sourceId // Include the source ID at the top level for easy access
+      _sourceId: mainObject._sourceId, // Include the source ID at the top level for easy access
+      _compoundId: compoundId // Include the compound ID at the top level as well
     };
   };
   

@@ -10,6 +10,7 @@ import {
   Snackbar
 } from '@mui/material';
 import { createPlacementObject, createDimensionsObject } from '../utils/ObjectFormatStandardizer';
+import { convertToMultiplePlacements } from '../utils/MultiPlacementConverter';
 
 const JsonViewer = ({ geometries, materials }) => {
   const [tabValue, setTabValue] = useState(0);
@@ -60,6 +61,13 @@ const JsonViewer = ({ geometries, materials }) => {
   
   // Generate the geometry JSON with hits collections
   const generateGeometryJson = () => {
+    // Debug: Log all volumes to check for _compoundId
+    console.log('JsonViewer - All volumes:', geometries.volumes);
+    
+    // Check for _compoundId in volumes
+    const volumesWithCompoundId = (geometries.volumes || []).filter(vol => vol._compoundId);
+    console.log(`JsonViewer - Found ${volumesWithCompoundId.length} volumes with _compoundId:`, volumesWithCompoundId);
+    
     // Start with the existing format
     const jsonData = {
       world: geometries.world,
@@ -139,6 +147,14 @@ const JsonViewer = ({ geometries, materials }) => {
         
         // Copy the name
         convertedVolume.name = volume.name;
+        
+        // Debug: Check if _compoundId exists for this volume
+        console.log(`JsonViewer - Volume ${volume.name} _compoundId:`, volume._compoundId);
+        
+        if (volume._compoundId) {
+          convertedVolume.ID = volume._compoundId;
+          console.log(`JsonViewer - Added ID ${volume._compoundId} to volume ${volume.name}`);
+        }
         
         // Convert mother_volume to parent
         convertedVolume.parent = volume.mother_volume || 'World';
@@ -325,6 +341,12 @@ const JsonViewer = ({ geometries, materials }) => {
   // Generate the materials JSON
   const materialsJson = formatJson({ materials });
   
+  // Generate the multiple placements JSON
+  const multiplePlacementsJson = formatJson(convertToMultiplePlacements({
+    world: geometries.world,
+    volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))
+  }));
+  
   // Alert handling functions
   const handleAlertClose = () => {
     setAlert({ ...alert, open: false });
@@ -367,6 +389,7 @@ const JsonViewer = ({ geometries, materials }) => {
           variant="fullWidth"
         >
           <Tab label="Geometry JSON" />
+          <Tab label="Multiple Placements" />
           <Tab label="Materials JSON" />
         </Tabs>
         
@@ -374,8 +397,8 @@ const JsonViewer = ({ geometries, materials }) => {
           <Button 
             variant="contained" 
             onClick={() => handleDownload(
-              tabValue === 0 ? geometryJson : materialsJson,
-              tabValue === 0 ? 'geometry.json' : 'materials.json'
+              tabValue === 0 ? geometryJson : tabValue === 1 ? multiplePlacementsJson : materialsJson,
+              tabValue === 0 ? 'geometry.json' : tabValue === 1 ? 'geometry_multiple_placements.json' : 'materials.json'
             )}
             size="small"
           >
@@ -421,7 +444,7 @@ const JsonViewer = ({ geometries, materials }) => {
             },
           }}
         >
-          {tabValue === 0 ? geometryJson : materialsJson}
+          {tabValue === 0 ? geometryJson : tabValue === 1 ? multiplePlacementsJson : materialsJson}
         </Box>
       </Paper>
       
