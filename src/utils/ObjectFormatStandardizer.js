@@ -13,14 +13,14 @@
 export const createPlacementObject = (volume) => {
   if (!volume.position) return null;
   
-  // Create placement object
+  // Create placement object - no units, all values in mm and rad
   const placement = {
     x: Number(volume.position.x || 0),
     y: Number(volume.position.y || 0),
     z: Number(volume.position.z || 0)
   };
   
-  // Add rotation if present
+  // Add rotation if present - no units, all values in rad
   if (volume.rotation) {
     placement.rotation = {
       x: Number(volume.rotation.x || 0),

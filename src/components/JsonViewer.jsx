@@ -336,12 +336,13 @@ const JsonViewer = ({ geometries, materials }) => {
     return sortedVolumes;
   };
   
-  const geometryJson = generateGeometryJson();
+  // We no longer use the custom generateGeometryJson function to avoid duplication
+  // const geometryJson = generateGeometryJson();
   
   // Generate the materials JSON
   const materialsJson = formatJson({ materials });
   
-  // Generate the multiple placements JSON
+  // Generate the multiple placements JSON - this is the only JSON format we use now
   const multiplePlacementsJson = formatJson(convertToMultiplePlacements({
     world: geometries.world,
     volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))

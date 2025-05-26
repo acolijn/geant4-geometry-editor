@@ -28,13 +28,51 @@ export function convertToMultiplePlacements(geometry) {
     nameToBaseNameMap.set(volume.name, baseName);
   });
   
-  // Group volumes by compound ID
+  // Group volumes by compound ID and identify assemblies
   const compoundGroups = {};
+  const assemblies = {};
+  const assemblyTypes = {}; // Group assemblies by type
   const standaloneVolumes = [];
   
-  // First pass: identify compound objects and standalone volumes
+  // First pass: identify compound objects, assemblies, and standalone volumes
   geometry.volumes.forEach(volume => {
-    if (volume._compoundId) {
+    if (volume.type === 'assembly') {
+      // This is an assembly
+      assemblies[volume.name] = {
+        volume: volume,
+        children: []
+      };
+      
+      // Group assemblies by their type
+      // First check for explicit assembly type
+      let assemblyType = volume._assemblyType;
+      
+      // If no explicit type, try to extract type from name pattern
+      if (!assemblyType && volume.name) {
+        // Look for patterns like "Type_Instance" or "Type_Instance_ID"
+        const nameParts = volume.name.split('_');
+        if (nameParts.length >= 2) {
+          // Use the first part as the type
+          assemblyType = nameParts[0];
+          console.log(`Extracted assembly type ${assemblyType} from name ${volume.name}`);
+        }
+      }
+      
+      // If still no type, use the full name
+      if (!assemblyType) {
+        assemblyType = volume.name;
+      }
+      
+      // Add to the appropriate type group
+      if (!assemblyTypes[assemblyType]) {
+        assemblyTypes[assemblyType] = {
+          template: volume,
+          instances: []
+        };
+      }
+      assemblyTypes[assemblyType].instances.push(volume);
+    } else if (volume._compoundId) {
+      // This is part of a compound object
       if (!compoundGroups[volume._compoundId]) {
         compoundGroups[volume._compoundId] = {
           volumes: []
@@ -48,15 +86,146 @@ export function convertToMultiplePlacements(geometry) {
     }
   });
   
+  // Second pass: identify children of assemblies
+  geometry.volumes.forEach(volume => {
+    if (volume.mother_volume && assemblies[volume.mother_volume]) {
+      // This volume is a child of an assembly
+      assemblies[volume.mother_volume].children.push(volume);
+    }
+  });
+  
   console.log(`Found ${Object.keys(compoundGroups).length} compound groups and ${standaloneVolumes.length} standalone volumes`);
   
-  // Process standalone volumes
+  // Process standalone volumes (excluding assemblies)
   standaloneVolumes.forEach(volume => {
+    // Skip assemblies completely - they'll be handled by assembly types
+    if (volume.type === 'assembly') {
+      console.log(`Skipping assembly ${volume.name} from direct output - will be handled by assembly types`);
+      return;
+    }
+    
+    // Skip volumes that are children of assemblies, as they'll be handled as compound objects
+    if (volume.mother_volume && Object.keys(assemblies).includes(volume.mother_volume)) {
+      console.log(`Skipping ${volume.name} as it's a child of assembly ${volume.mother_volume}`);
+      return;
+    }
+    
     convertedGeometry.volumes.push(convertStandardVolume(volume, geometry));
   });
   
-  // Process compound objects
+  // Debug info
+  console.log(`Found ${Object.keys(assemblyTypes).length} assembly types with ${Object.keys(assemblies).length} total instances`);
+  
+  // Process assembly types as compound objects with multiple placements
+  Object.entries(assemblyTypes).forEach(([assemblyType, typeData]) => {
+    // Get the first instance as a template
+    const templateVolume = typeData.template;
+    const templateAssembly = assemblies[templateVolume.name];
+    
+    if (!templateAssembly || templateAssembly.children.length === 0) {
+      // Skip empty assemblies
+      console.log(`Skipping empty assembly type: ${assemblyType}`);
+      return;
+    }
+    
+    // Create a compound object for this assembly type
+    // Assembly is just a container - no material, color, or dimensions
+    const compoundObject = {
+      type: 'compound',
+      // Use the assembly type as the name (without any suffixes)
+      name: assemblyType,
+      components: [],
+      placements: []
+    };
+    
+    // Helper function to recursively process all descendants
+    const processComponentWithDescendants = (volume, parentName) => {
+      // Get the Geant4 name for this volume
+      const geant4Name = volume.displayName || volume.name;
+      
+      // Create a component for this volume
+      const component = {
+        type: volume.type,
+        // Use the Geant4 name (displayName) instead of internal name
+        name: geant4Name,
+        material: volume.material,
+        color: Array.isArray(volume.color) ? volume.color : 
+               (volume.color ? [volume.color.r, volume.color.g, volume.color.b, volume.color.a] : [0.7, 0.7, 0.7, 1.0]),
+        dimensions: convertDimensions(volume),
+        // Component placements - no units (all in mm and rad)
+        placements: [{
+          x: volume.position?.x || 0,
+          y: volume.position?.y || 0,
+          z: volume.position?.z || 0,
+          rotation: {
+            x: volume.rotation?.x || 0,
+            y: volume.rotation?.y || 0,
+            z: volume.rotation?.z || 0
+          },
+          // For top-level components in assembly, use empty parent
+          // For components with internal parent-child relationships, use the Geant4 name of the parent
+          parent: parentName || ""
+        }]
+      };
+      
+      // Add this component to the compound object
+      compoundObject.components.push(component);
+      
+      // Find all children of this volume
+      const children = geometry.volumes.filter(vol => 
+        vol.mother_volume === volume.name
+      );
+      
+      // Process each child recursively
+      children.forEach(child => {
+        // Pass the Geant4 name as the parent name
+        processComponentWithDescendants(child, geant4Name);
+      });
+    };
+    
+    // Process all direct children of the assembly
+    templateAssembly.children.forEach(child => {
+      // Process this child and all its descendants
+      processComponentWithDescendants(child, child.mother_volume === templateVolume.name ? "" : child.mother_volume);
+    });
+    
+    // Add placements for all instances of this assembly type
+    typeData.instances.forEach(instance => {
+      // Add a placement for each instance - no units (all in mm and rad)
+      compoundObject.placements.push({
+        // Use the Geant4 name (displayName) for identification
+        name: instance.displayName || instance.name,
+        x: instance.position?.x || 0,
+        y: instance.position?.y || 0,
+        z: instance.position?.z || 0,
+        rotation: {
+          x: instance.rotation?.x || 0,
+          y: instance.rotation?.y || 0,
+          z: instance.rotation?.z || 0
+        },
+        // The parent is where this instance will be placed - use Geant4 name if available
+        // For top-level assemblies, this is typically 'World'
+        parent: instance.mother_volume || 'World'
+      });
+    });
+    
+    // Add the compound object to the converted geometry
+    convertedGeometry.volumes.push(compoundObject);
+  });
+  
+  // Process compound objects (but skip those that are part of assemblies)
   Object.entries(compoundGroups).forEach(([compoundId, group]) => {
+    // Check if any volume in this group is part of an assembly
+    const isPartOfAssembly = group.volumes.some(volume => 
+      volume.mother_volume && Object.keys(assemblies).includes(volume.mother_volume)
+    );
+    
+    // Skip this compound group if it's part of an assembly (already processed)
+    if (isPartOfAssembly) {
+      console.log(`Skipping compound group ${compoundId} as it's part of an assembly`);
+      return;
+    }
+    
     // Find the root volumes of this compound (those that are either top-level or have a parent from a different compound)
     const rootVolumes = group.volumes.filter(volume => {
       if (!volume.mother_volume) return true;
@@ -182,21 +351,29 @@ function convertStandardVolume(volume, originalGeometry) {
   
   // Get the parent name (mother_volume) and use its Geant4 name if available
   let parentName = 'World';
+  let isChildOfAssembly = false;
+  
   if (volume.mother_volume && volume.mother_volume !== 'World') {
     // Find the mother volume in the original geometry to get its displayName
     const motherVolume = originalGeometry.volumes.find(vol => vol.name === volume.mother_volume);
-    if (motherVolume && motherVolume.displayName) {
-      // Use the Geant4 name (displayName) of the mother volume
-      parentName = motherVolume.displayName;
+    
+    if (motherVolume) {
+      // Check if the mother volume is an assembly
+      if (motherVolume.type === 'assembly') {
+        isChildOfAssembly = true;
+      }
+      
+      if (motherVolume.displayName) {
+        // Use the Geant4 name (displayName) of the mother volume
+        //parentName = motherVolume.displayName;
+        parentName = volume.mother_volume;
+      } else {
+        // Fallback: use the mother_volume name
+        parentName = volume.mother_volume;
+      }
     } else {
-      // Fallback: extract the Geant4 name from the mother_volume name if it has underscores
+      // Fallback: use the mother_volume name
       parentName = volume.mother_volume;
-      /*if (parentName.includes('_')) {
-        const parts = parentName.split('_');
-        if (parts.length > 1) {
-          parentName = parts[1];
-        }
-      }*/
     }
   }
   
@@ -210,6 +387,7 @@ function convertStandardVolume(volume, originalGeometry) {
     dimensions: convertDimensions(volume),
     placements: [
       {
+        // No units - all values in mm and rad
         x: volume.position?.x || 0,
         y: volume.position?.y || 0,
         z: volume.position?.z || 0,
@@ -267,28 +445,23 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       // Use displayName if available, otherwise fall back to compoundName
       const displayName = instance.displayName || compoundName;
       
-      // Get the parent name (mother_volume) and use its Geant4 name if available
+      // Get the parent name (mother_volume) and use it directly without splitting
       let parentName = 'World';
       if (instance.mother_volume && instance.mother_volume !== 'World') {
         // Find the mother volume in the original geometry to get its displayName
         const motherVolume = geometry.volumes.find(vol => vol.name === instance.mother_volume);
         if (motherVolume && motherVolume.displayName) {
           // Use the Geant4 name (displayName) of the mother volume
-          parentName = motherVolume.displayName;
+          parentName = instance.mother_volume; //motherVolume.displayName;
         } else {
-          // Fallback: extract the Geant4 name from the mother_volume name if it has underscores
+          // Fallback: use the mother_volume name
           parentName = instance.mother_volume;
-          /*if (parentName.includes('_')) {
-            const parts = parentName.split('_');
-            if (parts.length > 1) {
-              parentName = parts[1];
-            }
-          }*/
         }
       }
       
       return {
-        name: displayName, // Use the Geant4 name for identification
+        //name: displayName, // Use the Geant4 name for identification
+        name: instance.name,
         x: instance.position?.x || 0,
         y: instance.position?.y || 0,
         z: instance.position?.z || 0,
@@ -315,7 +488,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   templateComponents.push({
     type: rootVolume.type,
     // split on _ and keep only middle part
-    name: rootVolume.name.split('_')[1],
+    //name: rootVolume.name.split('_')[1],
+    name: rootVolume.name,
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
@@ -355,8 +529,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     // Add this component to the template components
     templateComponents.push({
       type: component.type,
-      name: component.name.split('_')[1],
-      //g4Name: component.g4Name,
+      // Use the full name without splitting
+      name: component.name,
       material: component.material,
       color: convertColor(component.color),
       visible: component.visible !== undefined ? component.visible : true,
@@ -371,7 +545,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
           y: component.rotation?.y || 0,
           z: component.rotation?.z || 0
         },
-        parent: parentName.split('_')[1]
+        // Use the full parent name without splitting
+        parent: parentName
       }]
     });
   });

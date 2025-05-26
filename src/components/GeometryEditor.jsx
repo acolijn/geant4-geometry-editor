@@ -1331,6 +1331,20 @@ const GeometryEditor = ({
       mother_volume: newMotherVolume // Use the selected mother volume
     };
     
+    // For assembly type, add special properties
+    if (newGeometryType === 'assembly') {
+      // Generate a unique compound ID for the assembly
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 10);
+      newGeometry._compoundId = `compound-${newGeometry.name}-assembly-${timestamp}-${randomSuffix}`;
+      
+      // Set a display name (Geant4 name) for the assembly
+      newGeometry.displayName = newGeometry.name;
+      
+      // Set a semi-transparent color for visualization
+      newGeometry.color = [0.7, 0.7, 0.7, 0.3];
+    }
+    
     // Add specific properties based on geometry type
     if (newGeometryType === 'box') {
       newGeometry.size = { x: 100, y: 100, z: 100};

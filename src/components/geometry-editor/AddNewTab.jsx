@@ -89,6 +89,7 @@ const AddNewTab = ({
           <MenuItem value="ellipsoid">Ellipsoid</MenuItem>
           <MenuItem value="polycone">Polycone</MenuItem>
           <Divider />
+          <MenuItem value="assembly">Assembly</MenuItem>
           <MenuItem value="union">Union Solid</MenuItem>
         </Select>
       </FormControl>

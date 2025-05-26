@@ -24,6 +24,7 @@ import TorusObject from './TorusObject.jsx';
 import EllipsoidObject from './EllipsoidObject.jsx';
 import PolyconeObject from './PolyconeObject.jsx';
 import UnionObject from './UnionObject.jsx';
+import AssemblyObject from './AssemblyObject.jsx';
 
 /**
  * Debug helper function to log object details
@@ -334,6 +335,8 @@ export default function TransformableObject({
         return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
       case 'union':
         return <UnionObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+      case 'assembly':
+        return <AssemblyObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
       default:
         console.error(`Unknown object type: ${object.type}`);
         return null;

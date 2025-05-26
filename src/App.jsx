@@ -396,6 +396,14 @@ function App() {
         return processedDesc;
       });
       
+      // Create a map to track assembly types
+      const assemblyTypes = {};
+      processedDescendants.forEach(desc => {
+        if (desc.type === 'assembly') {
+          assemblyTypes[desc.name] = true;
+        }
+      });
+      
       // Second pass: update mother_volume references, set displayName, and preserve compound IDs
       const finalDescendants = processedDescendants.map(desc => {
         const finalDesc = { ...desc };
@@ -404,6 +412,14 @@ function App() {
         if (!finalDesc.mother_volume) {
           finalDesc.mother_volume = addedMainName;
           console.log(`IMPORT - Set default mother_volume for ${finalDesc.name} to ${addedMainName}`);
+        }
+        
+        // Prevent circular references in assembly relationships
+        // If this is an assembly and its mother_volume is also an assembly,
+        // set its mother_volume to World to break the cycle
+        if (finalDesc.type === 'assembly' && finalDesc.mother_volume !== 'World' && assemblyTypes[finalDesc.mother_volume]) {
+          console.warn(`IMPORT - Breaking circular reference: Assembly ${finalDesc.name} had assembly parent ${finalDesc.mother_volume}. Setting mother to World.`);
+          finalDesc.mother_volume = 'World';
         }
         
         // Set the displayName based on the metadata name with the same serial number and the component name

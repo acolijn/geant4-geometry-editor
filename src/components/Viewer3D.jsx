@@ -140,7 +140,20 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
   });
   
   // Function to calculate the world position of a volume based on its parent hierarchy
-  const calculateWorldPosition = (volume) => {
+  // We use a visited set to prevent circular references
+  const calculateWorldPosition = (volume, visited = new Set()) => {
+    // Check for circular references
+    if (visited.has(volume.name)) {
+      console.warn(`Circular reference detected for volume: ${volume.name}`);
+      return {
+        position: volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0],
+        rotation: volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0]
+      };
+    }
+    
+    // Add this volume to the visited set
+    visited.add(volume.name);
+    
     if (!volume.mother_volume || volume.mother_volume === 'World') {
       // Direct child of world - use its own position
       return {
@@ -161,8 +174,58 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
     
     const parentVolume = geometries.volumes[parentIndex];
     
+    // Special handling for assembly parents
+    if (parentVolume.type === 'assembly') {
+      // For assemblies, we use the assembly's position directly without recursion
+      // This prevents circular references when working with assemblies
+      const assemblyPos = parentVolume.position ? 
+        [parentVolume.position.x || 0, parentVolume.position.y || 0, parentVolume.position.z || 0] : [0, 0, 0];
+      const assemblyRot = parentVolume.rotation ? 
+        [parentVolume.rotation.x || 0, parentVolume.rotation.y || 0, parentVolume.rotation.z || 0] : [0, 0, 0];
+      
+      // Check for self-reference (assembly referencing itself as parent)
+      if (parentVolume.name === volume.name) {
+        console.error(`Self-reference detected: ${volume.name} has itself as parent. Using World position.`);
+        return {
+          position: volume.position ? 
+            [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0],
+          rotation: volume.rotation ? 
+            [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0]
+        };
+      }
+      
+      // Check if the assembly's parent is also an assembly (to avoid nested assembly issues)
+      if (parentVolume.mother_volume && 
+          parentVolume.mother_volume !== 'World' && 
+          parentVolume.mother_volume !== volume.name) { // Avoid circular reference
+        
+        const grandparentIndex = volumeNameToIndex[parentVolume.mother_volume];
+        if (grandparentIndex !== undefined) {
+          const grandparentVolume = geometries.volumes[grandparentIndex];
+          if (grandparentVolume && grandparentVolume.type === 'assembly') {
+            console.warn(`Nested assemblies detected: ${volume.name} -> ${parentVolume.name} -> ${grandparentVolume.name}. Using direct parent only.`);
+            // We'll still use the direct parent's position, but log a warning
+          }
+        }
+      }
+      
+      // Combine assembly position with volume's local position
+      return {
+        position: [
+          assemblyPos[0] + (volume.position?.x || 0),
+          assemblyPos[1] + (volume.position?.y || 0),
+          assemblyPos[2] + (volume.position?.z || 0)
+        ],
+        rotation: [
+          assemblyRot[0] + (volume.rotation?.x || 0),
+          assemblyRot[1] + (volume.rotation?.y || 0),
+          assemblyRot[2] + (volume.rotation?.z || 0)
+        ]
+      };
+    }
+    
     // Get parent's world position recursively
-    const parentWorld = calculateWorldPosition(parentVolume);
+    const parentWorld = calculateWorldPosition(parentVolume, visited);
     
     // Convert volume's local position to world position based on parent
     const localPos = volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0];
@@ -641,9 +704,19 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
 }
 
 // GeometryTree component for the left panel
-const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
+const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) => {
   // State to track expanded nodes - initially only World is expanded
   const [expandedNodes, setExpandedNodes] = useState({ world: true });
+  
+  // State for context menu
+  const [contextMenu, setContextMenu] = useState(null);
+  
+  // State for assembly selection dialog
+  const [assemblyDialog, setAssemblyDialog] = useState({
+    open: false,
+    volumeIndex: null,
+    assemblies: []
+  });
   
   // Function to toggle node expansion
   const toggleNodeExpansion = (nodeKey, event) => {
@@ -655,6 +728,76 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
       ...prev,
       [nodeKey]: !prev[nodeKey]
     }));
+  };
+  
+  // Function to handle right-click for context menu
+  const handleContextMenu = (event, volumeIndex) => {
+    event.preventDefault();
+    setContextMenu({
+      mouseX: event.clientX,
+      mouseY: event.clientY,
+      volumeIndex
+    });
+  };
+  
+  // Function to close context menu
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+  
+  // Function to handle Add to Assembly option
+  const handleAddToAssembly = (volumeIndex) => {
+    // Close the context menu
+    handleCloseContextMenu();
+    
+    // Find all assemblies in the geometry
+    const assemblies = geometries.volumes
+      .map((volume, index) => ({ volume, index }))
+      .filter(item => item.volume.type === 'assembly');
+    
+    if (assemblies.length === 0) {
+      alert('No assemblies available. Create an assembly first.');
+      return;
+    }
+    
+    // Open the assembly selection dialog
+    setAssemblyDialog({
+      open: true,
+      volumeIndex,
+      assemblies
+    });
+  };
+  
+  // Function to confirm adding to assembly
+  const handleConfirmAddToAssembly = (assemblyIndex) => {
+    const volumeIndex = assemblyDialog.volumeIndex;
+    const volume = geometries.volumes[volumeIndex];
+    const assembly = geometries.volumes[assemblyIndex];
+    
+    // Get the volume key for updating
+    const volumeKey = `volume-${volumeIndex}`;
+    
+    // Update the volume's mother_volume to the assembly
+    const updatedVolume = {
+      mother_volume: assembly.name
+    };
+    
+    // Update the geometry using onUpdateGeometry
+    onUpdateGeometry(volumeKey, updatedVolume);
+    
+    // Log the update
+    console.log('Adding volume to assembly:', {
+      volume: geometries.volumes[volumeIndex],
+      assembly,
+      updatedVolume
+    });
+    
+    // Close the dialog
+    setAssemblyDialog({
+      open: false,
+      volumeIndex: null,
+      assemblies: []
+    });
   };
   // Create a map of volume names to their indices for easy lookup
   const volumeNameToIndex = {};
@@ -729,6 +872,7 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
       if (volume.type === 'torus') icon = '🍩';
       if (volume.type === 'polycone') icon = '🏆';
       if (volume.type === 'trapezoid') icon = '🔷';
+      if (volume.type === 'assembly') icon = '📁'; // Folder icon for assemblies
       
       // Check if this node has children
       const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
@@ -744,6 +888,7 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
               // Otherwise, select this object
               onSelect(selectedGeometry === key ? null : key);
             }}
+            onContextMenu={(e) => handleContextMenu(e, index)}
             style={{
               padding: '8px',
               backgroundColor: selectedGeometry === key ? '#1976d2' : '#fff',
@@ -851,6 +996,101 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
         {/* Render volumes with World as parent and their children recursively, but only if World is expanded */}
         {expandedNodes['world'] && renderVolumeTree('world')}
       </div>
+      
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.mouseY,
+            left: contextMenu.mouseX,
+            backgroundColor: '#fff',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+            zIndex: 1000
+          }}
+        >
+          <div
+            onClick={() => handleAddToAssembly(contextMenu.volumeIndex)}
+            style={{
+              padding: '8px 16px',
+              cursor: 'pointer',
+              hover: { backgroundColor: '#f5f5f5' }
+            }}
+          >
+            Add to Assembly
+          </div>
+          <div
+            onClick={handleCloseContextMenu}
+            style={{
+              padding: '8px 16px',
+              cursor: 'pointer',
+              hover: { backgroundColor: '#f5f5f5' }
+            }}
+          >
+            Cancel
+          </div>
+        </div>
+      )}
+      
+      {/* Assembly Selection Dialog */}
+      {assemblyDialog.open && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: '#fff',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+            zIndex: 1001,
+            padding: '16px',
+            minWidth: '300px'
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
+            Select Assembly
+          </div>
+          
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {assemblyDialog.assemblies.map(({ volume, index }) => (
+              <div
+                key={index}
+                onClick={() => handleConfirmAddToAssembly(index)}
+                style={{
+                  padding: '8px',
+                  cursor: 'pointer',
+                  borderRadius: '4px',
+                  hover: { backgroundColor: '#f5f5f5' },
+                  marginBottom: '4px'
+                }}
+              >
+                <span style={{ marginRight: '5px' }}>📁</span>
+                <span>{volume.displayName || volume.name}</span>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+            <button
+              onClick={() => setAssemblyDialog({ open: false, volumeIndex: null, assemblies: [] })}
+              style={{
+                padding: '8px 16px',
+                cursor: 'pointer',
+                backgroundColor: '#f5f5f5',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                marginRight: '8px'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1036,12 +1276,13 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
   
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex' }}>
-      {/* Left panel with geometry tree */}
-      <div style={{ width: '250px', height: '100%', borderRight: '1px solid #ddd' }}>
+      {/* Left panel - Geometry Tree */}
+      <div style={{ width: '25%', height: '100%', borderRight: '1px solid #ccc' }}>
         <GeometryTree 
           geometries={geometries} 
           selectedGeometry={selectedGeometry} 
-          onSelect={onSelect} 
+          onSelect={onSelect}
+          onUpdateGeometry={onUpdateGeometry}
         />
       </div>
       
