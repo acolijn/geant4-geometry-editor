@@ -231,9 +231,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   }
   
   // First, define the root component name (needed for placements)
-  // Extract the original name from the PMT.json file
-  // For the root component, this should be 'base' not 'PMT'
-  const rootComponentName = 'base';
+  // Use the original name from the object's first component
+  const rootComponentName = rootVolume.name;
   
   // Create the compound object
   const compoundObject = {
@@ -242,8 +241,17 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     placements: rootInstances.map((instance, index) => {
       // Use displayName if available, otherwise fall back to compoundName
       const displayName = instance.displayName || compoundName;
+      // Get the exact mother volume name without any modifications
+      // This is critical for Geant4 compatibility - the parent name must match exactly
+      let parentName = 'World';
+      if (instance.mother_volume) {
+        // Use the exact mother_volume name as is - no modifications
+        // This ensures that Geant4 can find the parent volume by name
+        parentName = instance.mother_volume;
+      }
+      
       return {
-        name: displayName, // Don't append numbers to the name
+        name: displayName, // Use the Geant4 name for identification
         x: instance.position?.x || 0,
         y: instance.position?.y || 0,
         z: instance.position?.z || 0,
@@ -252,100 +260,91 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
           y: instance.rotation?.y || 0,
           z: instance.rotation?.z || 0
         },
-        parent: instance.mother_volume || 'World'
+        parent: parentName // Use the exact mother_volume name for parent reference
       };
     }),
     components: []
   };
   
-  // Add all components directly - simpler and more reliable approach
-  // First, add the root volume itself as a component
-  const rootComponent = {
+  // Create a clean components array using ONLY the first instance as a template
+  // This ensures we don't get duplicate definitions when we have multiple objects
+  const templateComponents = [];
+  
+  // Get only the components from the first instance
+  // First, identify the first instance by its _instanceId if available
+  const firstInstanceId = rootInstances[0]._instanceId;
+  
+  // Start with the root component from the first instance
+  templateComponents.push({
     type: rootVolume.type,
-    name: 'base',  // Use the fixed name 'base' for the root component
+    // split on _ and keep only middle part
+    name: rootVolume.name.split('_')[1],
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
     ...(rootVolume.isActive && { hitCollection: rootVolume.hitsCollectionName || "DefaultHitCollection" }),
     dimensions: convertDimensions(rootVolume),
-    placements: [
-      {
+    placements: [{
+      x: 0,
+      y: 0,
+      z: 0,
+      rotation: {
         x: 0,
         y: 0,
-        z: 0,
-        rotation: {
-          x: 0,
-          y: 0,
-          z: 0
-        }
+        z: 0
       }
-    ]
-  };
+    }]
+  });
   
-  compoundObject.components.push(rootComponent);
+  // Find child components that belong ONLY to the first instance
+  const firstInstanceComponents = firstInstanceId
+    ? components.filter(c => 
+        c._compoundId === rootVolume._compoundId && 
+        c._instanceId === firstInstanceId && 
+        c.name !== rootVolume.name
+      )
+    : components.filter(c => 
+        c._compoundId === rootVolume._compoundId && 
+        c.name !== rootVolume.name
+      ).slice(0, 2); // If no instanceId, just take the first 2 components as a fallback
   
-  // Add all components directly with fixed names
-  // Find the glass component (cylinder) and add it
-  const cylinderComponent = components.find(c => 
-    c._compoundId === rootVolume._compoundId && 
-    c.type === 'cylinder'
-  );
+  console.log(`Using ${firstInstanceComponents.length} components from the first instance as templates`);
   
-  if (cylinderComponent) {
-    compoundObject.components.push({
-      type: cylinderComponent.type,
-      name: 'glass',  // Use the fixed name 'glass'
-      material: cylinderComponent.material,
-      color: convertColor(cylinderComponent.color),
-      visible: cylinderComponent.visible !== undefined ? cylinderComponent.visible : true,
-      ...(cylinderComponent.isActive && { hitCollection: cylinderComponent.hitsCollectionName || "DefaultHitCollection" }),
-      dimensions: convertDimensions(cylinderComponent),
+  // Process each component from the first instance only
+  firstInstanceComponents.forEach(component => {
+    // Get the parent name
+    const parentName = component.mother_volume || rootVolume.name;
+    
+    // Add this component to the template components
+    templateComponents.push({
+      type: component.type,
+      name: component.name.split('_')[1],
+      //g4Name: component.g4Name,
+      material: component.material,
+      color: convertColor(component.color),
+      visible: component.visible !== undefined ? component.visible : true,
+      ...(component.isActive && { hitCollection: component.hitsCollectionName || "DefaultHitCollection" }),
+      dimensions: convertDimensions(component),
       placements: [{
-        x: cylinderComponent.position?.x || 0,
-        y: cylinderComponent.position?.y || 0,
-        z: cylinderComponent.position?.z || 0,
+        x: component.position?.x || 0,
+        y: component.position?.y || 0,
+        z: component.position?.z || 0,
         rotation: {
-          x: cylinderComponent.rotation?.x || 0,
-          y: cylinderComponent.rotation?.y || 0,
-          z: cylinderComponent.rotation?.z || 0
+          x: component.rotation?.x || 0,
+          y: component.rotation?.y || 0,
+          z: component.rotation?.z || 0
         },
-        parent: 'base'  // Parent is 'base'
+        parent: parentName.split('_')[1]
       }]
     });
-  }
+  });
   
-  // Find the dynode component (sphere) and add it
-  const sphereComponent = components.find(c => 
-    c._compoundId === rootVolume._compoundId && 
-    c.type === 'sphere'
-  );
+  // Add the template components to the compound object
+  compoundObject.components = templateComponents;
   
-  if (sphereComponent) {
-    compoundObject.components.push({
-      type: sphereComponent.type,
-      name: 'dynode',  // Use the fixed name 'dynode'
-      material: sphereComponent.material,
-      color: convertColor(sphereComponent.color),
-      visible: sphereComponent.visible !== undefined ? sphereComponent.visible : true,
-      ...(sphereComponent.isActive && { hitCollection: sphereComponent.hitsCollectionName || "DefaultHitCollection" }),
-      dimensions: convertDimensions(sphereComponent),
-      placements: [{
-        x: sphereComponent.position?.x || 0,
-        y: sphereComponent.position?.y || 0,
-        z: sphereComponent.position?.z || 0,
-        rotation: {
-          x: sphereComponent.rotation?.x || 0,
-          y: sphereComponent.rotation?.y || 0,
-          z: sphereComponent.rotation?.z || 0
-        },
-        parent: 'glass'  // Parent is 'glass'
-      }]
-    });
-  }
-  
-  // We've already added all components directly with their proper names and parent-child relationships
-  // No need for additional processing
-  console.log('Components added with fixed names and parent-child relationships');
+  // We've already processed all components in the loop above
+  // No need for additional component processing
+  console.log('All components processed with their original names and relationships');
   
   return compoundObject;
 }
