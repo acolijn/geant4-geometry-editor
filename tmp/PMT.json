@@ -1,0 +1,88 @@
+{
+  "object": {
+    "type": "box",
+    "name": "base",
+    "material": "G4_WATER",
+    "_sourceId": "source-base-1748188360248",
+    "_compoundId": "compound-PMT-box",
+    "visible": true,
+    "placement": {
+      "x": -69.5205125251815,
+      "y": 0,
+      "z": -72.93479732367892,
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "dimensions": {
+      "x": 10,
+      "y": 10,
+      "z": 20
+    }
+  },
+  "descendants": [
+    {
+      "type": "cylinder",
+      "name": "glass",
+      "material": "LXe",
+      "isActive": true,
+      "hitsCollectionName": "MyHitsCollection",
+      "_compoundId": "compound-PMT-box",
+      "visible": true,
+      "placement": {
+        "x": 0,
+        "y": 0,
+        "z": 30,
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "dimensions": {
+        "radius": 20,
+        "height": 30
+      },
+      "parent": "base"
+    },
+    {
+      "type": "sphere",
+      "name": "dynode",
+      "material": "G4_Cu",
+      "_compoundId": "compound-PMT-box",
+      "visible": true,
+      "placement": {
+        "x": 30,
+        "y": 0,
+        "z": 0,
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "dimensions": {
+        "radius": 12
+      },
+      "parent": "glass"
+    }
+  ],
+  "isWorld": false,
+  "_sourceId": "source-base-1748188360248",
+  "_compoundId": "compound-PMT-box",
+  "debug": {
+    "exportedAt": "2025-05-26T07:34:46.090Z",
+    "objectType": "box",
+    "objectName": "PMT_base_0",
+    "descendantCount": 2
+  },
+  "metadata": {
+    "name": "PMT",
+    "description": "",
+    "createdAt": "2025-05-26T07:34:51.012Z",
+    "updatedAt": "2025-05-26T07:34:51.012Z",
+    "formatVersion": "2.0"
+  }
+}

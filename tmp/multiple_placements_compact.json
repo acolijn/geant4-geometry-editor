@@ -1,0 +1,138 @@
+{
+  "world": {
+    "type": "box",
+    "name": "World",
+    "material": "G4_AIR",
+    "dimensions": { "x": 200.0, "y": 200.0, "z": 200.0 },
+    "color": { "r": 0.9, "g": 0.9, "b": 0.9, "a": 0.2 },
+    "wireframe": true,
+    "placements": [
+      { "x": 0.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 } }
+    ]
+  },
+  "volumes": [
+    {
+      "type": "box",
+      "name": "DetectorBox",
+      "material": "G4_Si",
+      "dimensions": { "x": 10.0, "y": 10.0, "z": 1.0 },
+      "color": { "r": 0.2, "g": 0.8, "b": 0.2, "a": 0.7 },
+      "hitCollection": "DetectorHits",
+      "placements": [
+        { "x": 0.0, "y": 0.0, "z": 10.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": 20.0, "y": 0.0, "z": 10.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "cylinder",
+      "name": "DetectorCylinder",
+      "material": "G4_Si",
+      "dimensions": { "radius": 5.0, "height": 10.0, "inner_radius": 0.0 },
+      "color": { "r": 0.8, "g": 0.2, "b": 0.2, "a": 0.7 },
+      "hitCollection": "CylinderHits",
+      "placements": [
+        { "x": -20.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": -40.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "sphere",
+      "name": "DetectorSphere",
+      "material": "G4_Si",
+      "dimensions": { "radius": 5.0 },
+      "placements": [
+        { "x": 0.0, "y": 20.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": 0.0, "y": 40.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "ellipsoid",
+      "name": "DetectorEllipsoid",
+      "material": "G4_Si",
+      "dimensions": { "x_radius": 5.0, "y_radius": 3.0, "z_radius": 7.0 },
+      "placements": [
+        { "x": 0.0, "y": -20.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": 0.0, "y": -40.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "torus",
+      "name": "DetectorTorus",
+      "material": "G4_Si",
+      "dimensions": { "major_radius": 10.0, "minor_radius": 2.0 },
+      "placements": [
+        { "x": 20.0, "y": 20.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": 40.0, "y": 40.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "trapezoid",
+      "name": "DetectorTrapezoid",
+      "material": "G4_Si",
+      "dimensions": { "dx1": 5.0, "dx2": 7.0, "dy1": 3.0, "dy2": 4.0, "dz": 6.0 },
+      "placements": [
+        { "x": -20.0, "y": 20.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": -40.0, "y": 40.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "polycone",
+      "name": "DetectorPolycone",
+      "material": "G4_Si",
+      "dimensions": { "z": [0.0, 5.0, 10.0], "rmin": [0.0, 1.0, 2.0], "rmax": [5.0, 7.0, 8.0] },
+      "placements": [
+        { "x": -20.0, "y": -20.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": -40.0, "y": -40.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ]
+    },
+    {
+      "type": "compound",
+      "name": "DetectorModule",
+      "placements": [
+        { "x": 20.0, "y": -20.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" },
+        { "x": 40.0, "y": -40.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "World" }
+      ],
+      "components": [
+        {
+          "type": "box",
+          "name": "ModuleOuterBox",
+          "material": "G4_Al",
+          "dimensions": { "x": 10.0, "y": 10.0, "z": 5.0 },
+          "placements": [
+            { "x": 0.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 } }
+          ]
+        },
+        {
+          "type": "box",
+          "name": "ModuleInnerBox",
+          "material": "G4_Si",
+          "dimensions": { "x": 5.0, "y": 5.0, "z": 3.0 },
+          "color": { "r": 0.2, "g": 0.2, "b": 0.8, "a": 0.7 },
+          "hitCollection": "ScintillatorHits",
+          "placements": [
+            { "x": 0.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "ModuleOuterBox" }
+          ]
+        },
+        {
+          "type": "cylinder",
+          "name": "ModuleCylinder",
+          "material": "G4_Cu",
+          "dimensions": { "radius": 1.0, "height": 6.0, "inner_radius": 0.0 },
+          "placements": [
+            { "x": 0.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "ModuleInnerBox" }
+          ]
+        },
+        {
+          "type": "box",
+          "name": "NestedBox",
+          "material": "G4_Fe",
+          "dimensions": { "x": 2.0, "y": 2.0, "z": 2.0 },
+          "placements": [
+            { "x": 5.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "ModuleOuterBox" },
+            { "x": -5.0, "y": 0.0, "z": 0.0, "rotation": { "x": 0.0, "y": 0.0, "z": 0.0 }, "parent": "ModuleOuterBox" }
+          ]
+        }
+      ]
+    }
+  ]
+}

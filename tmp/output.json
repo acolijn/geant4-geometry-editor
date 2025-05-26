@@ -1,0 +1,147 @@
+{
+  "world": {
+    "type": "box",
+    "name": "World",
+    "material": "G4_AIR",
+    "visible": true,
+    "color": {
+      "r": 0.7,
+      "g": 0.7,
+      "b": 0.7,
+      "a": 1
+    },
+    "wireframe": true,
+    "dimensions": {
+      "x": 200,
+      "y": 200,
+      "z": 200
+    },
+    "placements": [
+      {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    ]
+  },
+  "volumes": [
+    {
+      "type": "compound",
+      "name": "PMT",
+      "placements": [
+        {
+          "name": "PMT_0",
+          "x": -69.9922203292208,
+          "y": 0,
+          "z": -52.04120046080563,
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "parent": "World"
+        }
+      ],
+      "components": [
+        {
+          "type": "box",
+          "name": "PMT_base",
+          "material": "G4_WATER",
+          "color": {
+            "r": 0.7,
+            "g": 0.7,
+            "b": 0.7,
+            "a": 1
+          },
+          "visible": true,
+          "dimensions": {
+            "x": 10,
+            "y": 10,
+            "z": 20
+          },
+          "placements": [
+            {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              }
+            }
+          ]
+        },
+        {
+          "type": "cylinder",
+          "name": "PMT_0",
+          "material": "LXe",
+          "color": {
+            "r": 0.7,
+            "g": 0.7,
+            "b": 0.7,
+            "a": 1
+          },
+          "visible": true,
+          "hitCollection": "MyHitsCollection",
+          "dimensions": {
+            "radius": 20,
+            "height": 30
+          },
+          "placements": [
+            {
+              "x": 0,
+              "y": 0,
+              "z": 30,
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "parent": "PMT_base"
+            }
+          ]
+        },
+        {
+          "type": "sphere",
+          "name": "PMT_0",
+          "material": "G4_WATER",
+          "color": {
+            "r": 0.7,
+            "g": 0.7,
+            "b": 0.7,
+            "a": 1
+          },
+          "visible": true,
+          "dimensions": {
+            "radius": 12
+          },
+          "placements": [
+            {
+              "x": 30,
+              "y": 0,
+              "z": 0,
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "parent": "PMT_glass"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "hitsCollections": [
+    {
+      "name": "MyHitsCollection",
+      "description": "Default hits collection for energy deposits"
+    }
+  ]
+}

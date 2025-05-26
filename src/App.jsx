@@ -226,7 +226,7 @@ function App() {
       console.log(`IMPORT - Generated new source ID: ${mainObject._sourceId}`);
     }
     
-    // Preserve the compound ID if it exists
+    // Preserve the compound ID if it exists - this should be the same for all objects of the same type
     if (content._compoundId) {
       mainObject._compoundId = content._compoundId;
       console.log(`IMPORT - Preserved compound ID from import data: ${content._compoundId}`);
@@ -237,6 +237,12 @@ function App() {
       mainObject._compoundId = `compound-${mainObject.name}-${mainObject.type}`;
       console.log(`IMPORT - Generated new compound ID: ${mainObject._compoundId}`);
     }
+    
+    // Generate a unique instance ID for this specific instance
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 10);
+    mainObject._instanceId = `instance-${mainObject.name}-${timestamp}-${randomSuffix}`;
+    console.log(`IMPORT - Generated unique instance ID: ${mainObject._instanceId}`);
     
     // Store the original name for special handling of PMT objects
     const isPMTObject = originalMainName === 'PMT';
@@ -431,6 +437,13 @@ function App() {
         if (mainObject._compoundId) {
           finalDesc._compoundId = mainObject._compoundId;
           console.log(`IMPORT - Added compound ID ${mainObject._compoundId} to descendant ${finalDesc.name}`);
+        }
+        
+        // Also set the same instance ID for all descendants
+        // This allows us to identify which specific instance this component belongs to
+        if (mainObject._instanceId) {
+          finalDesc._instanceId = mainObject._instanceId;
+          console.log(`IMPORT - Added instance ID ${mainObject._instanceId} to descendant ${finalDesc.name}`);
         }
         
         return finalDesc;

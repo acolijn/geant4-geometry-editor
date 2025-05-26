@@ -214,17 +214,16 @@ const PropertyEditor = ({
       </Menu>
       
       <TextField
-        label="Name"
+        label="Internal Name"
         value={selectedObject?.name || ''}
-        onChange={(e) => {
-          e.stopPropagation();
-          handlePropertyChange('name', e.target.value, true, true);
+        InputProps={{
+          readOnly: true,
         }}
-        onClick={(e) => e.stopPropagation()}
-        onFocus={(e) => e.stopPropagation()}
+        variant="filled"
         fullWidth
         margin="normal"
         size="small"
+        helperText="This is the internal name used for references (read-only)"
       />
       
       <TextField
@@ -232,15 +231,35 @@ const PropertyEditor = ({
         value={selectedObject?.displayName || selectedObject?.name || ''}
         onChange={(e) => {
           e.stopPropagation();
-          handlePropertyChange('displayName', e.target.value, true, false);
+          handlePropertyChange('displayName', e.target.value, true);
+          
+          // If this is a compound object, update all related components with the same displayName
+          // But only those that are part of the same PMT instance (same _instanceId)
+          if (selectedObject?._instanceId) {
+            const instanceId = selectedObject._instanceId;
+            const newDisplayName = e.target.value;
+            
+            // Find all volumes with the EXACT SAME instance ID and update them
+            // This ensures only components of the same PMT instance are updated, not all PMTs
+            geometries.volumes.forEach((volume, index) => {
+              if (volume._instanceId === instanceId && volume !== selectedObject) {
+                volume.displayName = newDisplayName;
+              }
+            });
+            
+            // Force a re-render
+            onGeometriesUpdated(geometries);
+          }
         }}
         onClick={(e) => e.stopPropagation()}
         onFocus={(e) => e.stopPropagation()}
         fullWidth
         margin="normal"
         size="small"
-        helperText="Name used in Geant4 export"
       />
+      <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+        Name used in Geant4 export
+      </Typography>
       
       <FormControl fullWidth margin="normal" size="small">
         <InputLabel>Material</InputLabel>

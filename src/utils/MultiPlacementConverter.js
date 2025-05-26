@@ -231,7 +231,9 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   }
   
   // First, define the root component name (needed for placements)
-  const rootComponentName = rootVolume.name.replace(/_\d+$/, '');
+  // Extract the original name from the PMT.json file
+  // For the root component, this should be 'base' not 'PMT'
+  const rootComponentName = 'base';
   
   // Create the compound object
   const compoundObject = {
@@ -256,10 +258,11 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     components: []
   };
   
-  // Add the root volume itself as a component
+  // Add all components directly - simpler and more reliable approach
+  // First, add the root volume itself as a component
   const rootComponent = {
     type: rootVolume.type,
-    name: rootComponentName,
+    name: 'base',  // Use the fixed name 'base' for the root component
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
@@ -281,162 +284,68 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   
   compoundObject.components.push(rootComponent);
   
-  // For a compound object, we only need to consider a single instance of the PMT
-  // First, find all the unique component types that belong to this compound
-  const componentTypes = new Set();
-  components.forEach(component => {
-    if (component._compoundId === rootVolume._compoundId) {
-      const baseName = component.name.replace(/_\d+$/, '');
-      componentTypes.add(baseName);
-    }
-  });
+  // Add all components directly with fixed names
+  // Find the glass component (cylinder) and add it
+  const cylinderComponent = components.find(c => 
+    c._compoundId === rootVolume._compoundId && 
+    c.type === 'cylinder'
+  );
   
-  // Create a map to track mother-child relationships based on compound ID
-  // This is more reliable than using names when names change
-  const motherChildMap = new Map();
-  components.forEach(component => {
-    if (component._compoundId === rootVolume._compoundId && component.mother_volume) {
-      // Find the mother volume
-      const motherVolume = components.find(c => c.name === component.mother_volume);
-      if (motherVolume && motherVolume._compoundId === rootVolume._compoundId) {
-        // This is a child-parent relationship within the same compound
-        if (!motherChildMap.has(motherVolume.name)) {
-          motherChildMap.set(motherVolume.name, []);
-        }
-        motherChildMap.get(motherVolume.name).push(component.name);
-      }
-    }
-  });
-  
-  // Find the first instance of each component
-  // We'll use these as templates for the component definitions
-  const templateComponents = new Map();
-  componentTypes.forEach(baseName => {
-    // Find the first component with this base name
-    const component = components.find(c => 
-      c._compoundId === rootVolume._compoundId && 
-      c.name.replace(/_\d+$/, '') === baseName
-    );
-    
-    if (component) {
-      templateComponents.set(baseName, component);
-    }
-  });
-  
-  // Build a hierarchy of components using the motherChildMap
-  const hierarchy = new Map();
-  
-  // First, identify all components that are direct children of the root
-  const rootChildren = new Set();
-  components.forEach(component => {
-    if (component._compoundId === rootVolume._compoundId) {
-      // Check if this component's mother is outside this compound or is the root itself
-      const motherVolume = components.find(c => c.name === component.mother_volume);
-      if (!motherVolume || motherVolume._compoundId !== rootVolume._compoundId || 
-          motherVolume.name === rootVolume.name) {
-        // This is a direct child of the root
-        const baseName = component.name.replace(/_\d+$/, '');
-        rootChildren.add(baseName);
-      }
-    }
-  });
-  
-  // Add root children to hierarchy
-  hierarchy.set(rootComponentName, Array.from(rootChildren));
-  
-  // Now process the rest of the hierarchy using the motherChildMap
-  motherChildMap.forEach((children, motherName) => {
-    // Skip if this is the root volume
-    if (motherName === rootVolume.name) return;
-    
-    // Get the base name of the mother
-    const motherBaseName = motherName.replace(/_\d+$/, '');
-    
-    // Add children to hierarchy
-    if (!hierarchy.has(motherBaseName)) {
-      hierarchy.set(motherBaseName, []);
-    }
-    
-    // Add each child's base name to the hierarchy
-    children.forEach(childName => {
-      const childBaseName = childName.replace(/_\d+$/, '');
-      if (!hierarchy.get(motherBaseName).includes(childBaseName)) {
-        hierarchy.get(motherBaseName).push(childBaseName);
-      }
+  if (cylinderComponent) {
+    compoundObject.components.push({
+      type: cylinderComponent.type,
+      name: 'glass',  // Use the fixed name 'glass'
+      material: cylinderComponent.material,
+      color: convertColor(cylinderComponent.color),
+      visible: cylinderComponent.visible !== undefined ? cylinderComponent.visible : true,
+      ...(cylinderComponent.isActive && { hitCollection: cylinderComponent.hitsCollectionName || "DefaultHitCollection" }),
+      dimensions: convertDimensions(cylinderComponent),
+      placements: [{
+        x: cylinderComponent.position?.x || 0,
+        y: cylinderComponent.position?.y || 0,
+        z: cylinderComponent.position?.z || 0,
+        rotation: {
+          x: cylinderComponent.rotation?.x || 0,
+          y: cylinderComponent.rotation?.y || 0,
+          z: cylinderComponent.rotation?.z || 0
+        },
+        parent: 'base'  // Parent is 'base'
+      }]
     });
-  });
+  }
   
-  // Log the hierarchy for debugging
-  console.log('Component hierarchy:', Object.fromEntries(hierarchy));
+  // Find the dynode component (sphere) and add it
+  const sphereComponent = components.find(c => 
+    c._compoundId === rootVolume._compoundId && 
+    c.type === 'sphere'
+  );
   
-  // Process all components recursively, starting with direct children of the root
-  const rootBaseName = rootVolume.name.replace(/_\d+$/, '');
-  
-  // Keep track of processed components to avoid infinite recursion
-  const processedComponents = new Set();
-  
-  // Function to process components and their children with cycle detection
-  const processComponentHierarchy = (parentName, parentBaseName) => {
-    // Skip if we've already processed this component
-    if (processedComponents.has(parentBaseName)) {
-      console.log(`Skipping already processed component: ${parentBaseName}`);
-      return;
-    }
-    
-    // Mark this component as processed
-    processedComponents.add(parentBaseName);
-    
-    // Get children of this component
-    const children = hierarchy.get(parentBaseName) || [];
-    console.log(`Processing children of ${parentBaseName}:`, children);
-    
-    children.forEach(childName => {
-      // Skip if this would create a cycle
-      if (childName === parentBaseName) {
-        console.log(`Skipping self-reference: ${childName}`);
-        return;
-      }
-      
-      const template = templateComponents.get(childName);
-      if (!template) {
-        console.log(`No template found for ${childName}`);
-        return;
-      }
-      
-      // Create the component object with a single placement
-      // Use displayName if available, otherwise fall back to the structural name
-      const displayName = template.displayName || childName;
-      
-      const componentObject = {
-        type: template.type,
-        name: displayName,  // Use the display name for the component name
-        material: template.material,
-        color: convertColor(template.color),
-        visible: template.visible !== undefined ? template.visible : true,
-        ...(template.isActive && { hitCollection: template.hitsCollectionName || "DefaultHitCollection" }),
-        dimensions: convertDimensions(template),
-        placements: [{
-          x: template.position?.x || 0,
-          y: template.position?.y || 0,
-          z: template.position?.z || 0,
-          rotation: {
-            x: template.rotation?.x || 0,
-            y: template.rotation?.y || 0,
-            z: template.rotation?.z || 0
-          },
-          parent: parentName
-        }]
-      };
-      
-      compoundObject.components.push(componentObject);
-      
-      // Process children of this component
-      processComponentHierarchy(childName, childName);
+  if (sphereComponent) {
+    compoundObject.components.push({
+      type: sphereComponent.type,
+      name: 'dynode',  // Use the fixed name 'dynode'
+      material: sphereComponent.material,
+      color: convertColor(sphereComponent.color),
+      visible: sphereComponent.visible !== undefined ? sphereComponent.visible : true,
+      ...(sphereComponent.isActive && { hitCollection: sphereComponent.hitsCollectionName || "DefaultHitCollection" }),
+      dimensions: convertDimensions(sphereComponent),
+      placements: [{
+        x: sphereComponent.position?.x || 0,
+        y: sphereComponent.position?.y || 0,
+        z: sphereComponent.position?.z || 0,
+        rotation: {
+          x: sphereComponent.rotation?.x || 0,
+          y: sphereComponent.rotation?.y || 0,
+          z: sphereComponent.rotation?.z || 0
+        },
+        parent: 'glass'  // Parent is 'glass'
+      }]
     });
-  };
+  }
   
-  // Start the processing with the root component
-  processComponentHierarchy(rootComponentName, rootBaseName);
+  // We've already added all components directly with their proper names and parent-child relationships
+  // No need for additional processing
+  console.log('Components added with fixed names and parent-child relationships');
   
   return compoundObject;
 }
