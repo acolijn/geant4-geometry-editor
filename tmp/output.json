@@ -31,6 +31,94 @@
   },
   "volumes": [
     {
+      "type": "cylinder",
+      "name": "Cookie",
+      "material": "G4_AIR",
+      "color": {
+        "r": 0.7,
+        "g": 0.7,
+        "b": 0.7,
+        "a": 1
+      },
+      "visible": true,
+      "dimensions": {
+        "radius": 50,
+        "height": 10
+      },
+      "placements": [
+        {
+          "x": 0.36062303108568017,
+          "y": 0,
+          "z": 20.642448681163312,
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "parent": "World"
+        }
+      ]
+    },
+    {
+      "type": "box",
+      "name": "myCoolBox",
+      "material": "G4_AIR",
+      "color": {
+        "r": 0.7,
+        "g": 0.7,
+        "b": 0.7,
+        "a": 1
+      },
+      "visible": true,
+      "dimensions": {
+        "x": 100,
+        "y": 100,
+        "z": 100
+      },
+      "placements": [
+        {
+          "x": 50.484303627425454,
+          "y": 0,
+          "z": -69.21334316239614,
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "parent": "World"
+        }
+      ]
+    },
+    {
+      "type": "torus",
+      "name": "torus_0",
+      "material": "G4_AIR",
+      "color": {
+        "r": 0.7,
+        "g": 0.7,
+        "b": 0.7,
+        "a": 1
+      },
+      "visible": true,
+      "dimensions": {
+        "major_radius": 5,
+        "minor_radius": 1
+      },
+      "placements": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "parent": "myCoolBox"
+        }
+      ]
+    },
+    {
       "type": "compound",
       "name": "PMT",
       "placements": [
@@ -45,12 +133,24 @@
             "z": 0
           },
           "parent": "World"
+        },
+        {
+          "name": "PMT_1",
+          "x": 0,
+          "y": 0,
+          "z": 30,
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "parent": "Cookie"
         }
       ],
       "components": [
         {
           "type": "box",
-          "name": "PMT_base",
+          "name": "base",
           "material": "G4_WATER",
           "color": {
             "r": 0.7,
@@ -79,7 +179,7 @@
         },
         {
           "type": "cylinder",
-          "name": "PMT_0",
+          "name": "glass",
           "material": "LXe",
           "color": {
             "r": 0.7,
@@ -103,13 +203,13 @@
                 "y": 0,
                 "z": 0
               },
-              "parent": "PMT_base"
+              "parent": "base"
             }
           ]
         },
         {
           "type": "sphere",
-          "name": "PMT_0",
+          "name": "dynode",
           "material": "G4_WATER",
           "color": {
             "r": 0.7,
@@ -131,7 +231,7 @@
                 "y": 0,
                 "z": 0
               },
-              "parent": "PMT_glass"
+              "parent": "glass"
             }
           ]
         }

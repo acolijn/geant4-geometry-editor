@@ -393,24 +393,24 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
  */
 function convertColor(color) {
   if (!color) {
-    return { r: 0.7, g: 0.7, b: 0.7, a: 1.0 };
+    return [0.7, 0.7, 0.7, 1.0];
   }
   
   if (Array.isArray(color)) {
-    return {
-      r: color[0] || 0.7,
-      g: color[1] || 0.7,
-      b: color[2] || 0.7,
-      a: color[3] || 1.0
-    };
+    return [
+      color[0] || 0.7,
+      color[1] || 0.7,
+      color[2] || 0.7,
+      color[3] || 1.0
+    ];
   }
   
-  return {
-    r: color.r || 0.7,
-    g: color.g || 0.7,
-    b: color.b || 0.7,
-    a: color.opacity || color.a || 1.0
-  };
+  return [
+    color.r || 0.7,
+    color.g || 0.7,
+    color.b || 0.7,
+    color.opacity || color.a || 1.0
+  ];
 }
 
 /**
