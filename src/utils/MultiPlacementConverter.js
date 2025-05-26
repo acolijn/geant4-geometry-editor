@@ -287,6 +287,23 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     }
   });
   
+  // Create a map to track mother-child relationships based on compound ID
+  // This is more reliable than using names when names change
+  const motherChildMap = new Map();
+  components.forEach(component => {
+    if (component._compoundId === rootVolume._compoundId && component.mother_volume) {
+      // Find the mother volume
+      const motherVolume = components.find(c => c.name === component.mother_volume);
+      if (motherVolume && motherVolume._compoundId === rootVolume._compoundId) {
+        // This is a child-parent relationship within the same compound
+        if (!motherChildMap.has(motherVolume.name)) {
+          motherChildMap.set(motherVolume.name, []);
+        }
+        motherChildMap.get(motherVolume.name).push(component.name);
+      }
+    }
+  });
+  
   // Find the first instance of each component
   // We'll use these as templates for the component definitions
   const templateComponents = new Map();
@@ -302,44 +319,85 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     }
   });
   
-  // Build a hierarchy of components
+  // Build a hierarchy of components using the motherChildMap
   const hierarchy = new Map();
-  templateComponents.forEach((component, baseName) => {
-    // Skip the root component itself
-    if (baseName === rootComponentName) return;
-    
-    // Get the parent base name using our map
-    let parentBaseName;
-    if (component.mother_volume) {
-      // Try to get the mapped base name first
-      parentBaseName = nameToBaseNameMap.get(component.mother_volume);
-      // Fall back to regex replacement if not in the map
-      if (!parentBaseName) {
-        parentBaseName = component.mother_volume.replace(/_\d+$/, '');
+  
+  // First, identify all components that are direct children of the root
+  const rootChildren = new Set();
+  components.forEach(component => {
+    if (component._compoundId === rootVolume._compoundId) {
+      // Check if this component's mother is outside this compound or is the root itself
+      const motherVolume = components.find(c => c.name === component.mother_volume);
+      if (!motherVolume || motherVolume._compoundId !== rootVolume._compoundId || 
+          motherVolume.name === rootVolume.name) {
+        // This is a direct child of the root
+        const baseName = component.name.replace(/_\d+$/, '');
+        rootChildren.add(baseName);
       }
     }
-    
-    // If the parent isn't in this compound, set the parent to the root
-    if (!parentBaseName || !templateComponents.has(parentBaseName)) {
-      parentBaseName = rootComponentName;
-    }
-    
-    if (!hierarchy.has(parentBaseName)) {
-      hierarchy.set(parentBaseName, []);
-    }
-    hierarchy.get(parentBaseName).push(baseName);
   });
+  
+  // Add root children to hierarchy
+  hierarchy.set(rootComponentName, Array.from(rootChildren));
+  
+  // Now process the rest of the hierarchy using the motherChildMap
+  motherChildMap.forEach((children, motherName) => {
+    // Skip if this is the root volume
+    if (motherName === rootVolume.name) return;
+    
+    // Get the base name of the mother
+    const motherBaseName = motherName.replace(/_\d+$/, '');
+    
+    // Add children to hierarchy
+    if (!hierarchy.has(motherBaseName)) {
+      hierarchy.set(motherBaseName, []);
+    }
+    
+    // Add each child's base name to the hierarchy
+    children.forEach(childName => {
+      const childBaseName = childName.replace(/_\d+$/, '');
+      if (!hierarchy.get(motherBaseName).includes(childBaseName)) {
+        hierarchy.get(motherBaseName).push(childBaseName);
+      }
+    });
+  });
+  
+  // Log the hierarchy for debugging
+  console.log('Component hierarchy:', Object.fromEntries(hierarchy));
   
   // Process all components recursively, starting with direct children of the root
   const rootBaseName = rootVolume.name.replace(/_\d+$/, '');
   
-  // Function to recursively process components and their children
+  // Keep track of processed components to avoid infinite recursion
+  const processedComponents = new Set();
+  
+  // Function to process components and their children with cycle detection
   const processComponentHierarchy = (parentName, parentBaseName) => {
+    // Skip if we've already processed this component
+    if (processedComponents.has(parentBaseName)) {
+      console.log(`Skipping already processed component: ${parentBaseName}`);
+      return;
+    }
+    
+    // Mark this component as processed
+    processedComponents.add(parentBaseName);
+    
+    // Get children of this component
     const children = hierarchy.get(parentBaseName) || [];
+    console.log(`Processing children of ${parentBaseName}:`, children);
     
     children.forEach(childName => {
+      // Skip if this would create a cycle
+      if (childName === parentBaseName) {
+        console.log(`Skipping self-reference: ${childName}`);
+        return;
+      }
+      
       const template = templateComponents.get(childName);
-      if (!template) return;
+      if (!template) {
+        console.log(`No template found for ${childName}`);
+        return;
+      }
       
       // Create the component object with a single placement
       const componentObject = {
@@ -365,12 +423,12 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       
       compoundObject.components.push(componentObject);
       
-      // Recursively process children of this component
+      // Process children of this component
       processComponentHierarchy(childName, childName);
     });
   };
   
-  // Start the recursive processing with the root component
+  // Start the processing with the root component
   processComponentHierarchy(rootComponentName, rootBaseName);
   
   return compoundObject;
