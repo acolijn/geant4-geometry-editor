@@ -389,7 +389,6 @@ const JsonViewer = ({ geometries, materials }) => {
           variant="fullWidth"
         >
           <Tab label="Geometry JSON" />
-          <Tab label="Multiple Placements" />
           <Tab label="Materials JSON" />
         </Tabs>
         
@@ -397,8 +396,8 @@ const JsonViewer = ({ geometries, materials }) => {
           <Button 
             variant="contained" 
             onClick={() => handleDownload(
-              tabValue === 0 ? geometryJson : tabValue === 1 ? multiplePlacementsJson : materialsJson,
-              tabValue === 0 ? 'geometry.json' : tabValue === 1 ? 'geometry_multiple_placements.json' : 'materials.json'
+              tabValue === 0 ? multiplePlacementsJson : materialsJson,
+              tabValue === 0 ? 'geometry_multiple_placements.json' : 'materials.json'
             )}
             size="small"
           >
@@ -444,7 +443,7 @@ const JsonViewer = ({ geometries, materials }) => {
             },
           }}
         >
-          {tabValue === 0 ? geometryJson : tabValue === 1 ? multiplePlacementsJson : materialsJson}
+          {tabValue === 0 ? multiplePlacementsJson : materialsJson}
         </Box>
       </Paper>
       

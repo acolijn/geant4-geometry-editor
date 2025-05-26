@@ -20,6 +20,14 @@ export function convertToMultiplePlacements(geometry) {
     volumes: []
   };
   
+  // Create a map of volume names to their base names (without indices)
+  // This will help us maintain parent-child relationships even if names change
+  const nameToBaseNameMap = new Map();
+  geometry.volumes.forEach(volume => {
+    const baseName = volume.name.replace(/_\d+$/, '');
+    nameToBaseNameMap.set(volume.name, baseName);
+  });
+  
   // Group volumes by compound ID
   const compoundGroups = {};
   const standaloneVolumes = [];
@@ -81,20 +89,25 @@ export function convertToMultiplePlacements(geometry) {
       const compoundObject = createCompoundObject(
         instances[0],  // Use the first instance as the template
         instances,      // All instances of this root
-        group.volumes    // All volumes in this compound
+        group.volumes,   // All volumes in this compound
+        nameToBaseNameMap  // Pass the name mapping
       );
       
       // Set the parent for the compound object based on the mother_volume of the first instance
       // This ensures that compound objects that are daughters of other objects are placed correctly
       const firstInstance = instances[0];
       if (firstInstance.mother_volume && firstInstance.mother_volume !== 'World') {
+        // Get the base name of the parent from our map
+        const parentBaseName = nameToBaseNameMap.get(firstInstance.mother_volume) || 
+                              firstInstance.mother_volume.replace(/_\d+$/, '');
+        
         // Update all placements to have the correct parent
         compoundObject.placements.forEach(placement => {
-          placement.parent = firstInstance.mother_volume.replace(/_\d+$/, '');
+          placement.parent = parentBaseName;
         });
         
         // Log that we're setting a non-World parent for this compound object
-        console.log(`Setting parent '${firstInstance.mother_volume.replace(/_\d+$/, '')}' for compound object '${compoundObject.name}'`);
+        console.log(`Setting parent '${parentBaseName}' for compound object '${compoundObject.name}'`);
       }
       
       // Add the compound object to the result
@@ -191,9 +204,10 @@ function convertStandardVolume(volume) {
  * @param {Object} rootVolume - The root volume of the compound object
  * @param {Array} rootInstances - All instances of the root volume
  * @param {Array} components - The components of the compound object
+ * @param {Map} nameToBaseNameMap - Map of volume names to their base names
  * @returns {Object} - The compound object
  */
-function createCompoundObject(rootVolume, rootInstances, components) {
+function createCompoundObject(rootVolume, rootInstances, components, nameToBaseNameMap) {
   // Get the name for the compound object from the _compoundId
   // The _compoundId now contains the original object name from the save dialog
   // Format is: compound-{savedName}-{type}
@@ -216,11 +230,15 @@ function createCompoundObject(rootVolume, rootInstances, components) {
     console.log(`Falling back to instance name: ${compoundName}`);
   }
   
+  // First, define the root component name (needed for placements)
+  const rootComponentName = rootVolume.name.replace(/_\d+$/, '');
+  
   // Create the compound object
   const compoundObject = {
     type: 'compound',
     name: compoundName,
-    placements: rootInstances.map(instance => ({
+    placements: rootInstances.map((instance, index) => ({
+      name: `${compoundName}_${index}`,
       x: instance.position?.x || 0,
       y: instance.position?.y || 0,
       z: instance.position?.z || 0,
@@ -234,10 +252,10 @@ function createCompoundObject(rootVolume, rootInstances, components) {
     components: []
   };
   
-  // First, add the root volume itself as a component
+  // Add the root volume itself as a component
   const rootComponent = {
     type: rootVolume.type,
-    name: rootVolume.name.replace(/_\d+$/, ''),
+    name: rootComponentName,
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
@@ -288,14 +306,22 @@ function createCompoundObject(rootVolume, rootInstances, components) {
   const hierarchy = new Map();
   templateComponents.forEach((component, baseName) => {
     // Skip the root component itself
-    if (baseName === rootVolume.name.replace(/_\d+$/, '')) return;
+    if (baseName === rootComponentName) return;
     
-    // Get the parent base name
-    let parentBaseName = component.mother_volume?.replace(/_\d+$/, '');
+    // Get the parent base name using our map
+    let parentBaseName;
+    if (component.mother_volume) {
+      // Try to get the mapped base name first
+      parentBaseName = nameToBaseNameMap.get(component.mother_volume);
+      // Fall back to regex replacement if not in the map
+      if (!parentBaseName) {
+        parentBaseName = component.mother_volume.replace(/_\d+$/, '');
+      }
+    }
     
     // If the parent isn't in this compound, set the parent to the root
     if (!parentBaseName || !templateComponents.has(parentBaseName)) {
-      parentBaseName = rootVolume.name.replace(/_\d+$/, '');
+      parentBaseName = rootComponentName;
     }
     
     if (!hierarchy.has(parentBaseName)) {
@@ -345,7 +371,7 @@ function createCompoundObject(rootVolume, rootInstances, components) {
   };
   
   // Start the recursive processing with the root component
-  processComponentHierarchy(rootComponent.name, rootBaseName);
+  processComponentHierarchy(rootComponentName, rootBaseName);
   
   return compoundObject;
 }
