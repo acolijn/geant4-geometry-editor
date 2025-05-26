@@ -371,7 +371,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
           y: component.rotation?.y || 0,
           z: component.rotation?.z || 0
         },
-        parent: parentName
+        parent: parentName.split('_')[1]
       }]
     });
   });
