@@ -227,6 +227,21 @@ const PropertyEditor = ({
         size="small"
       />
       
+      <TextField
+        label="Geant4 Name"
+        value={selectedObject?.displayName || selectedObject?.name || ''}
+        onChange={(e) => {
+          e.stopPropagation();
+          handlePropertyChange('displayName', e.target.value, true, false);
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onFocus={(e) => e.stopPropagation()}
+        fullWidth
+        margin="normal"
+        size="small"
+        helperText="Name used in Geant4 export"
+      />
+      
       <FormControl fullWidth margin="normal" size="small">
         <InputLabel>Material</InputLabel>
         <Select
@@ -308,6 +323,14 @@ const PropertyEditor = ({
               onClick: (e) => e.stopPropagation(),
               PaperProps: { onClick: (e) => e.stopPropagation() }
             }}
+            renderValue={(value) => {
+              // For World, just return World
+              if (value === 'World') return 'World';
+              
+              // For other volumes, find the volume with this name and return its display name
+              const motherVolume = geometries.volumes.find(vol => vol.name === value);
+              return motherVolume ? (motherVolume.displayName || motherVolume.name) : value;
+            }}
           >
             <MenuItem value="World">World</MenuItem>
             {geometries.volumes && geometries.volumes.map((volume, index) => {
@@ -315,7 +338,10 @@ const PropertyEditor = ({
               if (selectedGeometry === `volume-${index}`) return null;
               return (
                 <MenuItem key={`mother-${index}`} value={volume.name}>
-                  {volume.name}
+                  {/* Show the Geant4 name (displayName) followed by the original component name */}
+                  {volume.displayName && volume.name.split('_')[1] ? 
+                    `${volume.displayName}: ${volume.name.split('_')[1]}` : 
+                    volume.name}
                 </MenuItem>
               );
             })}

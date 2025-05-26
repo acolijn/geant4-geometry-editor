@@ -137,10 +137,6 @@ function App() {
   
   // Generate a unique name for a new geometry
   const generateUniqueName = (baseType) => {
-    // Capitalize the first letter of the type
-    const typeName = baseType.charAt(0).toUpperCase() + baseType.slice(1);
-    const prefix = `${typeName}_`;
-    
     // Get all existing names
     const existingNames = [
       geometries.world.name,
@@ -151,7 +147,9 @@ function App() {
     let counter = 0;
     let newName;
     do {
-      newName = `${prefix}${counter}`;
+      // Just use the base type without capitalization and a counter
+      // This is for internal names only, displayName will be set separately
+      newName = `${baseType}_${counter}`;
       counter++;
     } while (existingNames.includes(newName));
     
@@ -215,7 +213,12 @@ function App() {
     
     // Process the main object
     const mainObject = { ...content.object };
+    // Get the exact name from the JSON file without any prefixes or suffixes
+    // The name in the JSON file should be something like "base", "glass", etc.
     const originalMainName = mainObject.name;
+    
+    // Get the metadata name if available (for setting the displayName)
+    const metadataName = content.metadata?.name;
     
     // Generate a source ID for instance tracking if not already present
     if (!mainObject._sourceId) {
@@ -238,8 +241,8 @@ function App() {
     // Store the original name for special handling of PMT objects
     const isPMTObject = originalMainName === 'PMT';
     
-    // Set the mother volume
-    mainObject.mother_volume = motherVolume;
+    // Set the mother volume, defaulting to "World" if undefined
+    mainObject.mother_volume = motherVolume || 'World';
     
     // CRITICAL FIX: Ensure the box has all required properties
     if (mainObject.type === 'box') {
@@ -275,6 +278,42 @@ function App() {
     
     // DETAILED DEBUG: Log the main object after processing
     console.log('IMPORT - Main object details after processing:', mainObject);
+    
+    // Define objectSerial in a wider scope so it's available for descendants
+    let objectSerial;
+    
+    // Set the displayName based on metadata name with a serial number and the component name
+    if (metadataName) {
+      // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
+      const objectType = metadataName.split('.')[0];
+      
+      // Find existing objects with similar displayNames to determine the next serial number
+      // Extract the serial numbers from existing displayNames with the format "PMT_X"
+      const existingSerialNumbers = updatedGeometries.volumes
+        .filter(vol => vol.displayName && vol.displayName.startsWith(`${objectType}_`))
+        .map(vol => {
+          // Updated regex to match the new format without colon
+          const match = vol.displayName.match(new RegExp(`^${objectType}_(\\d+)$`));
+          return match ? parseInt(match[1], 10) : -1;
+        })
+        .filter(num => num >= 0);
+      
+      // Start numbering from zero
+      let serialNumber = -1;
+      let newDisplayName;
+      do {
+        serialNumber++;
+        // Format: <object>_<serial>
+        newDisplayName = `${objectType}_${serialNumber}`;
+      } while (existingSerialNumbers.includes(serialNumber));
+      
+      // Set the displayName for the main object
+      mainObject.displayName = newDisplayName;
+      console.log(`IMPORT - Set displayName for main object to ${newDisplayName}`);
+      
+      // Store the serial number for use with descendants
+      objectSerial = serialNumber;
+    }
     
     // CRITICAL FIX: Directly add the main object to the volumes array
     // Ensure we preserve all metadata including _compoundId
@@ -336,6 +375,9 @@ function App() {
           processedDesc.rotation = { x: 0, y: 0, z: 0 };
         }
         
+        // Store the original name for later use in displayName
+        processedDesc._originalName = originalName;
+        
         // Check if the name already exists
         if (existingNames.includes(originalName) || nameMapping[originalName]) {
           processedDesc.name = generateUniqueName(processedDesc.type);
@@ -348,12 +390,35 @@ function App() {
         return processedDesc;
       });
       
-      // Second pass: update mother_volume references and preserve compound IDs
+      // Second pass: update mother_volume references, set displayName, and preserve compound IDs
       const finalDescendants = processedDescendants.map(desc => {
         const finalDesc = { ...desc };
         
+        // If mother_volume is undefined, set it to the main object by default
+        if (!finalDesc.mother_volume) {
+          finalDesc.mother_volume = addedMainName;
+          console.log(`IMPORT - Set default mother_volume for ${finalDesc.name} to ${addedMainName}`);
+        }
+        
+        // Set the displayName based on the metadata name with the same serial number and the component name
+        if (metadataName && typeof objectSerial !== 'undefined') {
+          // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
+          const objectType = metadataName.split('.')[0];
+          
+          // Get the original name of the component from the JSON file
+          // Use the _originalName we stored earlier, or fall back to the current name
+          const componentName = finalDesc._originalName || finalDesc.name;
+          
+          // Format: <object>_<serial>
+          // Use the same serial number as the main object for all descendants
+          const newDisplayName = `${objectType}_${objectSerial}`;
+          
+          // Set the displayName for this descendant
+          finalDesc.displayName = newDisplayName;
+          console.log(`IMPORT - Set displayName for descendant ${finalDesc.name} to ${newDisplayName}`);
+        }
         // Update mother_volume reference if it's been renamed
-        if (nameMapping[finalDesc.mother_volume]) {
+        else if (nameMapping[finalDesc.mother_volume]) {
           finalDesc.mother_volume = nameMapping[finalDesc.mother_volume];
         }
         

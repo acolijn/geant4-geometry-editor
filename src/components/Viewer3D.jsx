@@ -776,7 +776,11 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect }) => {
             {!hasChildren && <span style={{ width: '16px', marginRight: '5px' }}></span>}
             <span style={{ marginRight: '5px' }}>{icon}</span>
             <span style={{ display: 'flex', alignItems: 'center' }}>
-              {volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+              {/* Display the Geant4 name (displayName) if available, followed by the original component name */}
+              {volume.displayName && volume.name.split('_')[1] ? 
+                `${volume.displayName}:${volume.name.split('_')[1]}` : 
+                (volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`)}
+              
               {isActive && (
                 <span 
                   style={{ 

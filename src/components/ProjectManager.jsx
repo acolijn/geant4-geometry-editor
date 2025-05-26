@@ -44,8 +44,12 @@ import FolderIcon from '@mui/icons-material/Folder';
 const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, handleImportPartialFromAddNew, compactMode = false }) => {
   // Extract an object and all its descendants - comprehensive version
   const extractObjectWithDescendants = (selectedObject, geometriesData) => {
-    // Get the main object
+    // Get the main object and remove displayName property
     const mainObject = { ...selectedObject };
+    // Remove displayName property if it exists - it should not be saved
+    if (mainObject.displayName) {
+      delete mainObject.displayName;
+    }
     const isWorld = mainObject.name === geometriesData.world.name;
     
     // Find all descendants recursively
@@ -76,6 +80,11 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
     const processedDescendants = allDescendants.map(descendant => {
       // Create a deep copy to avoid modifying the original
       const processedDescendant = { ...descendant };
+      
+      // Remove displayName property if it exists - it should not be saved
+      if (processedDescendant.displayName) {
+        delete processedDescendant.displayName;
+      }
       
       // Ensure hit collection properties are explicitly preserved
       if (descendant.isActive !== undefined) {

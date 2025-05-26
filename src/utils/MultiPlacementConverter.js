@@ -237,18 +237,22 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   const compoundObject = {
     type: 'compound',
     name: compoundName,
-    placements: rootInstances.map((instance, index) => ({
-      name: `${compoundName}_${index}`,
-      x: instance.position?.x || 0,
-      y: instance.position?.y || 0,
-      z: instance.position?.z || 0,
-      rotation: {
-        x: instance.rotation?.x || 0,
-        y: instance.rotation?.y || 0,
-        z: instance.rotation?.z || 0
-      },
-      parent: instance.mother_volume || 'World'
-    })),
+    placements: rootInstances.map((instance, index) => {
+      // Use displayName if available, otherwise fall back to compoundName
+      const displayName = instance.displayName || compoundName;
+      return {
+        name: displayName, // Don't append numbers to the name
+        x: instance.position?.x || 0,
+        y: instance.position?.y || 0,
+        z: instance.position?.z || 0,
+        rotation: {
+          x: instance.rotation?.x || 0,
+          y: instance.rotation?.y || 0,
+          z: instance.rotation?.z || 0
+        },
+        parent: instance.mother_volume || 'World'
+      };
+    }),
     components: []
   };
   
@@ -400,9 +404,12 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       }
       
       // Create the component object with a single placement
+      // Use displayName if available, otherwise fall back to the structural name
+      const displayName = template.displayName || childName;
+      
       const componentObject = {
         type: template.type,
-        name: childName,
+        name: displayName,  // Use the display name for the component name
         material: template.material,
         color: convertColor(template.color),
         visible: template.visible !== undefined ? template.visible : true,
