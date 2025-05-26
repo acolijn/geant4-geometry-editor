@@ -52,3 +52,4 @@ jsdoc-*.log
 !/scripts/.gitignore
 
 # Temporary files directory
+/tmp/
