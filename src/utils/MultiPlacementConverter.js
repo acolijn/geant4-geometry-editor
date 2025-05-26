@@ -52,7 +52,7 @@ export function convertToMultiplePlacements(geometry) {
   
   // Process standalone volumes
   standaloneVolumes.forEach(volume => {
-    convertedGeometry.volumes.push(convertStandardVolume(volume));
+    convertedGeometry.volumes.push(convertStandardVolume(volume, geometry));
   });
   
   // Process compound objects
@@ -90,7 +90,8 @@ export function convertToMultiplePlacements(geometry) {
         instances[0],  // Use the first instance as the template
         instances,      // All instances of this root
         group.volumes,   // All volumes in this compound
-        nameToBaseNameMap  // Pass the name mapping
+        nameToBaseNameMap,  // Pass the name mapping
+        geometry  // Pass the original geometry for parent name lookup
       );
       
       // Set the parent for the compound object based on the mother_volume of the first instance
@@ -172,12 +173,36 @@ function convertWorldVolume(world) {
 /**
  * Converts a standard volume to the new format
  * @param {Object} volume - The standard volume
+ * @param {Object} originalGeometry - The original geometry object with all volumes
  * @returns {Object} - The converted volume
  */
-function convertStandardVolume(volume) {
+function convertStandardVolume(volume, originalGeometry) {
+  // Use the Geant4 name (displayName) if available, otherwise use the regular name
+  const geant4Name = volume.displayName || volume.name;
+  
+  // Get the parent name (mother_volume) and use its Geant4 name if available
+  let parentName = 'World';
+  if (volume.mother_volume && volume.mother_volume !== 'World') {
+    // Find the mother volume in the original geometry to get its displayName
+    const motherVolume = originalGeometry.volumes.find(vol => vol.name === volume.mother_volume);
+    if (motherVolume && motherVolume.displayName) {
+      // Use the Geant4 name (displayName) of the mother volume
+      parentName = motherVolume.displayName;
+    } else {
+      // Fallback: extract the Geant4 name from the mother_volume name if it has underscores
+      parentName = volume.mother_volume;
+      /*if (parentName.includes('_')) {
+        const parts = parentName.split('_');
+        if (parts.length > 1) {
+          parentName = parts[1];
+        }
+      }*/
+    }
+  }
+  
   return {
     type: volume.type,
-    name: volume.name,
+    name: geant4Name,  // Use the Geant4 name
     material: volume.material,
     color: convertColor(volume.color),
     visible: volume.visible !== undefined ? volume.visible : true,
@@ -193,7 +218,7 @@ function convertStandardVolume(volume) {
           y: volume.rotation?.y || 0,
           z: volume.rotation?.z || 0
         },
-        parent: volume.mother_volume || 'World'
+        parent: parentName  // Use the Geant4 parent name
       }
     ]
   };
@@ -207,7 +232,7 @@ function convertStandardVolume(volume) {
  * @param {Map} nameToBaseNameMap - Map of volume names to their base names
  * @returns {Object} - The compound object
  */
-function createCompoundObject(rootVolume, rootInstances, components, nameToBaseNameMap) {
+function createCompoundObject(rootVolume, rootInstances, components, nameToBaseNameMap, geometry) {
   // Get the name for the compound object from the _compoundId
   // The _compoundId now contains the original object name from the save dialog
   // Format is: compound-{savedName}-{type}
@@ -241,13 +266,25 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     placements: rootInstances.map((instance, index) => {
       // Use displayName if available, otherwise fall back to compoundName
       const displayName = instance.displayName || compoundName;
-      // Get the exact mother volume name without any modifications
-      // This is critical for Geant4 compatibility - the parent name must match exactly
+      
+      // Get the parent name (mother_volume) and use its Geant4 name if available
       let parentName = 'World';
-      if (instance.mother_volume) {
-        // Use the exact mother_volume name as is - no modifications
-        // This ensures that Geant4 can find the parent volume by name
-        parentName = instance.mother_volume;
+      if (instance.mother_volume && instance.mother_volume !== 'World') {
+        // Find the mother volume in the original geometry to get its displayName
+        const motherVolume = geometry.volumes.find(vol => vol.name === instance.mother_volume);
+        if (motherVolume && motherVolume.displayName) {
+          // Use the Geant4 name (displayName) of the mother volume
+          parentName = motherVolume.displayName;
+        } else {
+          // Fallback: extract the Geant4 name from the mother_volume name if it has underscores
+          parentName = instance.mother_volume;
+          /*if (parentName.includes('_')) {
+            const parts = parentName.split('_');
+            if (parts.length > 1) {
+              parentName = parts[1];
+            }
+          }*/
+        }
       }
       
       return {
@@ -260,7 +297,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
           y: instance.rotation?.y || 0,
           z: instance.rotation?.z || 0
         },
-        parent: parentName // Use the exact mother_volume name for parent reference
+        parent: parentName // Use the Geant4 parent name
       };
     }),
     components: []
@@ -334,7 +371,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
           y: component.rotation?.y || 0,
           z: component.rotation?.z || 0
         },
-        parent: parentName.split('_')[1]
+        parent: parentName
       }]
     });
   });
