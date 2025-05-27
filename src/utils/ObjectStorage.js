@@ -19,9 +19,10 @@ import { standardizeObjectFormat, restoreOriginalFormat } from './ObjectFormatSt
  * @param {string} name - The name of the object
  * @param {string} description - A description of the object
  * @param {Object} objectData - The object data to save
+ * @param {boolean} preserveComponentIds - Whether to preserve existing component IDs
  * @returns {Promise<Object>} - Result of the save operation
  */
-export const saveObject = async (name, description, objectData) => {
+export const saveObject = async (name, description, objectData, preserveComponentIds = false) => {
   try {
     // Check if FileSystemManager is initialized
     if (!FileSystemManager.initialized) {
@@ -34,8 +35,63 @@ export const saveObject = async (name, description, objectData) => {
     // Standardize the object format to be consistent with the main output JSON file
     const standardizedObjectData = standardizeObjectFormat(objectData);
     
+    // If preserveComponentIds is true, check if the object already exists and preserve component IDs
+    let dataToSave;
+    
+    if (preserveComponentIds) {
+      try {
+        // Try to load the existing object
+        const existingObject = await FileSystemManager.loadObject(sanitizedName);
+        
+        if (existingObject) {
+          console.log(`Existing object found. Preserving component IDs for "${name}"`);
+          
+          // Create maps of components by _componentId for both existing and new data
+          const existingComponentsMap = new Map();
+          if (existingObject.descendants && Array.isArray(existingObject.descendants)) {
+            existingObject.descendants.forEach(component => {
+              if (component._componentId) {
+                existingComponentsMap.set(component._componentId, component);
+              }
+            });
+          }
+          
+          // Create a map of new components by name for easier matching
+          const newComponentsByName = new Map();
+          if (standardizedObjectData.descendants && Array.isArray(standardizedObjectData.descendants)) {
+            standardizedObjectData.descendants.forEach(component => {
+              if (component.name) {
+                newComponentsByName.set(component.name, component);
+              }
+            });
+          }
+          
+          // Process each component in the new data
+          if (standardizedObjectData.descendants && Array.isArray(standardizedObjectData.descendants)) {
+            // First, try to match by _componentId if it exists
+            standardizedObjectData.descendants.forEach(component => {
+              if (component._componentId && existingComponentsMap.has(component._componentId)) {
+                console.log(`Matched component by ID: ${component.name} (${component._componentId})`);
+                // Component already has a matching ID, no need to do anything
+              } else {
+                // If component doesn't have an ID or it's not in the existing map,
+                // generate a new unique ID
+                const timestamp = Date.now();
+                const randomSuffix = Math.random().toString(36).substring(2, 10);
+                component._componentId = `component_${timestamp}_${randomSuffix}`;
+                console.log(`Generated new _componentId ${component._componentId} for component ${component.name}`);
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.warn(`No existing object found for "${name}". Creating new object with fresh component IDs.`, error);
+        // If there's an error loading the existing object, just continue with the new data
+      }
+    }
+    
     // Add metadata to the object data
-    const dataToSave = {
+    dataToSave = {
       ...standardizedObjectData,
       metadata: {
         name,

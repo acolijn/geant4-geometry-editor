@@ -19,7 +19,10 @@ import {
   Tabs,
   Tab,
   InputAdornment,
-  IconButton
+  IconButton,
+  FormControlLabel,
+  Checkbox,
+  Tooltip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -41,6 +44,7 @@ const SaveObjectDialog = ({
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [preserveComponentIds, setPreserveComponentIds] = useState(true); // Default to true
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -130,8 +134,8 @@ const SaveObjectDialog = ({
     setSuccess('');
     
     try {
-      // Call the onSave callback with the name and description
-      const result = await onSave(sanitizedName, description, objectData);
+      // Call the onSave callback with the name, description, objectData, and preserveComponentIds flag
+      const result = await onSave(sanitizedName, description, objectData, preserveComponentIds);
       
       if (result.success) {
         setSuccess(result.message || 'Object saved successfully');
@@ -177,8 +181,30 @@ const SaveObjectDialog = ({
         placeholder="Optional description"
       />
       
+      <Box sx={{ mt: 2, mb: 1 }}>
+        <Tooltip title="When enabled, existing component IDs will be preserved when overwriting an assembly. New components will get new IDs.">
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={preserveComponentIds}
+                onChange={(e) => setPreserveComponentIds(e.target.checked)}
+                disabled={isSaving}
+                color="primary"
+              />
+            }
+            label="Preserve component IDs"
+          />
+        </Tooltip>
+      </Box>
+      
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
         The object will be saved with {objectData?.descendants?.length || 0} descendants.
+        {preserveComponentIds && (
+          <span>
+            <br />
+            Component IDs will be preserved when overwriting an existing assembly.
+          </span>
+        )}
       </Typography>
     </Box>
   );

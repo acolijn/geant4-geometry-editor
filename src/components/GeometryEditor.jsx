@@ -308,7 +308,7 @@ const GeometryEditor = ({
     return simplifiedData;
   };
   
-  const handleSaveObject = async (name, description, objectData) => {
+  const handleSaveObject = async (name, description, objectData, preserveComponentIds = false) => {
     try {
       // Import the ObjectStorage utility
       const { saveObject } = await import('../utils/ObjectStorage');
@@ -323,7 +323,8 @@ const GeometryEditor = ({
       simplifiedObjectData._compoundId = updatedCompoundId;
       
       // Save the object with simplified names and updated compound ID
-      const result = await saveObject(name, description, simplifiedObjectData);
+      // Pass the preserveComponentIds flag to maintain component IDs when overwriting
+      const result = await saveObject(name, description, simplifiedObjectData, preserveComponentIds);
       
       if (result.success) {
         console.log(`Object saved successfully to ${result.filePath}`);
