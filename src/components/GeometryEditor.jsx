@@ -199,7 +199,7 @@ const GeometryEditor = ({
       const parts = structuredName.split('_');
       if (parts.length >= 2) {
         // Return just the component name
-        return parts[1];
+        return parts[0];
       }
       // If not in expected format, return as is
       return structuredName;

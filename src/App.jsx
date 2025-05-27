@@ -135,32 +135,31 @@ function App() {
     }
   };
   
-  // Generate a unique name for a new geometry
-  const generateUniqueName = (baseType) => {
-    // Get all existing names
-    const existingNames = [
-      geometries.world.name,
-      ...geometries.volumes.map(vol => vol.name)
-    ];
-    
-    // Find the next available number
-    let counter = 0;
-    let newName;
-    do {
-      // Just use the base type without capitalization and a counter
-      // This is for internal names only, displayName will be set separately
-      newName = `${baseType}_${counter}`;
-      counter++;
-    } while (existingNames.includes(newName));
-    
-    return newName;
+  // Generate a unique ID
+  const generateId = () => {
+    return `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  };
+  
+  // Generate a unique internal name for a geometry object
+  // This creates names that don't require string parsing for internal references
+  const generateUniqueName = (type) => {
+    // Create a timestamp-based unique name that's guaranteed to be unique
+    // Format: type_timestamp_random
+    return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
   };
   
   // Handle adding a new geometry
   const handleAddGeometry = (newGeometry) => {
-    // If the geometry doesn't have a custom name, generate a unique one
-    if (!newGeometry.name || newGeometry.name === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
-      newGeometry.name = generateUniqueName(newGeometry.type);
+    // Always generate a unique internal name for references
+    // This ensures we don't need string parsing for references
+    newGeometry.name = generateUniqueName(newGeometry.type);
+    
+    // Set a user-friendly displayName if not already provided
+    if (!newGeometry.displayName || newGeometry.displayName === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
+      // Find existing objects of this type to determine the next number
+      const existingCount = geometries.volumes.filter(vol => vol.type === newGeometry.type).length;
+      // Format: Type_Number (e.g., Box_1, Sphere_2)
+      newGeometry.displayName = `${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}_${existingCount + 1}`;
     }
     
     // Log the geometry being added
@@ -213,8 +212,9 @@ function App() {
     
     // Process the main object
     const mainObject = { ...content.object };
-    // Get the exact name from the JSON file without any prefixes or suffixes
-    // The name in the JSON file should be something like "base", "glass", etc.
+    // Preserve the original name as the Geant4 name (displayName)
+    // This ensures we keep the user-friendly name from the imported file
+    const originalDisplayName = mainObject.displayName || mainObject.name;
     const originalMainName = mainObject.name;
     
     // Get the metadata name if available (for setting the displayName)
@@ -275,11 +275,31 @@ function App() {
     
     // Check if the name already exists and generate a unique name if needed
     if (existingNames.includes(originalMainName)) {
-      // If this is a PMT object, use 'pmt' as the type for naming, otherwise use the actual type
-      const typeForNaming = isPMTObject ? 'pmt' : mainObject.type;
+      // Generate a unique internal name for the main object
+      const typeForNaming = mainObject.type || 'compound';
       mainObject.name = generateUniqueName(typeForNaming);
+      
+      // Set the displayName to preserve the Geant4 name
+      // If importing into a specific object type, use that in the displayName
+      if (metadataName) {
+        // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
+        const objectType = metadataName.split('.')[0];
+        
+        // Find existing objects with similar displayNames to determine the next serial number
+        const existingCount = updatedGeometries.volumes.filter(vol => 
+          vol.displayName && vol.displayName.startsWith(`${objectType}_`)
+        ).length;
+        
+        // Format: ObjectType_Number (e.g., PMT_1)
+        mainObject.displayName = `${objectType}_${existingCount + 1}`;
+      } else {
+        // If no metadata name, preserve the original displayName
+        mainObject.displayName = originalDisplayName;
+      }
+      
+      // Add to the name mapping
       nameMapping[originalMainName] = mainObject.name;
-      console.log(`IMPORT - Renamed main object from ${originalMainName} to ${mainObject.name}`);
+      console.log(`IMPORT - Renamed main object from ${originalMainName} to ${mainObject.name}, displayName: ${mainObject.displayName}`);
     }
     
     // DETAILED DEBUG: Log the main object after processing
@@ -384,10 +404,15 @@ function App() {
         // Store the original name for later use in displayName
         processedDesc._originalName = originalName;
         
-        // Check if the name already exists
-        if (existingNames.includes(originalName) || nameMapping[originalName]) {
-          processedDesc.name = generateUniqueName(processedDesc.type);
-          nameMapping[originalName] = processedDesc.name;
+        // Always generate a unique internal name for references
+        // This ensures we don't need string parsing for references
+        processedDesc.name = generateUniqueName(processedDesc.type);
+        nameMapping[originalName] = processedDesc.name;
+        
+        // Preserve the original name as displayName (Geant4 name)
+        // This ensures components keep their original Geant4 names
+        if (!processedDesc.displayName) {
+          processedDesc.displayName = originalName;
         }
         
         // Add this name to existingNames to avoid duplicates in subsequent descendants
@@ -422,25 +447,10 @@ function App() {
           finalDesc.mother_volume = 'World';
         }
         
-        // Set the displayName based on the metadata name with the same serial number and the component name
-        if (metadataName && typeof objectSerial !== 'undefined') {
-          // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
-          const objectType = metadataName.split('.')[0];
-          
-          // Get the original name of the component from the JSON file
-          // Use the _originalName we stored earlier, or fall back to the current name
-          const componentName = finalDesc._originalName || finalDesc.name;
-          
-          // Format: <object>_<serial>
-          // Use the same serial number as the main object for all descendants
-          const newDisplayName = `${objectType}_${objectSerial}`;
-          
-          // Set the displayName for this descendant
-          finalDesc.displayName = newDisplayName;
-          console.log(`IMPORT - Set displayName for descendant ${finalDesc.name} to ${newDisplayName}`);
-        }
         // Update mother_volume reference if it's been renamed
-        else if (nameMapping[finalDesc.mother_volume]) {
+        // This ensures components maintain proper parent-child relationships
+        // while preserving their original displayNames from the template
+        if (nameMapping[finalDesc.mother_volume]) {
           finalDesc.mother_volume = nameMapping[finalDesc.mother_volume];
         }
         

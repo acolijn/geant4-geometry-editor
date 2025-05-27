@@ -231,25 +231,9 @@ const PropertyEditor = ({
         value={selectedObject?.displayName || selectedObject?.name || ''}
         onChange={(e) => {
           e.stopPropagation();
+          // Only update the displayName of the selected component
+          // This allows each component to have its own unique Geant4 name
           handlePropertyChange('displayName', e.target.value, true);
-          
-          // If this is a compound object, update all related components with the same displayName
-          // But only those that are part of the same PMT instance (same _instanceId)
-          if (selectedObject?._instanceId) {
-            const instanceId = selectedObject._instanceId;
-            const newDisplayName = e.target.value;
-            
-            // Find all volumes with the EXACT SAME instance ID and update them
-            // This ensures only components of the same PMT instance are updated, not all PMTs
-            geometries.volumes.forEach((volume, index) => {
-              if (volume._instanceId === instanceId && volume !== selectedObject) {
-                volume.displayName = newDisplayName;
-              }
-            });
-            
-            // Force a re-render
-            onGeometriesUpdated(geometries);
-          }
         }}
         onClick={(e) => e.stopPropagation()}
         onFocus={(e) => e.stopPropagation()}
@@ -357,10 +341,8 @@ const PropertyEditor = ({
               if (selectedGeometry === `volume-${index}`) return null;
               return (
                 <MenuItem key={`mother-${index}`} value={volume.name}>
-                  {/* Show the Geant4 name (displayName) followed by the original component name */}
-                  {volume.displayName && volume.name.split('_')[1] ? 
-                    `${volume.displayName}: ${volume.name.split('_')[1]}` : 
-                    volume.name}
+                  {/* Show the Geant4 name (displayName) if available, otherwise fall back to internal name */}
+                  {volume.displayName || volume.name}
                 </MenuItem>
               );
             })}

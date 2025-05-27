@@ -138,6 +138,8 @@ export function convertToMultiplePlacements(geometry) {
       placements: []
     };
     
+    // No hitCollection at the assembly level
+    
     // Helper function to recursively process all descendants
     const processComponentWithDescendants = (volume, parentName) => {
       // Get the Geant4 name for this volume
@@ -146,12 +148,16 @@ export function convertToMultiplePlacements(geometry) {
       // Create a component for this volume
       const component = {
         type: volume.type,
-        // Use the Geant4 name (displayName) instead of internal name
-        name: geant4Name,
+        // Use the internal name for components
+        name: volume.name,
+        // Store the Geant4 name as g4name
+        g4name: volume.displayName || volume.name,
         material: volume.material,
         color: Array.isArray(volume.color) ? volume.color : 
                (volume.color ? [volume.color.r, volume.color.g, volume.color.b, volume.color.a] : [0.7, 0.7, 0.7, 1.0]),
         dimensions: convertDimensions(volume),
+        
+        // No individual hitCollection tags for components in assemblies
         // Component placements - no units (all in mm and rad)
         placements: [{
           x: volume.position?.x || 0,
@@ -163,7 +169,7 @@ export function convertToMultiplePlacements(geometry) {
             z: volume.rotation?.z || 0
           },
           // For top-level components in assembly, use empty parent
-          // For components with internal parent-child relationships, use the Geant4 name of the parent
+          // For components with internal parent-child relationships, use the internal name of the parent
           parent: parentName || ""
         }]
       };
@@ -178,8 +184,8 @@ export function convertToMultiplePlacements(geometry) {
       
       // Process each child recursively
       children.forEach(child => {
-        // Pass the Geant4 name as the parent name
-        processComponentWithDescendants(child, geant4Name);
+        // Pass the internal name as the parent name, NOT the Geant4 name
+        processComponentWithDescendants(child, volume.name);
       });
     };
     
@@ -193,8 +199,8 @@ export function convertToMultiplePlacements(geometry) {
     typeData.instances.forEach(instance => {
       // Add a placement for each instance - no units (all in mm and rad)
       compoundObject.placements.push({
-        // Use the Geant4 name (displayName) for identification
-        name: instance.displayName || instance.name,
+        // Use the Geant4 name (displayName) as g4name for identification in placements
+        g4name: instance.displayName || instance.name,
         x: instance.position?.x || 0,
         y: instance.position?.y || 0,
         z: instance.position?.z || 0,
@@ -203,7 +209,7 @@ export function convertToMultiplePlacements(geometry) {
           y: instance.rotation?.y || 0,
           z: instance.rotation?.z || 0
         },
-        // The parent is where this instance will be placed - use Geant4 name if available
+        // The parent is where this instance will be placed - use internal name for parent reference
         // For top-level assemblies, this is typically 'World'
         parent: instance.mother_volume || 'World'
       });
@@ -434,7 +440,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   }
   
   // First, define the root component name (needed for placements)
-  // Use the original name from the object's first component
+  // Use the internal name from the object's first component
   const rootComponentName = rootVolume.name;
   
   // Create the compound object
@@ -460,8 +466,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       }
       
       return {
-        //name: displayName, // Use the Geant4 name for identification
-        name: instance.name,
+        // Use the Geant4 name (displayName) as g4name for identification in placements
+        g4name: instance.displayName || instance.name,
         x: instance.position?.x || 0,
         y: instance.position?.y || 0,
         z: instance.position?.z || 0,
@@ -487,9 +493,10 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   // Start with the root component from the first instance
   templateComponents.push({
     type: rootVolume.type,
-    // split on _ and keep only middle part
-    //name: rootVolume.name.split('_')[1],
+    // Use internal name for components
     name: rootVolume.name,
+    // Store the Geant4 name as g4name
+    g4name: rootVolume.displayName || rootVolume.name,
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
@@ -529,8 +536,10 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     // Add this component to the template components
     templateComponents.push({
       type: component.type,
-      // Use the full name without splitting
+      // Use the internal name for components
       name: component.name,
+      // Store the Geant4 name as g4name
+      g4name: component.displayName || component.name,
       material: component.material,
       color: convertColor(component.color),
       visible: component.visible !== undefined ? component.visible : true,
@@ -545,7 +554,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
           y: component.rotation?.y || 0,
           z: component.rotation?.z || 0
         },
-        // Use the full parent name without splitting
+        // Use the internal parent name
         parent: parentName
       }]
     });
