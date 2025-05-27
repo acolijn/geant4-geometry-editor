@@ -287,6 +287,15 @@ const GeometryEditor = ({
           }
         }
         
+        // CRITICAL: Ensure every component has a _componentId
+        // If it doesn't have one, generate a new one
+        if (!descendant._componentId) {
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 10);
+          descendant._componentId = `component_${timestamp}_${randomSuffix}`;
+          console.log(`Generated new _componentId ${descendant._componentId} for imported component ${descendant.name}`);
+        }
+        
         // Update mother_volume reference
         if (descendant.mother_volume && nameMapping[descendant.mother_volume]) {
           descendant.mother_volume = nameMapping[descendant.mother_volume];
@@ -796,6 +805,15 @@ const GeometryEditor = ({
           
           // Helper function to update a descendant with template properties
           function updateDescendantWithTemplate(descendantId, originalDesc, templateDesc) {
+            // CRITICAL: Ensure every component has a _componentId
+            // If it doesn't have one, generate a new one
+            if (!originalDesc._componentId) {
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substring(2, 10);
+              originalDesc._componentId = `component_${timestamp}_${randomSuffix}`;
+              console.log(`Generated new _componentId ${originalDesc._componentId} for component ${originalDesc.name}`);
+            }
+            
             // Create an updated description that preserves critical properties from the original
             // while taking updated geometry properties from the template
             const updatedDesc = {
@@ -816,11 +834,11 @@ const GeometryEditor = ({
               // Preserve the displayName if it exists
               displayName: originalDesc.displayName,
               
-              // CRITICAL: Ensure component has a _componentId and preserve it for future updates
-              _componentId: originalDesc._componentId || (originalDesc.parent === 'assembly' || 
-                          (templateDesc.parent === 'assembly' && templateDesc._componentId) ? 
-                          (templateDesc._componentId || `component_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`) : 
-                          undefined),
+              // CRITICAL: Always include the _componentId
+              _componentId: originalDesc._componentId,
+              
+              // Mark as part of an assembly for easier identification
+              parent: 'assembly',
               
               // Take dimensions from the template if they exist
               dimensions: templateDesc.dimensions ? { ...templateDesc.dimensions } : originalDesc.dimensions,
