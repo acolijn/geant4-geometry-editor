@@ -759,8 +759,17 @@ function App() {
     // and add the compound ID to all descendants
     const processedDescendants = allDescendants.map(descendant => {
       // Create a deep copy to avoid modifying the original
-      const processedDescendant = { ...descendant, _compoundId: compoundId };
+      const processedDescendant = { ...descendant };
+      
+      // Add compound ID to maintain assembly relationship
+      processedDescendant._compoundId = compoundId;
       console.log(`Added _compoundId ${compoundId} to descendant ${descendant.name}`);
+      
+      // Preserve component ID if it exists (for assembly components)
+      if (descendant._componentId) {
+        processedDescendant._componentId = descendant._componentId;
+        console.log(`Preserved _componentId ${descendant._componentId} for component ${descendant.name}`);
+      }
       
       // Ensure hit collection properties are explicitly preserved
       if (descendant.isActive !== undefined) {
@@ -771,8 +780,18 @@ function App() {
         processedDescendant.hitsCollectionName = descendant.hitsCollectionName;
       }
       
+      // Remove _instanceId as it should not be in the exported file
+      if (processedDescendant._instanceId) {
+        delete processedDescendant._instanceId;
+      }
+      
       return processedDescendant;
     });
+    
+    // Remove _instanceId from the main object if it exists
+    if (exportedMainObject._instanceId) {
+      delete exportedMainObject._instanceId;
+    }
     
     // Return the main object and all its descendants
     return {

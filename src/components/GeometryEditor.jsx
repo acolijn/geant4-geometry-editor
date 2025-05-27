@@ -186,51 +186,105 @@ const GeometryEditor = ({
      * Extract the component name from a structured name format
      * 
      * Structured names follow the pattern: BaseName_ComponentName_ID
-     * This function extracts just the ComponentName part for cleaner exports.
+     * This function preserves the unique identifiers in component names.
      * 
      * @param {string} structuredName - The structured name to process
-     * @returns {string} The extracted component name or the original name if not in expected format
+     * @returns {string} The processed name that maintains uniqueness
      */
     const extractComponentName = (structuredName) => {
       // Return early if the name is empty or undefined
       if (!structuredName) return structuredName;
       
-      // Parse the name parts: BaseName_ComponentName_ID
-      const parts = structuredName.split('_');
-      if (parts.length >= 2) {
-        // Return just the component name
-        return parts[0];
+      // For components that follow the pattern type_index (e.g., box_1, box_2)
+      // we want to preserve the full name to maintain uniqueness
+      const typeIndexPattern = /^([a-z]+)_([0-9]+)$/i;
+      if (typeIndexPattern.test(structuredName)) {
+        // This is already a type_index format name, keep it as is
+        return structuredName;
       }
-      // If not in expected format, return as is
+      
+      // For other structured names, keep the original name
       return structuredName;
     };
     
-    // Simplify the mother object name
+    // Process the top-level object name to prevent recursive explosion
     const originalMotherName = simplifiedData.object.name;
-    const simplifiedMotherName = extractComponentName(originalMotherName);
     
-    // Store the mapping
-    nameMapping[originalMotherName] = simplifiedMotherName;
+    // Store the original name for reference if not already present
+    if (!simplifiedData.object._originalName) {
+      simplifiedData.object._originalName = originalMotherName;
+    }
     
-    // Update the mother object name
-    simplifiedData.object.name = simplifiedMotherName;
+    // For assemblies, use just 'assembly' in the template
+    if (simplifiedData.object.type === 'assembly') {
+      // In the template (object.json), the name should simply be 'assembly'
+      // When instances are created, they'll get the unique ID appended
+      
+      // Set the name to just 'assembly' for the template
+      const simplifiedMotherName = 'assembly';
+      
+      // Store the mapping
+      nameMapping[originalMotherName] = simplifiedMotherName;
+      
+      // Update the mother object name to just 'assembly'
+      simplifiedData.object.name = simplifiedMotherName;
+      
+      // Preserve the displayName if it exists
+      if (simplifiedData.object.displayName) {
+        // Keep the display name as is - this is what shows in the UI
+        // No need to modify it
+      }
+    } else {
+      // For non-assembly objects, use the standard extraction
+      const simplifiedMotherName = extractComponentName(originalMotherName);
+      
+      // Store the mapping
+      nameMapping[originalMotherName] = simplifiedMotherName;
+      
+      // Update the mother object name
+      simplifiedData.object.name = simplifiedMotherName;
+    }
     
-    // Simplify all descendant names
+    // Process all descendant names to ensure uniqueness
     if (simplifiedData.descendants && Array.isArray(simplifiedData.descendants)) {
-      // First pass: Create the name mapping
+      // Create a map to track used names and ensure uniqueness
+      const usedNames = new Map();
+      
+      // First pass: Create the name mapping while ensuring uniqueness
       simplifiedData.descendants.forEach((descendant) => {
         if (descendant.name) {
           const originalName = descendant.name;
-          const simplifiedName = extractComponentName(originalName);
-          nameMapping[originalName] = simplifiedName;
+          
+          // Store the original name for reference
+          if (!descendant._originalName) {
+            descendant._originalName = originalName;
+          }
+          
+          // Keep the name as is to maintain uniqueness
+          nameMapping[originalName] = originalName;
         }
       });
       
-      // Second pass: Apply the simplified names and update mother_volume references
-      simplifiedData.descendants = simplifiedData.descendants.map((descendant) => {
-        // Simplify the name
+      // Second pass: Apply the names and update mother_volume references
+      simplifiedData.descendants = simplifiedData.descendants.map((descendant, index) => {
+        // If this is a type_index format name (e.g., box_1), keep it to maintain uniqueness
         if (descendant.name) {
-          descendant.name = nameMapping[descendant.name] || descendant.name;
+          // Use the name from the mapping or keep the original
+          const mappedName = nameMapping[descendant.name] || descendant.name;
+          
+          // Check if this name has been used before
+          if (usedNames.has(mappedName)) {
+            // Get the count of how many times this name has been used
+            const count = usedNames.get(mappedName) + 1;
+            usedNames.set(mappedName, count);
+            
+            // Create a unique name by appending the count
+            descendant.name = `${mappedName}_${count}`;
+          } else {
+            // First time seeing this name
+            usedNames.set(mappedName, 1);
+            descendant.name = mappedName;
+          }
         }
         
         // Update mother_volume reference
@@ -600,10 +654,11 @@ const GeometryEditor = ({
         const originalObject = topInstance.object;
         console.log('Updating top-level object:', originalObject.name);
         
-        // Preserve the name, position, rotation, and mother_volume of the original object
+        // Preserve the name, displayName, position, rotation, and mother_volume of the original object
         // Take all other properties from the template
         const preservedProps = {
           name: originalObject.name,
+          displayName: originalObject.displayName, // Preserve the displayName (Geant4 name)
           position: { ...originalObject.position },
           rotation: { ...originalObject.rotation },
           mother_volume: originalObject.mother_volume
@@ -623,7 +678,36 @@ const GeometryEditor = ({
           console.log('Updating assembly object with template:', templateData.object);
           
           // Ensure all assembly-specific properties are properly copied
-          if (templateData.object.components) {
+          if (templateData.object.components && originalObject.components) {
+            // Create a map of component IDs to original components for easier lookup
+            const originalComponentsMap = new Map();
+            originalObject.components.forEach(component => {
+              if (component._componentId) {
+                originalComponentsMap.set(component._componentId, component);
+              }
+            });
+            
+            // Create a deep copy of the template components
+            const updatedComponents = JSON.parse(JSON.stringify(templateData.object.components));
+            
+            // For each component in the updated list, try to match it with an original component
+            updatedComponents.forEach(updatedComponent => {
+              // If the component has a _componentId, try to find a match in the original components
+              if (updatedComponent._componentId && originalComponentsMap.has(updatedComponent._componentId)) {
+                // Get the original component
+                const originalComponent = originalComponentsMap.get(updatedComponent._componentId);
+                
+                // Preserve the name from the original component
+                updatedComponent.name = originalComponent.name;
+                
+                // If there are other properties that should be preserved, add them here
+              }
+            });
+            
+            // Set the updated components
+            updatedObject.components = updatedComponents;
+          } else if (templateData.object.components) {
+            // If there are no original components or they don't have _componentId, just copy the template components
             updatedObject.components = JSON.parse(JSON.stringify(templateData.object.components));
           }
           
@@ -1301,19 +1385,37 @@ const GeometryEditor = ({
         solid2: extractSolidProperties(components[1]),
         
         // Add the new components array for multi-component unions
-        components: components.map((component, index) => ({
-          name: component.name || `Component_${index + 1}`,
-          shape: component.type,
-          dimensions: extractSolidProperties(component),
-          placement: [
-            { 
-              x: 0, 
-              y: 0, 
-              z: index * 5, // Stagger components along z-axis for visibility
-              rotation: { x: 0, y: 0, z: 0 }
-            }
-          ]
-        })),
+        components: components.map((component, index) => {
+          // Generate a unique component ID that will remain consistent across instances
+          // Use type_longID format as requested
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 8);
+          const componentId = `${component.type}_${timestamp}_${randomSuffix}`;
+          
+          // Create a unique name for each component that includes the component type and index
+          // This ensures that multiple components of the same type have different names
+          const uniqueComponentName = `${component.type}_${index + 1}`;
+          
+          return {
+            // Use the unique component name instead of just the component name
+            // This ensures that multiple objects of the same type have different names
+            name: uniqueComponentName,
+            // Store the original name as displayName for UI purposes
+            displayName: component.name || uniqueComponentName,
+            shape: component.type,
+            dimensions: extractSolidProperties(component),
+            placement: [
+              { 
+                x: 0, 
+                y: 0, 
+                z: index * 5, // Stagger components along z-axis for visibility
+                rotation: { x: 0, y: 0, z: 0 }
+              }
+            ],
+            // Add a unique component ID that will be preserved during updates
+            _componentId: componentId
+          };
+        }),
         
         // Relative position of the second solid with respect to the first (for backward compatibility)
         relative_position: { x: 0, y: 0, z: 5 },
@@ -1348,13 +1450,26 @@ const GeometryEditor = ({
     
     // For assembly type, add special properties
     if (newGeometryType === 'assembly') {
-      // Generate a unique compound ID for the assembly
+      // Generate a unique timestamp and random suffix for the instance ID
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 10);
-      newGeometry._compoundId = `compound-${newGeometry.name}-assembly-${timestamp}-${randomSuffix}`;
+      
+      // Create a unique instance ID in the format type_longID
+      const instanceId = `assembly_${timestamp}_${randomSuffix}`;
+      
+      // For instances in the scene, use the unique instance ID
+      // When exported to a template, this will be simplified to just 'assembly'
+      newGeometry.name = instanceId;
+      
+      // Store the instance ID separately for reference
+      newGeometry._instanceId = instanceId;
+      
+      // Generate a unique compound ID for tracking all instances of this assembly type
+      newGeometry._compoundId = `compound-${timestamp}-${randomSuffix}`;
       
       // Set a display name (Geant4 name) for the assembly
-      newGeometry.displayName = newGeometry.name;
+      // This is what will be shown in the UI
+      newGeometry.displayName = "NewAssembly";
       
       // Set a semi-transparent color for visualization
       newGeometry.color = [0.7, 0.7, 0.7, 0.3];
