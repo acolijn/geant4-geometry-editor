@@ -236,14 +236,32 @@ function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, tra
       const localVector = new THREE.Vector3(localPos[0], localPos[1], localPos[2]);
       localVector.applyMatrix4(assemblyMatrix);
       
-      // For top-level components in an assembly, we should use the assembly's rotation
-      // and ignore the component's rotation if it's a direct child of the assembly
-      // This is the key fix for the assembly rotation issue
+      // For top-level components in an assembly, we need to combine the assembly's rotation
+      // with the component's own rotation to allow individual rotation of objects within assemblies
       if (volume.mother_volume === parentVolume.name && parentVolume.type === 'assembly') {
-        // For direct children of the assembly, use only the assembly's rotation
+        // Combine assembly rotation with the object's own rotation
+        const assemblyQuat = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(assemblyRot[0], assemblyRot[1], assemblyRot[2], 'XYZ')
+        );
+        
+        const localQuat = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(localRot[0], localRot[1], localRot[2], 'XYZ')
+        );
+        
+        // Multiply quaternions to combine rotations (order matters)
+        const combinedQuat = assemblyQuat.multiply(localQuat);
+        
+        // Convert back to Euler angles
+        const combinedEuler = new THREE.Euler().setFromQuaternion(combinedQuat, 'XYZ');
+        const combinedRotation = [
+          combinedEuler.x,
+          combinedEuler.y,
+          combinedEuler.z
+        ];
+        
         return {
           position: [localVector.x, localVector.y, localVector.z],
-          rotation: assemblyRot
+          rotation: combinedRotation
         };
       }
       
