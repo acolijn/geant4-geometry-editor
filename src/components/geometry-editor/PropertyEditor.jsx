@@ -1001,17 +1001,7 @@ const PropertyEditor = ({
               </Button>
             );
           })()} 
-          {/* Update Objects button - updates all instances of an object type */}
-          <Tooltip title="Update all instances of an object type with the latest definition">
-            <Button 
-              variant="outlined" 
-              color="secondary" 
-              onClick={() => setUpdateObjectsDialogOpen(true)}
-              aria-label="Update object instances"
-            >
-              Update Objects
-            </Button>
-          </Tooltip>
+
           {/* Remove Geometry button - deletes the selected geometry from the scene */}
           <Button 
             variant="outlined" 
