@@ -158,16 +158,26 @@ export function convertToMultiplePlacements(geometry) {
         dimensions: convertDimensions(volume),
         
         // No individual hitCollection tags for components in assemblies
-        // Component placements - no units (all in mm and rad)
+        // For top-level components in an assembly, we need special handling
+        // If this is a direct child of the assembly (parentName is empty), we should NOT include
+        // the rotation in the placement, as the rotation will be applied at the assembly level
         placements: [{
           x: volume.position?.x || 0,
           y: volume.position?.y || 0,
           z: volume.position?.z || 0,
-          rotation: {
-            x: volume.rotation?.x || 0,
-            y: volume.rotation?.y || 0,
-            z: volume.rotation?.z || 0
-          },
+          // Only include rotation for non-top-level components
+          // For top-level components, rotation should be applied at the assembly level
+          ...(parentName ? {
+            rotation: {
+              x: volume.rotation?.x || 0,
+              y: volume.rotation?.y || 0,
+              z: volume.rotation?.z || 0
+            }
+          } : {
+            // For top-level components, set rotation to zero
+            // The assembly's rotation will be applied to all components
+            rotation: { x: 0, y: 0, z: 0 }
+          }),
           // For top-level components in assembly, use empty parent
           // For components with internal parent-child relationships, use the internal name of the parent
           parent: parentName || ""
