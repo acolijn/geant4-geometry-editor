@@ -486,6 +486,12 @@ function App() {
           }
         }
         
+        // Ensure all components have a hitsCollectionName property (default to null)
+        if (finalDesc.hitsCollectionName === undefined) {
+          finalDesc.hitsCollectionName = null;
+          console.log(`IMPORT - Added default hitsCollectionName: null to component ${finalDesc.name}`);
+        }
+        
         return finalDesc;
       });
       

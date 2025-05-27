@@ -1486,6 +1486,7 @@ const GeometryEditor = ({
         position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
         mother_volume: newMotherVolume,
+        hitsCollectionName: null, // Default hitsCollectionName to null
         
         // For backward compatibility, keep solid1 and solid2 for the first two components
         solid1: extractSolidProperties(components[0]),
@@ -1521,7 +1522,10 @@ const GeometryEditor = ({
             ],
             // Add a permanent unique component ID that will be preserved during updates
             // This is the key to reliable component matching
-            _componentId: componentId
+            _componentId: componentId,
+            
+            // Default hitsCollectionName to null for all components
+            hitsCollectionName: null
           };
         }),
         
@@ -1553,7 +1557,8 @@ const GeometryEditor = ({
       material: 'G4_AIR',
       position: { x: 0, y: 0, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
-      mother_volume: newMotherVolume // Use the selected mother volume
+      mother_volume: newMotherVolume, // Use the selected mother volume
+      hitsCollectionName: null // Default hitsCollectionName to null for all components
     };
     
     // For assembly type, add special properties
