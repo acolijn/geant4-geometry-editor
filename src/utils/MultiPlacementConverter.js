@@ -324,7 +324,10 @@ export function convertToMultiplePlacements(geometry) {
 function convertWorldVolume(world) {
   return {
     type: world.type || 'box',
+    // Use the internal name for consistency
     name: world.name || 'World',
+    // Store the Geant4 name as g4name
+    g4name: world.displayName || world.name || 'World',
     material: world.material || 'G4_AIR',
     visible: world.visible !== undefined ? world.visible : true,
     color: convertColor(world.color),
@@ -385,7 +388,10 @@ function convertStandardVolume(volume, originalGeometry) {
   
   return {
     type: volume.type,
-    name: geant4Name,  // Use the Geant4 name
+    // Use the internal name for consistency
+    name: volume.name,
+    // Store the Geant4 name as g4name
+    g4name: geant4Name,
     material: volume.material,
     color: convertColor(volume.color),
     visible: volume.visible !== undefined ? volume.visible : true,
@@ -402,7 +408,8 @@ function convertStandardVolume(volume, originalGeometry) {
           y: volume.rotation?.y || 0,
           z: volume.rotation?.z || 0
         },
-        parent: parentName  // Use the Geant4 parent name
+        // Use g4name for parent reference for consistency
+        parent: parentName
       }
     ]
   };
