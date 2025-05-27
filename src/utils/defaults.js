@@ -5,9 +5,9 @@ export const defaultGeometry = {
     name: 'World',
     material: 'G4_AIR',
     size: {
-      x: 200.0,
-      y: 200.0,
-      z: 200.0
+      x: 2000.0,
+      y: 2000.0,
+      z: 2000.0
     },
     position: {
       x: 0.0,
