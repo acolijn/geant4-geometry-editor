@@ -778,11 +778,19 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
   
-  // State for assembly selection dialog
+  // State for assembly dialog
   const [assemblyDialog, setAssemblyDialog] = useState({
     open: false,
     volumeIndex: null,
     assemblies: []
+  });
+  
+  // State for update assemblies dialog
+  const [updateAssembliesDialog, setUpdateAssembliesDialog] = useState({
+    open: false,
+    sourceIndex: null,
+    selectedIndices: [],
+    allAssemblies: []
   });
   
   // Function to toggle node expansion
@@ -952,11 +960,11 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry
       updatedCount++;
     }
     
-    // Show success message
+    // Log success message instead of showing an alert
     if (updatedCount > 0) {
-      alert(`Updated ${updatedCount} assemblies successfully.`);
+      console.log(`Updated ${updatedCount} assemblies successfully.`);
     } else {
-      alert('No other assemblies found to update.');
+      console.log('No other assemblies found to update.');
     }
   };
   
@@ -979,29 +987,36 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry
       .filter(item => item.volume.type === 'assembly' && item.index !== volumeIndex);
     
     if (allAssemblies.length === 0) {
-      alert('No other assemblies found to update.');
+      console.log('No other assemblies found to update.');
       return;
     }
     
-    // Create a simple selection dialog
-    const assemblyOptions = allAssemblies.map(item => 
-      `${item.index}: ${item.volume.name}`
-    ).join('\n');
-    
-    const userInput = prompt(
-      `Select assemblies to update (comma-separated indices):\n${assemblyOptions}`,
-      ''
-    );
-    
-    if (!userInput) return; // User cancelled
-    
-    // Parse the selected indices
-    const selectedIndices = userInput.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    // Open the update assemblies dialog
+    setUpdateAssembliesDialog({
+      open: true,
+      sourceIndex: volumeIndex,
+      selectedIndices: [],
+      allAssemblies: allAssemblies
+    });
+  };
+  
+  // Function to handle the update assemblies dialog confirmation
+  const handleUpdateAssembliesConfirm = () => {
+    const { sourceIndex, selectedIndices } = updateAssembliesDialog;
     
     if (selectedIndices.length === 0) {
-      alert('No valid indices selected.');
+      console.log('No assemblies selected for update.');
       return;
     }
+    
+    // Close the dialog
+    setUpdateAssembliesDialog(prev => ({
+      ...prev,
+      open: false
+    }));
+    
+    // Get the selected volume from the sourceIndex
+    const selectedVolume = geometries.volumes[sourceIndex];
     
     // First, find all components in the source assembly
     const sourceComponents = [];
@@ -1122,11 +1137,11 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry
       updatedCount++;
     }
     
-    // Show success message
+    // Log success message instead of showing an alert
     if (updatedCount > 0) {
-      alert(`Updated ${updatedCount} assemblies successfully.`);
+      console.log(`Updated ${updatedCount} assemblies successfully.`);
     } else {
-      alert('No assemblies were updated.');
+      console.log('No assemblies were updated.');
     }
   };
   
@@ -1141,7 +1156,7 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry
       .filter(item => item.volume.type === 'assembly');
     
     if (assemblies.length === 0) {
-      alert('No assemblies available. Create an assembly first.');
+      console.log('No assemblies available. Create an assembly first.');
       return;
     }
     
@@ -1440,6 +1455,115 @@ const GeometryTree = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry
             }}
           >
             Cancel
+          </div>
+        </div>
+      )}
+      
+      {/* Update Assemblies Dialog */}
+      {updateAssembliesDialog.open && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              padding: '20px',
+              borderRadius: '8px',
+              maxWidth: '80%',
+              maxHeight: '80%',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+          >
+            <h3 style={{ margin: 0 }}>Select Assemblies to Update</h3>
+            <p>Select which assemblies should be updated with properties from the source assembly.</p>
+            
+            <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd', padding: '8px' }}>
+              {updateAssembliesDialog.allAssemblies.map(item => (
+                <div 
+                  key={item.index}
+                  style={{
+                    padding: '8px',
+                    marginBottom: '4px',
+                    backgroundColor: updateAssembliesDialog.selectedIndices.includes(item.index) ? '#e3f2fd' : '#f5f5f5',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  onClick={() => {
+                    setUpdateAssembliesDialog(prev => {
+                      const newSelectedIndices = [...prev.selectedIndices];
+                      const indexPosition = newSelectedIndices.indexOf(item.index);
+                      
+                      if (indexPosition === -1) {
+                        // Add to selection
+                        newSelectedIndices.push(item.index);
+                      } else {
+                        // Remove from selection
+                        newSelectedIndices.splice(indexPosition, 1);
+                      }
+                      
+                      return {
+                        ...prev,
+                        selectedIndices: newSelectedIndices
+                      };
+                    });
+                  }}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={updateAssembliesDialog.selectedIndices.includes(item.index)}
+                    onChange={() => {}} // Handled by the parent div's onClick
+                    style={{ marginRight: '8px' }}
+                  />
+                  <span>
+                    {item.volume.displayName || item.volume.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f5f5f5',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setUpdateAssembliesDialog(prev => ({ ...prev, open: false }))}
+              >
+                Cancel
+              </button>
+              <button
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+                onClick={handleUpdateAssembliesConfirm}
+              >
+                Update
+              </button>
+            </div>
           </div>
         </div>
       )}

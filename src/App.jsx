@@ -40,18 +40,35 @@ function App() {
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
+  // State for update dialog
+  const [updateDialogData, setUpdateDialogData] = useState(null);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  // Reference to the updateAssemblies function from Viewer3D
+  const [updateAssembliesFunc, setUpdateAssembliesFunc] = useState(null);
   
   // No localStorage loading - starting with default values
   
   // No localStorage saving
   
   // Handle updating a geometry
-  const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false) => {
+  const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false, extraData = null) => {
+    // Handle special case for assembly update via dialog
+    if (extraData && id === null && updatedObject === null) {
+      console.log('App: Handling assembly update via dialog', extraData);
+      if (updateAssembliesFunc && typeof updateAssembliesFunc === 'function') {
+        updateAssembliesFunc(extraData.updateData, extraData.objectDefinition);
+      }
+      return;
+    }
+    
+    // If updatedObject is null, we can't proceed with regular updates
+    if (!updatedObject) {
+      console.error('App: Cannot update geometry with null object');
+      return;
+    }
+    
     // Store the current selection before any updates
     const currentSelection = selectedGeometry;
-    
-    // Instance tracking functionality has been removed for a cleaner implementation
-    // The update dialog and related functionality will be reimplemented in a simpler way
     
     // Create a new state update that includes both geometry and selection changes
     // to ensure they happen atomically and prevent flickering/jumping
@@ -976,6 +993,17 @@ return (
                   selectedGeometry={selectedGeometry}
                   onSelect={setSelectedGeometry}
                   onUpdateGeometry={handleUpdateGeometry}
+                  onOpenUpdateDialog={(data) => {
+                    console.log('App: onOpenUpdateDialog called with data:', data);
+                    // Set the update dialog data and open state
+                    setUpdateDialogData(data);
+                    setUpdateDialogOpen(true);
+                    console.log('App: Set updateDialogData and updateDialogOpen');
+                  }}
+                  onRegisterUpdateFunction={(updateFunc) => {
+                    console.log('App: Registering updateAssemblies function');
+                    setUpdateAssembliesFunc(updateFunc);
+                  }}
                 />
               </Box>
               <Box sx={{ width: '30%', height: '100%', overflow: 'auto' }}>
@@ -990,6 +1018,10 @@ return (
                   onRemoveGeometry={handleRemoveGeometry}
                   extractObjectWithDescendants={extractObjectWithDescendants}
                   handleImportPartialFromAddNew={handleImportPartialFromAddNew}
+                  externalUpdateDialogData={updateDialogData}
+                  updateDialogOpen={updateDialogOpen}
+                  setUpdateDialogOpen={setUpdateDialogOpen}
+                  updateAssembliesFunc={updateAssembliesFunc}
                 />
               </Box>
             </Box>
