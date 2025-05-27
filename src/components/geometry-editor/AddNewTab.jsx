@@ -240,22 +240,6 @@ const AddNewTab = ({
       >
         Manage Hit Collections
       </Button>
-      
-      <Divider sx={{ my: 2 }} />
-      
-      <Typography variant="h6">Update Existing Objects</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Update all instances of an object type with the latest definition
-      </Typography>
-      
-      <Button
-        variant="contained"
-        color="secondary"
-        onClick={() => setUpdateObjectsDialogOpen(true)}
-        fullWidth
-      >
-        Update Object Instances
-      </Button>
     </Box>
   );
 };

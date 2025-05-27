@@ -1159,8 +1159,9 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
       geometries.world.size?.z || 2000
     );
     
-    // Set camera distance to be 1.75x the maximum dimension
-    return -1.75 * maxDimension;
+    // Set camera distance to be 2x the maximum dimension to ensure everything is visible
+    // This allows the camera to scale properly with larger world volumes
+    return -2 * maxDimension;
   };
 
   // Function to set front view
@@ -1426,7 +1427,11 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
             onTransformEnd={handleTransformEnd}
             worldSize={geometries.world.size}
           />
-          <OrbitControls makeDefault enableDamping={false} maxDistance={5000} />
+          <OrbitControls 
+            makeDefault 
+            enableDamping={false} 
+            maxDistance={Math.abs(calculateCameraDistance()) * 10} // Scale maxDistance with world size
+          />
         </Canvas>
       </div>
     </div>

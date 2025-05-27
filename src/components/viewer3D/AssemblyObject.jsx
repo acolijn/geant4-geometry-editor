@@ -1,10 +1,9 @@
 /**
  * AssemblyObject Component
  * 
- * This component renders an assembly as a wireframe box with a label.
- * Assemblies are containers for other objects and are visualized as
- * semi-transparent wireframe boxes to make them easily identifiable
- * while not obscuring their contents.
+ * This component renders an assembly with an optional wireframe box and a label.
+ * Assemblies are containers for other objects and can be visualized with minimal
+ * visual elements to avoid cluttering the scene while still being identifiable.
  */
 import React, { forwardRef, useMemo } from 'react';
 import * as THREE from 'three';
@@ -12,6 +11,10 @@ import { Html } from '@react-three/drei';
 
 // Default size for assemblies
 const DEFAULT_SIZE = 100;
+
+// Global setting for wireframe visibility
+// Set to false to hide wireframes for all assemblies
+const SHOW_WIREFRAMES = false;
 
 /**
  * Create a text label for the assembly
@@ -86,17 +89,29 @@ const AssemblyObject = forwardRef(({ object, isSelected, onClick }, ref) => {
   
   return (
     <group ref={ref} onClick={onClick}>
-      {/* Wireframe box */}
-      <lineSegments geometry={edgesGeometry} material={lineMaterial} />
-      
+      {/* Wireframe box - only shown when SHOW_WIREFRAMES is true or the assembly is selected */}
+{/*       {(SHOW_WIREFRAMES || isSelected) && (
+        <lineSegments 
+          geometry={edgesGeometry} 
+          material={lineMaterial} 
+        />
+      )} */}
+      {SHOW_WIREFRAMES && (
+        <lineSegments 
+          geometry={edgesGeometry} 
+          material={lineMaterial} 
+        />      
+      )}
       {/* Invisible box for better click detection */}
       <mesh visible={false}>
         <boxGeometry args={[size, size, size]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
       
-      {/* Label showing the assembly name */}
-      <Label text={object.displayName || object.name || 'Assembly'} />
+      {/* Label showing the assembly name - only visible when selected */}
+      {isSelected && (
+        <Label text={object.displayName || object.name || 'Assembly'} />
+      )}
     </group>
   );
 });

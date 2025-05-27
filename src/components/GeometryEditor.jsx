@@ -618,6 +618,21 @@ const GeometryEditor = ({
           dimensions: templateData.object.dimensions ? { ...templateData.object.dimensions } : originalObject.dimensions
         };
         
+        // Special handling for assembly objects
+        if (updatedObject.type === 'assembly' && templateData.object.type === 'assembly') {
+          console.log('Updating assembly object with template:', templateData.object);
+          
+          // Ensure all assembly-specific properties are properly copied
+          if (templateData.object.components) {
+            updatedObject.components = JSON.parse(JSON.stringify(templateData.object.components));
+          }
+          
+          // Copy any other assembly-specific properties
+          if (templateData.object.assemblyProperties) {
+            updatedObject.assemblyProperties = JSON.parse(JSON.stringify(templateData.object.assemblyProperties));
+          }
+        }
+        
         // Special handling for box dimensions
         if (updatedObject.type === 'box') {
           // Ensure dimensions are properly set for box objects
@@ -1391,6 +1406,7 @@ const GeometryEditor = ({
         handleExportObject={handleExportObject}
         handleInputFocus={handleInputFocus}
         handleNumberKeyDown={handleNumberKeyDown}
+        setUpdateObjectsDialogOpen={setUpdateObjectsDialogOpen}
       />
     );
   };

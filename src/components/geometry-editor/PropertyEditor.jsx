@@ -9,7 +9,8 @@ import {
   MenuItem,
   Button,
   IconButton,
-  Menu
+  Menu,
+  Tooltip
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../../utils/UnitConverter';
@@ -31,7 +32,8 @@ const PropertyEditor = ({
   onRemoveGeometry,
   handleExportObject,
   handleInputFocus,
-  handleNumberKeyDown
+  handleNumberKeyDown,
+  setUpdateObjectsDialogOpen
 }) => {
   // State for the menu
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
@@ -999,6 +1001,17 @@ const PropertyEditor = ({
               </Button>
             );
           })()} 
+          {/* Update Objects button - updates all instances of an object type */}
+          <Tooltip title="Update all instances of an object type with the latest definition">
+            <Button 
+              variant="outlined" 
+              color="secondary" 
+              onClick={() => setUpdateObjectsDialogOpen(true)}
+              aria-label="Update object instances"
+            >
+              Update Objects
+            </Button>
+          </Tooltip>
           {/* Remove Geometry button - deletes the selected geometry from the scene */}
           <Button 
             variant="outlined" 
