@@ -749,94 +749,182 @@ const GeometryEditor = ({
           console.log('Updating descendants for', originalObject.name);
           console.log('Template descendants:', templateData.descendants);
           
-          // Create a map of component names to template descendants for easier lookup
-          const templateDescMap = new Map();
+          // Create a map of template components by their _componentId
+          const templateDescByComponentId = new Map();
+          
+          // Log all template descendants and their _componentId values
+          console.log('Template descendants with _componentId:');
           templateData.descendants.forEach(td => {
-            if (td.name) {
-              templateDescMap.set(td.name, td);
+            console.log(`Template: ${td.type} (${td.name}) - _componentId: ${td._componentId || 'none'}`);
+            if (td._componentId) {
+              templateDescByComponentId.set(td._componentId, td);
             }
           });
           
+          // Create a map of original descendants by their _componentId
+          const originalDescByComponentId = new Map();
+          
+          // Log all original descendants and their _componentId values
+          console.log('Original descendants with _componentId:');
           topInstance.descendants.forEach(descendant => {
-            const originalDesc = descendant.object;
-            console.log('Processing descendant:', originalDesc.name);
-            
-            // Try to find a matching template descendant
-            let templateDesc = null;
-            
-            // First try to match by component name (from structured naming)
-            const descNameParts = originalDesc.name.split('_');
-            if (descNameParts.length >= 2) {
-              const componentName = descNameParts[1];
-              console.log('Looking for template with component name:', componentName);
-              
-              // Look for an exact match in the template
-              templateDesc = templateDescMap.get(componentName);
-              
-              // If no exact match, try to find by partial name match
-              if (!templateDesc) {
-                templateDesc = templateData.descendants.find(td => {
-                  return td.name === componentName || 
-                         (td.name && td.name.includes(componentName));
-                });
+            const desc = descendant.object;
+            console.log(`Original: ${desc.type} (${desc.name}) - _componentId: ${desc._componentId || 'none'}`);
+            if (desc._componentId) {
+              originalDescByComponentId.set(desc._componentId, {
+                id: descendant.id,
+                object: desc
+              });
+            }
+          });
+          
+          // Create a map of template components by type for fallback matching
+          const templateDescByType = new Map();
+          templateData.descendants.forEach(td => {
+            if (td.type) {
+              if (!templateDescByType.has(td.type)) {
+                templateDescByType.set(td.type, []);
               }
+              templateDescByType.get(td.type).push(td);
             }
-            
-            // If no match by name, try to match by type
-            if (!templateDesc) {
-              console.log('Trying to match by type:', originalDesc.type);
-              templateDesc = templateData.descendants.find(td => td.type === originalDesc.type);
-            }
-            
-            if (templateDesc) {
-              console.log('Found matching template:', templateDesc);
+          });
+          
+          // Track which template components have been used to avoid duplicates
+          const usedTemplateComponents = new Set();
+          
+          // First, process all descendants with _componentId (most reliable matching)
+          console.log('Processing descendants with _componentId:');
+          
+          // Helper function to update a descendant with template properties
+          function updateDescendantWithTemplate(descendantId, originalDesc, templateDesc) {
+            // Create an updated description that preserves critical properties from the original
+            // while taking updated geometry properties from the template
+            const updatedDesc = {
+              // Start with a copy of the original to preserve all its properties
+              ...originalDesc,
               
-              // Only preserve the name and mother_volume of the original descendant
-              // Take ALL other properties directly from the template, including position and rotation
-              const updatedDesc = {
-                ...templateDesc,       // Start with ALL template properties
-                name: originalDesc.name,
-                mother_volume: originalDesc.mother_volume,
-                // Explicitly copy position and rotation from the template if they exist
-                position: templateDesc.placement ? { 
-                  x: templateDesc.placement.x,
-                  y: templateDesc.placement.y,
-                  z: templateDesc.placement.z
-                } : originalDesc.position,
-                rotation: templateDesc.placement?.rotation ? {
+              // Take geometry properties from the template
+              type: templateDesc.type,
+              material: templateDesc.material,
+              visible: templateDesc.visible !== undefined ? templateDesc.visible : originalDesc.visible,
+              
+              // CRITICAL: Preserve the original mother_volume to maintain hierarchy
+              mother_volume: originalDesc.mother_volume,
+              
+              // CRITICAL: Preserve the original name to maintain identity
+              name: originalDesc.name,
+              
+              // Preserve the displayName if it exists
+              displayName: originalDesc.displayName,
+              
+              // CRITICAL: Ensure component has a _componentId and preserve it for future updates
+              _componentId: originalDesc._componentId || (originalDesc.parent === 'assembly' || 
+                          (templateDesc.parent === 'assembly' && templateDesc._componentId) ? 
+                          (templateDesc._componentId || `component_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`) : 
+                          undefined),
+              
+              // Take dimensions from the template if they exist
+              dimensions: templateDesc.dimensions ? { ...templateDesc.dimensions } : originalDesc.dimensions,
+              
+              // For cylinder, map radius and height directly for backward compatibility
+              ...(templateDesc.dimensions?.radius ? { radius: templateDesc.dimensions.radius } : {}),
+              ...(templateDesc.dimensions?.height ? { height: templateDesc.dimensions.height } : {})
+            };
+            
+            // Carefully handle position and rotation
+            // If the template has a placement property, use it
+            // Otherwise keep the original position and rotation
+            if (templateDesc.placement) {
+              updatedDesc.position = { 
+                x: templateDesc.placement.x,
+                y: templateDesc.placement.y,
+                z: templateDesc.placement.z
+              };
+              
+              if (templateDesc.placement.rotation) {
+                updatedDesc.rotation = {
                   x: templateDesc.placement.rotation.x,
                   y: templateDesc.placement.rotation.y,
                   z: templateDesc.placement.rotation.z
-                } : originalDesc.rotation,
-                // Copy dimensions from the template
-                dimensions: templateDesc.dimensions ? { ...templateDesc.dimensions } : originalDesc.dimensions,
-                // For cylinder, map radius and height directly for backward compatibility
-                ...(templateDesc.dimensions?.radius ? { radius: templateDesc.dimensions.radius } : {}),
-                ...(templateDesc.dimensions?.height ? { height: templateDesc.dimensions.height } : {})
-              };
+                };
+              }
+            }
+            
+            // Special handling for box dimensions
+            if (updatedDesc.type === 'box' && templateDesc.dimensions) {
+              // Ensure dimensions are properly set for box objects
+              if (Object.keys(templateDesc.dimensions).length > 0) {
+                // Also set size property for backward compatibility
+                updatedDesc.size = {
+                  x: templateDesc.dimensions.x || 0,
+                  y: templateDesc.dimensions.y || 0,
+                  z: templateDesc.dimensions.z || 0
+                };
+              }
+            }
+            
+            console.log(`Updating descendant ${originalDesc.name} (${descendantId})`);
+            onUpdateGeometry(descendantId, updatedDesc);
+            updatedCount++;
+          }
+          
+          // Process components with _componentId first
+          for (const [componentId, originalDescData] of originalDescByComponentId.entries()) {
+            const originalDesc = originalDescData.object;
+            const descendantId = originalDescData.id;
+            
+            // Try to find a matching template by _componentId
+            if (templateDescByComponentId.has(componentId)) {
+              const templateDesc = templateDescByComponentId.get(componentId);
+              console.log(`Matched by _componentId: ${componentId} - ${originalDesc.name} (${originalDesc.type})`);
               
-              // Special handling for box dimensions in descendants
-              if (updatedDesc.type === 'box' && templateDesc.dimensions) {
-                // Ensure dimensions are properly set for box objects
-                if (Object.keys(templateDesc.dimensions).length > 0) {
-                  console.log(`Box dimensions from template for descendant ${originalDesc.name}:`, templateDesc.dimensions);
-                  
-                  // Also set size property for backward compatibility
-                  updatedDesc.size = {
-                    x: templateDesc.dimensions.x || 0,
-                    y: templateDesc.dimensions.y || 0,
-                    z: templateDesc.dimensions.z || 0
-                  };
+              // Mark this template as used
+              usedTemplateComponents.add(componentId);
+              
+              // Update the descendant with the template properties while preserving hierarchy
+              updateDescendantWithTemplate(descendantId, originalDesc, templateDesc);
+            }
+          }
+          
+          // Now process any remaining descendants without _componentId using type matching
+          console.log('Processing remaining descendants without _componentId:');
+          topInstance.descendants.forEach(descendant => {
+            const originalDesc = descendant.object;
+            
+            // Skip if this descendant was already processed (has _componentId and was matched)
+            if (originalDesc._componentId && originalDescByComponentId.has(originalDesc._componentId) && 
+                templateDescByComponentId.has(originalDesc._componentId)) {
+              return;
+            }
+            
+            console.log(`Processing unmatched descendant: ${originalDesc.name} (${originalDesc.type})`);
+            
+            // Try to find a matching template by type
+            if (originalDesc.type && templateDescByType.has(originalDesc.type)) {
+              const typeMatches = templateDescByType.get(originalDesc.type);
+              
+              // Find an unused template of this type
+              let templateDesc = null;
+              
+              for (const potentialMatch of typeMatches) {
+                const matchId = potentialMatch._componentId || JSON.stringify(potentialMatch);
+                if (!usedTemplateComponents.has(matchId)) {
+                  templateDesc = potentialMatch;
+                  usedTemplateComponents.add(matchId);
+                  console.log(`Matched by type (unused): ${originalDesc.type}`);
+                  break;
                 }
               }
               
-              console.log('Updated descendant:', updatedDesc);
+              // If all templates of this type are used, just use the first one
+              if (!templateDesc && typeMatches.length > 0) {
+                templateDesc = typeMatches[0];
+                console.log(`Matched by type (reused): ${originalDesc.type}`);
+              }
               
-              // Update this descendant
-              onUpdateGeometry(descendant.id, updatedDesc);
-              updatedCount++;
-            } else {
-              console.warn('No matching template found for:', originalDesc.name);
+              if (templateDesc) {
+                // Update the descendant with the template properties
+                updateDescendantWithTemplate(descendant.id, originalDesc, templateDesc);
+              }
             }
           });
         }
@@ -1386,11 +1474,11 @@ const GeometryEditor = ({
         
         // Add the new components array for multi-component unions
         components: components.map((component, index) => {
-          // Generate a unique component ID that will remain consistent across instances
-          // Use type_longID format as requested
+          // Generate a permanent unique component ID that will remain consistent across all instances
+          // This ID is critical for matching components during updates
           const timestamp = Date.now();
-          const randomSuffix = Math.random().toString(36).substring(2, 8);
-          const componentId = `${component.type}_${timestamp}_${randomSuffix}`;
+          const randomSuffix = Math.random().toString(36).substring(2, 10);
+          const componentId = `component_${timestamp}_${randomSuffix}`;
           
           // Create a unique name for each component that includes the component type and index
           // This ensures that multiple components of the same type have different names
@@ -1412,7 +1500,8 @@ const GeometryEditor = ({
                 rotation: { x: 0, y: 0, z: 0 }
               }
             ],
-            // Add a unique component ID that will be preserved during updates
+            // Add a permanent unique component ID that will be preserved during updates
+            // This is the key to reliable component matching
             _componentId: componentId
           };
         }),

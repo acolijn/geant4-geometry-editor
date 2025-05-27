@@ -472,8 +472,76 @@ function App() {
           console.log(`IMPORT - Added instance ID ${mainObject._instanceId} to descendant ${finalDesc.name}`);
         }
         
+        // First, mark direct children of the assembly
+        if (mainObject.type === 'assembly' && finalDesc.mother_volume === addedMainName) {
+          finalDesc.parent = 'assembly';
+          
+          // If component already has a _componentId, preserve it
+          if (!finalDesc._componentId) {
+            // Generate a new unique _componentId
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substring(2, 10);
+            finalDesc._componentId = `component_${timestamp}_${randomSuffix}`;
+            console.log(`IMPORT - Generated new _componentId ${finalDesc._componentId} for direct child ${finalDesc.name}`);
+          }
+        }
+        
         return finalDesc;
       });
+      
+      // Third pass: recursively mark all components in the assembly hierarchy
+      // This ensures that even deeply nested components get a componentId
+      let madeChanges = true;
+      let iterationCount = 0;
+      const maxIterations = 10; // Prevent infinite loops
+      
+      while (madeChanges && iterationCount < maxIterations) {
+        madeChanges = false;
+        iterationCount++;
+        
+        console.log(`IMPORT - Recursive component ID pass ${iterationCount}`);
+        
+        for (let i = 0; i < finalDescendants.length; i++) {
+          const desc = finalDescendants[i];
+          
+          // Skip components that already have parent and componentId set
+          if (desc.parent === 'assembly' && desc._componentId) {
+            continue;
+          }
+          
+          // Check if this component's mother is part of the assembly
+          const motherName = desc.mother_volume;
+          if (motherName) {
+            const motherComponent = finalDescendants.find(d => d.name === motherName);
+            if (motherComponent && (motherComponent.parent === 'assembly' || motherComponent._componentId)) {
+              // This component's mother is part of the assembly, so this component is too
+              desc.parent = 'assembly';
+              
+              if (!desc._componentId) {
+                // Generate a new unique _componentId
+                const timestamp = Date.now();
+                const randomSuffix = Math.random().toString(36).substring(2, 10);
+                desc._componentId = `component_${timestamp}_${randomSuffix}`;
+                console.log(`IMPORT - Generated new _componentId ${desc._componentId} for nested component ${desc.name}`);
+              }
+              
+              madeChanges = true;
+            }
+          }
+        }
+      }
+      
+      console.log(`IMPORT - Completed recursive component ID assignment in ${iterationCount} iterations`);
+      
+      // Final check to ensure all components have IDs
+      for (const desc of finalDescendants) {
+        if (desc.parent === 'assembly' && !desc._componentId) {
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 10);
+          desc._componentId = `component_${timestamp}_${randomSuffix}`;
+          console.log(`IMPORT - Final pass: Generated _componentId ${desc._componentId} for component ${desc.name}`);
+        }
+      }
       
       // Add all descendants to the volumes array
       finalDescendants.forEach((desc, index) => {
@@ -765,10 +833,18 @@ function App() {
       processedDescendant._compoundId = compoundId;
       console.log(`Added _compoundId ${compoundId} to descendant ${descendant.name}`);
       
-      // Preserve component ID if it exists (for assembly components)
+      // Ensure each component has a _componentId
       if (descendant._componentId) {
+        // Preserve existing component ID if it already exists
         processedDescendant._componentId = descendant._componentId;
         console.log(`Preserved _componentId ${descendant._componentId} for component ${descendant.name}`);
+      } else if (processedDescendant.parent === 'assembly' || 
+                 (mainObject.type === 'assembly' && mainObject.name === processedDescendant.mother_volume)) {
+        // Generate a new component ID for assembly components that don't have one
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 10);
+        processedDescendant._componentId = `component_${timestamp}_${randomSuffix}`;
+        console.log(`Generated new _componentId ${processedDescendant._componentId} for component ${descendant.name}`);
       }
       
       // Ensure hit collection properties are explicitly preserved
