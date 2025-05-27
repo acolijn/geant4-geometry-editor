@@ -968,15 +968,37 @@ const PropertyEditor = ({
       {selectedGeometry !== 'world' && (
         <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
           {/* Save to Library button - exports the selected geometry to the object library */}
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={handleExportObject}
-            aria-label="Save selected geometry to library"
-            title="Save this geometry and its descendants to the object library for reuse"
-          >
-            Save to Library
-          </Button>
+          {/* Only enabled for top-level assemblies */}
+          {(() => {
+            // Get the selected object
+            const selectedObj = getSelectedGeometryObject();
+            
+            // Check if this is a top-level assembly
+            const isTopLevelAssembly = selectedObj && 
+              selectedObj.type === 'assembly' && 
+              (!selectedObj.mother_volume || selectedObj.mother_volume === 'World');
+            
+            return (
+              <Button 
+                variant="outlined" 
+                color="primary" 
+                onClick={handleExportObject}
+                disabled={!isTopLevelAssembly}
+                aria-label="Save selected geometry to library"
+                title={isTopLevelAssembly 
+                  ? "Save this assembly and its descendants to the object library for reuse" 
+                  : "Only top-level assemblies can be saved to the library"}
+                sx={{
+                  opacity: isTopLevelAssembly ? 1 : 0.6,
+                  '&:hover': {
+                    opacity: isTopLevelAssembly ? 1 : 0.6
+                  }
+                }}
+              >
+                Save to Library
+              </Button>
+            );
+          })()} 
           {/* Remove Geometry button - deletes the selected geometry from the scene */}
           <Button 
             variant="outlined" 
