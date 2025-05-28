@@ -238,12 +238,6 @@ function App() {
     // Get the metadata name if available (for setting the displayName)
     const metadataName = content.metadata?.name;
     
-    // Generate a source ID for instance tracking if not already present
-    if (!mainObject._sourceId) {
-      mainObject._sourceId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`IMPORT - Generated new source ID: ${mainObject._sourceId}`);
-    }
-    
     // Preserve the compound ID if it exists - this should be the same for all objects of the same type
     if (content._compoundId) {
       mainObject._compoundId = content._compoundId;
@@ -378,11 +372,7 @@ function App() {
       importedAt: new Date().toISOString()
     };
     
-    // Instance tracking functionality has been removed for a cleaner implementation
-    // Object tracking and updating will be reimplemented in a simpler way
-    
     console.log(`IMPORT - Added main object with name: ${addedMainName} at index: ${mainObjectIndex}`);
-    console.log(`IMPORT - Registered compound object with instance tracker: sourceId=${mainObject._sourceId}, instanceId=${mainObjectId}, descendantCount=${content.descendants.length}`);
     
     // Process descendants
     if (content.descendants.length > 0) {
@@ -580,13 +570,7 @@ function App() {
         
         // Debug: Log the added descendant to verify _compoundId is present
         console.log('IMPORT - Added descendant with _compoundId:', updatedGeometries.volumes[descendantIndex]);
-        
-        // Instance tracking functionality has been removed for a cleaner implementation
-        // Descendant tracking will be reimplemented in a simpler way
-        if (desc._sourceId) {
-          const descendantId = `volume-${descendantIndex}`;
-          console.log(`IMPORT - Added descendant with ID: ${descendantId}`);
-        }
+
       });
       
       // CRITICAL FIX: Update the geometries state with the complete updated structure
@@ -801,11 +785,7 @@ function App() {
       }
     }
     
-    // Generate a source ID if one doesn't exist
-    if (!mainObject._sourceId) {
-      mainObject._sourceId = `source-${mainObject.name}-${Date.now()}`;
-      console.log(`Generated new source ID for ${mainObject.name}: ${mainObject._sourceId}`);
-    }
+    // Removed _sourceId generation as it's not used for anything useful
     
     // Check if the object already has a compound ID (from a previous save)
     // If it does, preserve it to maintain the relationship between all instances
@@ -898,8 +878,7 @@ function App() {
       object: exportedMainObject,
       descendants: processedDescendants,
       isWorld,
-      _sourceId: mainObject._sourceId, // Include the source ID at the top level for easy access
-      _compoundId: compoundId // Include the compound ID at the top level as well
+      _compoundId: compoundId // Include the compound ID at the top level
     };
   };
   

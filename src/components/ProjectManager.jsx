@@ -70,11 +70,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
       }
     }
     
-    // Generate a source ID if one doesn't exist
-    if (!mainObject._sourceId) {
-      mainObject._sourceId = `source-${mainObject.name}-${Date.now()}`;
-      console.log(`Generated new source ID for ${mainObject.name}: ${mainObject._sourceId}`);
-    }
+    // Removed _sourceId generation as it's not used for anything useful
     
     // Process descendants to ensure hit collection information is preserved
     const processedDescendants = allDescendants.map(descendant => {
@@ -102,8 +98,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
     return {
       object: mainObject,
       descendants: processedDescendants,
-      isWorld,
-      _sourceId: mainObject._sourceId // Include the source ID at the top level for easy access
+      isWorld
     };
   };
   // UI state
