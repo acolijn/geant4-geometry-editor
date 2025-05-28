@@ -1,0 +1,387 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Paper,
+  Tabs,
+  Tab,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField
+} from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+
+// Import utility handlers
+import {
+  createComponentHandlers,
+  createPropertyHandlers,
+  createImportExportHandlers,
+  createGeometryHandlers,
+  createUpdateHandlers
+} from './utils';
+
+// Import assembly manager utility
+import { generateAssemblyId } from './utils/assemblyManager';
+
+// Import components
+import PropertyEditor from './PropertyEditor';
+import AddNewTab from './AddNewTab';
+import UpdateObjectsDialog from './UpdateObjectsDialog';
+import LoadObjectDialog from './LoadObjectDialog';
+import SaveObjectDialog from './SaveObjectDialog';
+import HitCollectionsDialog from './HitCollectionsDialog';
+
+/**
+ * Main GeometryEditor component - Refactored Version
+ * 
+ * This component provides a comprehensive interface for creating, editing, and managing
+ * geometries for Geant4 simulations.
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.geometries - The geometry objects (world and volumes)
+ * @param {Array} props.materials - List of available materials
+ * @param {string} props.selectedGeometry - ID of the currently selected geometry
+ * @param {Array} props.hitCollections - List of hit collections for the detector
+ * @param {Function} props.onUpdateHitCollections - Callback to update hit collections
+ * @param {Function} props.onUpdateGeometry - Callback to update a geometry object
+ * @param {Function} props.onAddGeometry - Callback to add a new geometry object
+ * @param {Function} props.onRemoveGeometry - Callback to remove a geometry object
+ * @param {Function} props.extractObjectWithDescendants - Function to extract an object with its descendants
+ * @param {Function} props.handleImportPartialFromAddNew - Function to handle importing partial geometry
+ * @param {Object} props.updateDialogData - Data for the update dialog
+ * @param {boolean} props.updateDialogOpen - State of the update dialog
+ * @param {Function} props.setUpdateDialogOpen - Callback to set the update dialog state
+ */
+const RefactoredGeometryEditor = ({
+  geometries,
+  materials,
+  selectedGeometry,
+  hitCollections,
+  onUpdateHitCollections,
+  onUpdateGeometry,
+  onAddGeometry,
+  onRemoveGeometry,
+  extractObjectWithDescendants,
+  handleImportPartialFromAddNew,
+  externalUpdateDialogData,
+  updateDialogOpen,
+  setUpdateDialogOpen,
+  updateAssembliesFunc
+}) => {
+  // ===== Refs =====
+  // Reference to the file input for importing object JSON files
+  const fileInputRef = useRef(null);
+  
+  // ===== State =====
+  // Current tab index (0 = Properties, 1 = Add New)
+  const [tabIndex, setTabIndex] = useState(0);
+  
+  // Alert state for showing import/export notifications
+  const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
+  
+  // ===== Geometry Creation State =====
+  // Type of geometry to create (box, cylinder, sphere, etc.)
+  const [newGeometryType, setNewGeometryType] = useState('box');
+  // Default mother volume for new geometries
+  const [newMotherVolume, setNewMotherVolume] = useState('World');
+  // For union solids: first solid selection
+  const [firstSolid, setFirstSolid] = useState('');
+  // For union solids: second solid selection
+  const [secondSolid, setSecondSolid] = useState('');
+  // For multi-component union solids: number of additional components beyond the first two
+  const [additionalComponents, setAdditionalComponents] = useState(0);
+  // For multi-component union solids: values of the additional components
+  const [additionalComponentsValues, setAdditionalComponentsValues] = useState([]);
+
+  // ===== Dialog States =====
+  // Save Object Dialog
+  const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
+  const [objectToSave, setObjectToSave] = useState(null);
+  const [objectFileName, setObjectFileName] = useState('');
+  
+  // Load Object Dialog
+  const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
+  
+  // Hit Collections Dialog
+  const [hitCollectionsDialogOpen, setHitCollectionsDialogOpen] = useState(false);
+
+  // ===== Create handlers using utility functions =====
+  // Component handlers
+  const {
+    handleAddComponent,
+    handleRemoveComponent,
+    handleAdditionalComponentChange
+  } = createComponentHandlers(
+    { setAdditionalComponents, setAdditionalComponentsValues },
+    { additionalComponents, additionalComponentsValues }
+  );
+
+  // Property handlers
+  const {
+    getSelectedGeometryObject,
+    handleInputFocus,
+    handleNumberKeyDown,
+    handlePropertyChange,
+    handleRotationChange,
+    handleRelativePositionChange,
+    handleRelativeRotationChange
+  } = createPropertyHandlers({
+    onUpdateGeometry,
+    selectedGeometry,
+    geometries
+  });
+
+  // Import/Export handlers
+  const {
+    applyStructuredNaming,
+    handleExportObject,
+    handleImportFromFileSystem,
+    handleImportObjectFile
+  } = createImportExportHandlers({
+    handleImportPartialFromAddNew,
+    extractObjectWithDescendants,
+    geometries,
+    selectedGeometry,
+    setObjectToSave,
+    setSaveObjectDialogOpen,
+    setImportAlert
+  });
+
+  // Geometry handlers
+  const {
+    generateUniqueName,
+    handleAddGeometry,
+    handleUpdateObjects
+  } = createGeometryHandlers(
+    {
+      onAddGeometry,
+      onUpdateGeometry,
+      geometries,
+      materials,
+      setImportAlert
+    },
+    {
+      newGeometryType,
+      newMotherVolume,
+      firstSolid,
+      secondSolid,
+      additionalComponents,
+      additionalComponentsValues
+    }
+  );
+
+  // Update handlers
+  const {
+    updateAssemblies
+  } = createUpdateHandlers({
+    onUpdateGeometry,
+    geometries
+  });
+
+  // ===== Event Handlers =====
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+  };
+
+  // Handle closing of alert notifications
+  const handleCloseAlert = () => {
+    setImportAlert({ ...importAlert, show: false });
+  };
+
+  // We'll use the handleLoadObject function from the importExportHandlers utility
+
+  // Handle saving an object to a file
+  const handleSaveObject = async () => {
+    if (!objectToSave) return;
+    
+    try {
+      // Import the FileSystemManager
+      const { FileSystemManager } = await import('../../utils/FileSystemManager');
+      
+      // Generate a default file name if none is provided
+      const fileName = objectFileName || `${objectToSave.object.name || 'geometry'}.json`;
+      
+      // Save the object to a file
+      await FileSystemManager.saveTextFile(
+        JSON.stringify(objectToSave, null, 2),
+        fileName
+      );
+      
+      // Close the dialog
+      setSaveObjectDialogOpen(false);
+      setObjectFileName('');
+      
+      // Show success message
+      setImportAlert({
+        show: true,
+        message: `Object saved as ${fileName}`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error saving object:', error);
+      setImportAlert({
+        show: true,
+        message: `Error saving object: ${error.message}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  // Render the property editor tab
+  const renderPropertyEditor = () => {
+    return (
+      <PropertyEditor
+        geometries={geometries}
+        materials={materials}
+        selectedGeometry={selectedGeometry}
+        hitCollections={hitCollections}
+        onUpdateHitCollections={onUpdateHitCollections}
+        onUpdateGeometry={onUpdateGeometry}
+        onRemoveGeometry={onRemoveGeometry}
+        handlePropertyChange={handlePropertyChange}
+        handleRotationChange={handleRotationChange}
+        handleRelativePositionChange={handleRelativePositionChange}
+        handleRelativeRotationChange={handleRelativeRotationChange}
+        handleInputFocus={handleInputFocus}
+        handleNumberKeyDown={handleNumberKeyDown}
+        handleExportObject={handleExportObject}
+      />
+    );
+  };
+
+  // Render the "Add New" tab
+  const renderAddNewTab = () => {
+    return (
+      <AddNewTab
+        geometries={geometries}
+        newGeometryType={newGeometryType}
+        setNewGeometryType={setNewGeometryType}
+        newMotherVolume={newMotherVolume}
+        setNewMotherVolume={setNewMotherVolume}
+        firstSolid={firstSolid}
+        setFirstSolid={setFirstSolid}
+        secondSolid={secondSolid}
+        setSecondSolid={setSecondSolid}
+        additionalComponents={additionalComponents}
+        additionalComponentsValues={additionalComponentsValues}
+        handleAddComponent={handleAddComponent}
+        handleRemoveComponent={handleRemoveComponent}
+        handleAdditionalComponentChange={handleAdditionalComponentChange}
+        handleAddGeometry={handleAddGeometry}
+        handleImportFromFileSystem={handleImportFromFileSystem}
+        fileInputRef={fileInputRef}
+        handleImportObjectFile={handleImportObjectFile}
+        importAlert={importAlert}
+        handleCloseAlert={handleCloseAlert}
+        setLoadObjectDialogOpen={setLoadObjectDialogOpen}
+        setHitCollectionsDialogOpen={setHitCollectionsDialogOpen}
+        setUpdateObjectsDialogOpen={setUpdateDialogOpen}
+      />
+    );
+  };
+
+  return (
+    <Paper id="geometry-editor" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Tabs for switching between Properties and Add New */}
+      <Tabs 
+        value={tabIndex} 
+        onChange={handleTabChange}
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab label="Properties" />
+        <Tab label="Add New" />
+      </Tabs>
+      
+      {/* Tab content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        {tabIndex === 0 ? renderPropertyEditor() : renderAddNewTab()}
+      </div>
+      
+      {/* Alert for showing import/export notifications */}
+      <Snackbar
+        open={importAlert.show}
+        autoHideDuration={6000}
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseAlert} severity={importAlert.severity} sx={{ width: '100%' }}>
+          {importAlert.message}
+        </Alert>
+      </Snackbar>
+      
+      {/* SaveObjectDialog for saving objects with a nicer interface */}
+      <SaveObjectDialog
+        open={saveObjectDialogOpen}
+        onClose={() => setSaveObjectDialogOpen(false)}
+        onSave={async (name, description, preserveComponentIds) => {
+          if (!objectToSave) return;
+          
+          try {
+            // Import the ObjectStorage utility
+            const { saveObject } = await import('../../utils/ObjectStorage');
+            
+            // Generate a default file name if none is provided
+            const fileName = name || objectToSave.object.name || 'geometry';
+            
+            // Apply structured naming if needed
+            const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
+            
+            // Save the object to the library
+            await saveObject(fileName, description, dataToSave);
+            
+            // Close the dialog
+            setSaveObjectDialogOpen(false);
+            
+            // Show success message
+            setImportAlert({
+              show: true,
+              message: `Object saved as ${fileName}`,
+              severity: 'success'
+            });
+          } catch (error) {
+            console.error('Error saving object:', error);
+            setImportAlert({
+              show: true,
+              message: `Error saving object: ${error.message}`,
+              severity: 'error'
+            });
+          }
+        }}
+        objectData={objectToSave}
+        defaultName={objectToSave?.object?.name || ''}
+      />
+      
+      {/* Update Objects Dialog */}
+      <UpdateObjectsDialog
+        open={updateDialogOpen}
+        onClose={() => setUpdateDialogOpen(false)}
+        onUpdate={handleUpdateObjects}
+        geometries={geometries}
+        preSelectedData={externalUpdateDialogData}
+        directUpdateFunc={updateAssemblies}
+      />
+      
+      {/* Load Object Dialog */}
+      <LoadObjectDialog
+        open={loadObjectDialogOpen}
+        onClose={() => setLoadObjectDialogOpen(false)}
+        onLoad={handleImportObjectFile}
+        onAddNew={() => handleTabChange(null, 1)} // Switch to Add New tab
+      />
+      
+      {/* Hit Collections Dialog */}
+      <HitCollectionsDialog
+        open={hitCollectionsDialogOpen}
+        onClose={() => setHitCollectionsDialogOpen(false)}
+        hitCollections={hitCollections}
+        onUpdateHitCollections={onUpdateHitCollections}
+      />
+    </Paper>
+  );
+};
+
+export default RefactoredGeometryEditor;

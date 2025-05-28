@@ -1,0 +1,392 @@
+/**
+ * Geometry Handlers for Geometry Editor
+ * 
+ * This module contains handler functions for creating and managing geometry objects.
+ */
+
+// Import the assemblyManager utility
+import { generateAssemblyId } from './assemblyManager';
+
+/**
+ * Creates geometry handler functions with access to state and setState
+ * 
+ * @param {Object} props - Object containing props and functions
+ * @param {Function} props.onAddGeometry - Function to add new geometry
+ * @param {Function} props.onUpdateGeometry - Function to update geometry
+ * @param {Object} props.geometries - Object containing all geometries
+ * @param {Array} props.materials - Array of available materials
+ * @param {Function} props.setImportAlert - Function to set import alerts
+ * @param {Object} state - Object containing current state values
+ * @param {string} state.newGeometryType - Type of new geometry to create
+ * @param {string} state.newMotherVolume - Mother volume for new geometry
+ * @param {string} state.firstSolid - First solid for union
+ * @param {string} state.secondSolid - Second solid for union
+ * @param {number} state.additionalComponents - Number of additional components
+ * @param {Array} state.additionalComponentsValues - Values of additional components
+ * @returns {Object} Object containing handler functions
+ */
+export const createGeometryHandlers = (props, state) => {
+  const { 
+    onAddGeometry, 
+    onUpdateGeometry, 
+    geometries, 
+    materials,
+    setImportAlert
+  } = props;
+  
+  const {
+    newGeometryType,
+    newMotherVolume,
+    firstSolid,
+    secondSolid,
+    additionalComponents,
+    additionalComponentsValues
+  } = state;
+
+  /**
+   * Generate a unique name for an object, ensuring it doesn't conflict with existing objects
+   * 
+   * @param {string} baseName - Base name for the object
+   * @param {string} type - Type of the object
+   * @returns {string} A unique name for the object
+   */
+  const generateUniqueName = (baseName, type) => {
+    // Start with the base name and type
+    let name = `${baseName}_${type}`;
+    let counter = 1;
+    
+    // Check if the name already exists in world or volumes
+    const nameExists = (testName) => {
+      if (geometries.world.name === testName) return true;
+      
+      return geometries.volumes.some(volume => volume.name === testName);
+    };
+    
+    // Add a counter to the name until it's unique
+    while (nameExists(name)) {
+      name = `${baseName}_${type}_${counter}`;
+      counter++;
+    }
+    
+    return name;
+  };
+
+  /**
+   * Add a new geometry object to the scene
+   * 
+   * This function creates a new geometry object based on the selected type and mother volume.
+   * It handles special cases for union solids, which require combining two existing solids.
+   * For basic geometries, it creates objects with default properties based on the type.
+   */
+  const handleAddGeometry = () => {
+    // Default material (use the first available material or a placeholder)
+    const defaultMaterial = materials.length > 0 ? materials[0].name : 'G4_AIR';
+    
+    // For union solids, we need to combine existing solids
+    if (newGeometryType === 'union') {
+      // Validate that both solids are selected
+      if (!firstSolid || !secondSolid) {
+        setImportAlert({
+          show: true,
+          message: 'Please select both solids for the union',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Find the selected solids in the geometries
+      let firstSolidObj = null;
+      let secondSolidObj = null;
+      
+      if (firstSolid === 'world') {
+        firstSolidObj = geometries.world;
+      } else if (firstSolid.startsWith('volume-')) {
+        const index = parseInt(firstSolid.split('-')[1]);
+        firstSolidObj = geometries.volumes[index];
+      }
+      
+      if (secondSolid === 'world') {
+        secondSolidObj = geometries.world;
+      } else if (secondSolid.startsWith('volume-')) {
+        const index = parseInt(secondSolid.split('-')[1]);
+        secondSolidObj = geometries.volumes[index];
+      }
+      
+      // Validate that both solids exist
+      if (!firstSolidObj || !secondSolidObj) {
+        setImportAlert({
+          show: true,
+          message: 'One or both selected solids do not exist',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Create the union object
+      const unionObject = {
+        name: generateUniqueName('Union', 'solid'),
+        type: 'union',
+        material: defaultMaterial,
+        mother_volume: newMotherVolume,
+        position: { x: 0, y: 0, z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        visible: true,
+        first_solid: firstSolidObj.name,
+        second_solid: secondSolidObj.name,
+        relative_position: { x: 0, y: 0, z: 0 },
+        relative_rotation: { x: 0, y: 0, z: 0 }
+      };
+      
+      // Add additional components if specified
+      if (additionalComponents > 0) {
+        unionObject.additional_components = [];
+        
+        for (let i = 0; i < additionalComponents; i++) {
+          const componentName = additionalComponentsValues[i];
+          if (!componentName) continue;
+          
+          // Find the component in the geometries
+          let componentObj = null;
+          
+          if (componentName === 'world') {
+            componentObj = geometries.world;
+          } else if (componentName.startsWith('volume-')) {
+            const index = parseInt(componentName.split('-')[1]);
+            componentObj = geometries.volumes[index];
+          }
+          
+          if (componentObj) {
+            unionObject.additional_components.push({
+              solid: componentObj.name,
+              position: { x: 0, y: 0, z: 0 },
+              rotation: { x: 0, y: 0, z: 0 }
+            });
+          }
+        }
+      }
+      
+      // Add the union object to the scene
+      onAddGeometry(unionObject);
+      return;
+    }
+    
+    // For basic geometries, create a new object with default properties
+    const newObject = {
+      name: generateUniqueName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
+      type: newGeometryType,
+      material: defaultMaterial,
+      mother_volume: newMotherVolume,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      visible: true
+    };
+    
+    // Add type-specific properties
+    switch (newGeometryType) {
+      case 'box':
+        newObject.dimensions = { x: 10, y: 10, z: 10 };
+        break;
+        
+      case 'cylinder':
+        newObject.dimensions = {
+          radius: 5,
+          height: 10,
+          innerRadius: 0,
+          startAngle: 0,
+          spanningAngle: 360
+        };
+        break;
+        
+      case 'sphere':
+        newObject.dimensions = {
+          radius: 5,
+          innerRadius: 0,
+          startPhi: 0,
+          spanningPhi: 360,
+          startTheta: 0,
+          spanningTheta: 180
+        };
+        break;
+        
+      case 'cone':
+        newObject.dimensions = {
+          radiusTop: 0,
+          radiusBottom: 5,
+          height: 10,
+          innerRadiusTop: 0,
+          innerRadiusBottom: 0,
+          startAngle: 0,
+          spanningAngle: 360
+        };
+        break;
+        
+      case 'torus':
+        newObject.dimensions = {
+          radius: 10,
+          tubeRadius: 2,
+          startAngle: 0,
+          spanningAngle: 360
+        };
+        break;
+        
+      case 'polycone':
+        newObject.dimensions = {
+          startAngle: 0,
+          spanningAngle: 360,
+          zSections: [
+            { z: -10, rInner: 0, rOuter: 5 },
+            { z: 0, rInner: 0, rOuter: 10 },
+            { z: 10, rInner: 0, rOuter: 5 }
+          ]
+        };
+        break;
+        
+      case 'assembly':
+        // Always use a consistent naming pattern for assemblies
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const typeName = newObject.displayName || 'assembly';
+        
+        // Use assembly_<timestamp>_<randomSuffix> format for the name
+        newObject.name = `assembly_${timestamp}_${randomSuffix}`;
+        
+        // Store the typeName in the _assemblyId for type identification
+        newObject._assemblyId = `${typeName}_${timestamp}_${randomSuffix}`;
+        
+        console.log(`Created new assembly with name: ${newObject.name} and ID: ${newObject._assemblyId}`);
+        newObject.components = [];
+        break;
+        
+      default:
+        // For any other types, use default dimensions
+        newObject.dimensions = { x: 10, y: 10, z: 10 };
+    }
+    
+    // Add the new object to the scene
+    onAddGeometry(newObject);
+  };
+
+  /**
+   * Handle updating objects in the scene
+   * 
+   * @param {Array} instanceIds - Array of instance IDs to update
+   * @param {Object} objectData - Object data to use for the update
+   * @returns {Object} Result of the update operation
+   */
+  const handleUpdateObjects = (instanceIds, objectData) => {
+    try {
+      // Basic validation
+      if (!instanceIds || !instanceIds.length) {
+        console.error('No instances selected');
+        return { success: false, message: 'No instances selected' };
+      }
+      
+      if (!objectData || !objectData.object) {
+        console.error('No object data provided');
+        return { success: false, message: 'No object data provided' };
+      }
+      
+      // Count of updated objects
+      let updatedCount = 0;
+      
+      // Process each instance
+      instanceIds.forEach(instanceId => {
+        // Get the instance to update
+        let instance;
+        
+        if (instanceId === 'world') {
+          instance = geometries.world;
+        } else if (instanceId.startsWith('volume-')) {
+          const volumeIndex = parseInt(instanceId.split('-')[1]);
+          instance = geometries.volumes[volumeIndex];
+        }
+        
+        if (!instance) {
+          console.warn(`Instance ${instanceId} not found`);
+          return;
+        }
+        
+        // Create updated object with properties from template
+        const updatedObject = { ...objectData.object };
+        
+        // Preserve critical properties
+        updatedObject.position = { ...instance.position };
+        updatedObject.rotation = { ...instance.rotation };
+        updatedObject.name = instance.name;
+        updatedObject.mother_volume = instance.mother_volume;
+        
+        // Preserve assembly ID if this is an assembly
+        if (instance.type === 'assembly' && instance._assemblyId) {
+          updatedObject._assemblyId = instance._assemblyId;
+          console.log(`Preserving assembly ID during update: ${instance._assemblyId}`);
+        }
+        
+        // Update the instance
+        onUpdateGeometry(instanceId, updatedObject, true, false);
+        updatedCount++;
+        
+        // If this is an assembly and has descendants, update them too
+        if (instance.type === 'assembly' && objectData.descendants && objectData.descendants.length > 0) {
+          // Find all components that belong to this assembly
+          const components = [];
+          
+          for (let i = 0; i < geometries.volumes.length; i++) {
+            const volume = geometries.volumes[i];
+            if (volume.mother_volume === instance.name) {
+              components.push({
+                index: i,
+                id: `volume-${i}`,
+                object: volume
+              });
+            }
+          }
+          
+          // Match components with descendants by type or name
+          objectData.descendants.forEach(descendant => {
+            // Find a matching component
+            const matchingComponent = components.find(c => 
+              c.object.type === descendant.type || 
+              c.object.name === descendant.name
+            );
+            
+            if (matchingComponent) {
+              // Create updated component with properties from descendant
+              const updatedComponent = { ...descendant };
+              
+              // Preserve critical properties
+              updatedComponent.name = matchingComponent.object.name;
+              updatedComponent.mother_volume = instance.name;
+              
+              // Update the component
+              onUpdateGeometry(matchingComponent.id, updatedComponent, true, false);
+            }
+          });
+        }
+      });
+      
+      // Return success without showing an alert message
+      return {
+        success: true,
+        updatedCount
+      };
+    } catch (error) {
+      console.error('Error updating objects:', error);
+      setImportAlert({
+        show: true,
+        message: `Error updating objects: ${error.message}`,
+        severity: 'error'
+      });
+      
+      return {
+        success: false,
+        message: `Error updating objects: ${error.message}`
+      };
+    }
+  };
+
+  return {
+    generateUniqueName,
+    handleAddGeometry,
+    handleUpdateObjects
+  };
+};
