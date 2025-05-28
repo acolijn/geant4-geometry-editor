@@ -30,9 +30,9 @@ export const ensureStableAssemblyId = (assembly) => {
   // Create a copy to avoid mutating the original
   const processedAssembly = { ...assembly };
   
-  // If the assembly doesn't have an _assemblyId, generate one
-  if (!processedAssembly._assemblyId) {
-    processedAssembly._assemblyId = generateAssemblyId(
+  // If the assembly doesn't have a _compoundId, generate one
+  if (!processedAssembly._compoundId) {
+    processedAssembly._compoundId = generateAssemblyId(
       processedAssembly.displayName || processedAssembly.name || 'assembly'
     );
   }
@@ -64,11 +64,11 @@ export const getAssemblyType = (assemblyId) => {
 export const isSameAssemblyType = (assembly1, assembly2) => {
   if (!assembly1 || !assembly2) return false;
   
-  // If both have _assemblyId, compare the type portion
-  if (assembly1._assemblyId && assembly2._assemblyId) {
-    return getAssemblyType(assembly1._assemblyId) === getAssemblyType(assembly2._assemblyId);
+  // If both have _compoundId, compare the type portion
+  if (assembly1._compoundId && assembly2._compoundId) {
+    return getAssemblyType(assembly1._compoundId) === getAssemblyType(assembly2._compoundId);
   }
   
-  // If no _assemblyId, fall back to comparing names
+  // If no _compoundId, fall back to comparing names
   return assembly1.name === assembly2.name;
 };

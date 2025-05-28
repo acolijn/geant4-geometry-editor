@@ -67,7 +67,7 @@ export const createUpdateHandlers = (props) => {
       if (volume.type !== 'assembly') continue;
       
       // Skip assemblies that are not of the same type as the source assembly
-      // Use the _assemblyId to determine if they are the same type
+      // Use the _compoundId to determine if they are the same type
       if (!isSameAssemblyType(selectedVolume, volume)) {
         console.log(`Assembly ${volume.name} is not the same type as ${selectedVolume.name}, skipping`);
         continue;
@@ -86,9 +86,9 @@ export const createUpdateHandlers = (props) => {
         mother_volume: volume.mother_volume
       };
       
-      // Preserve assembly ID to maintain stable identity
-      if (volume._assemblyId) {
-        updatedAssembly._assemblyId = volume._assemblyId;
+      // Preserve compound ID to maintain stable identity
+      if (volume._compoundId) {
+        updatedAssembly._compoundId = volume._compoundId;
       }
       
       // If the assembly has an instance ID, preserve it

@@ -292,14 +292,14 @@ export const createImportExportHandlers = (props) => {
       // Always use assembly_<timestamp>_<randomSuffix> format for the name
       processedData.object.name = `assembly_${timestamp}_${randomSuffix}`;
       
-      // Preserve the existing _assemblyId if it exists, otherwise create a new one
-      if (!processedData.object._assemblyId) {
-        // Generate a stable assembly ID based on the display name or name
+      // Preserve the existing _compoundId if it exists, otherwise create a new one
+      if (!processedData.object._compoundId) {
+        // Generate a stable compound ID based on the display name or name
         const typeName = processedData.object.displayName || baseName;
-        processedData.object._assemblyId = `${typeName}_${timestamp}_${randomSuffix}`;
+        processedData.object._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
       }
       
-      console.log(`Imported assembly with name: ${processedData.object.name} and ID: ${processedData.object._assemblyId}`);
+      console.log(`Imported assembly with name: ${processedData.object.name} and ID: ${processedData.object._compoundId}`);
     } else {
       // For non-assembly objects, use the standard naming convention
       processedData.object.name = `${baseName}_${importId}`;
@@ -366,13 +366,13 @@ export const createImportExportHandlers = (props) => {
       exportData.object.name = `assembly_${timestamp}_${randomSuffix}`;
       
       // If it's an assembly, ensure it has a stable ID
-      if (!exportData.object._assemblyId) {
-        // Generate a stable assembly ID based on the display name or name
+      if (!exportData.object._compoundId) {
+        // Generate a stable compound ID based on the display name or name
         const typeName = exportData.object.displayName || originalName || 'assembly';
-        exportData.object._assemblyId = `${typeName}_${timestamp}_${randomSuffix}`;
+        exportData.object._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
       }
       
-      console.log(`Exporting assembly with name: ${exportData.object.name} and ID: ${exportData.object._assemblyId}`);
+      console.log(`Exporting assembly with name: ${exportData.object.name} and ID: ${exportData.object._compoundId}`);
     }
     
     // Add debug information

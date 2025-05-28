@@ -254,10 +254,10 @@ export const createGeometryHandlers = (props, state) => {
         // Use assembly_<timestamp>_<randomSuffix> format for the name
         newObject.name = `assembly_${timestamp}_${randomSuffix}`;
         
-        // Store the typeName in the _assemblyId for type identification
-        newObject._assemblyId = `${typeName}_${timestamp}_${randomSuffix}`;
+        // Store the typeName in the _compoundId for type identification
+        newObject._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
         
-        console.log(`Created new assembly with name: ${newObject.name} and ID: ${newObject._assemblyId}`);
+        console.log(`Created new assembly with name: ${newObject.name} and ID: ${newObject._compoundId}`);
         newObject.components = [];
         break;
         
@@ -319,10 +319,10 @@ export const createGeometryHandlers = (props, state) => {
         updatedObject.name = instance.name;
         updatedObject.mother_volume = instance.mother_volume;
         
-        // Preserve assembly ID if this is an assembly
-        if (instance.type === 'assembly' && instance._assemblyId) {
-          updatedObject._assemblyId = instance._assemblyId;
-          console.log(`Preserving assembly ID during update: ${instance._assemblyId}`);
+        // Preserve compound ID if this is an assembly
+        if (instance.type === 'assembly' && instance._compoundId) {
+          updatedObject._compoundId = instance._compoundId;
+          console.log(`Preserving compound ID during update: ${instance._compoundId}`);
         }
         
         // Update the instance
