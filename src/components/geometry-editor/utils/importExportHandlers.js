@@ -357,13 +357,14 @@ export const createImportExportHandlers = (props) => {
     
     // Ensure assembly objects have stable IDs and consistent naming
     if (exportData.object && exportData.object.type === 'assembly') {
-      // Generate a timestamp and random suffix for consistent naming
+      // Generate a timestamp and random suffix only for the ID if needed
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
       
-      // Always use assembly_<timestamp>_<randomSuffix> format for the name
+      // IMPORTANT: Preserve the original assembly name instead of generating a new one
+      // This ensures that parent references to this assembly remain valid
       const originalName = exportData.object.name;
-      exportData.object.name = `assembly_${timestamp}_${randomSuffix}`;
+      console.log(`Preserving original assembly name: ${originalName}`);
       
       // If it's an assembly, ensure it has a stable ID
       if (!exportData.object._compoundId) {
@@ -373,6 +374,36 @@ export const createImportExportHandlers = (props) => {
       }
       
       console.log(`Exporting assembly with name: ${exportData.object.name} and ID: ${exportData.object._compoundId}`);
+      
+      // Fix parent references for top-level objects in the assembly
+      // This ensures that all direct children point to the assembly's name, not its ID
+      if (exportData.descendants && exportData.descendants.length > 0) {
+        const assemblyName = exportData.object.name;
+        const assemblyId = exportData.object._compoundId;
+        
+        console.log(`Fixing parent references for assembly ${assemblyName}`);
+        
+        exportData.descendants.forEach(descendant => {
+          // Check if this is a direct child of the assembly (parent references an assembly ID)
+          if (descendant.parent && 
+              (descendant.parent.startsWith('assembly_') || 
+               descendant.parent === assemblyId)) {
+            
+            // Update the parent reference to use the assembly's name
+            const oldParent = descendant.parent;
+            descendant.parent = assemblyName;
+            console.log(`Updated parent reference for ${descendant.name} from ${oldParent} to ${assemblyName}`);
+            
+            // Also update mother_volume if it exists and references the assembly
+            if (descendant.mother_volume && 
+                (descendant.mother_volume.startsWith('assembly_') ||
+                 descendant.mother_volume === assemblyId)) {
+              descendant.mother_volume = assemblyName;
+              console.log(`Updated mother_volume reference for ${descendant.name} to ${assemblyName}`);
+            }
+          }
+        });
+      }
     }
     
     // Add debug information

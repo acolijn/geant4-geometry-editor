@@ -1,60 +1,36 @@
 {
   "object": {
-    "type": "box",
-    "name": "base",
-    "material": "G4_WATER",
-    "_sourceId": "source-base-1748188360248",
-    "_compoundId": "compound-PMT-box",
+    "name": "assembly_1748439469568_o73hdd",
+    "type": "assembly",
+    "material": "G4_AIR",
     "visible": true,
+    "_compoundId": "assembly_1748439124292_lgqxee",
+    "components": [],
+    "displayName": "PMT",
     "placement": {
-      "x": -69.5205125251815,
+      "x": 0,
       "y": 0,
-      "z": -72.93479732367892,
+      "z": 0,
       "rotation": {
         "x": 0,
         "y": 0,
         "z": 0
       }
     },
-    "dimensions": {
-      "x": 10,
-      "y": 10,
-      "z": 20
-    }
+    "dimensions": {},
+    "parent": "World"
   },
   "descendants": [
     {
-      "type": "cylinder",
-      "name": "glass",
-      "material": "LXe",
-      "isActive": true,
-      "hitsCollectionName": "MyHitsCollection",
-      "_compoundId": "compound-PMT-box",
+      "name": "box_1748439127854_4409",
+      "type": "box",
+      "material": "G4_AIR",
       "visible": true,
+      "displayName": "Box_1",
+      "_compoundId": "assembly_1748439124292_lgqxee",
+      "_componentId": "component_1748439469568_rey9yv14",
       "placement": {
         "x": 0,
-        "y": 0,
-        "z": 30,
-        "rotation": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        }
-      },
-      "dimensions": {
-        "radius": 20,
-        "height": 30
-      },
-      "parent": "base"
-    },
-    {
-      "type": "sphere",
-      "name": "dynode",
-      "material": "G4_Cu",
-      "_compoundId": "compound-PMT-box",
-      "visible": true,
-      "placement": {
-        "x": 30,
         "y": 0,
         "z": 0,
         "rotation": {
@@ -64,25 +40,79 @@
         }
       },
       "dimensions": {
-        "radius": 12
+        "x": 100,
+        "y": 100,
+        "z": 100
       },
-      "parent": "glass"
+      "parent": "assembly_1748439124292_9201"
+    },
+    {
+      "name": "cylinder_1748439132456_3971",
+      "type": "cylinder",
+      "material": "G4_AIR",
+      "visible": true,
+      "startAngle": 0,
+      "spanningAngle": 6.283185307179586,
+      "displayName": "Cylinder_1",
+      "_compoundId": "assembly_1748439124292_lgqxee",
+      "_componentId": "component_1748439469568_8i8yg5i2",
+      "placement": {
+        "x": 0,
+        "y": 0,
+        "z": 110,
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "dimensions": {
+        "radius": 50,
+        "inner_radius": 0,
+        "height": 100
+      },
+      "parent": "assembly_1748439124292_9201"
+    },
+    {
+      "name": "sphere_1748439425231_8177",
+      "type": "sphere",
+      "material": "G4_AIR",
+      "visible": true,
+      "innerRadius": 0,
+      "startPhi": 0,
+      "spanningPhi": 6.283185307179586,
+      "startTheta": 0,
+      "spanningTheta": 3.141592653589793,
+      "displayName": "Sphere_1",
+      "_compoundId": "assembly_1748439124292_lgqxee",
+      "placement": {
+        "x": 165.72868066689767,
+        "y": -1.250352686089418,
+        "z": -0.9761224901163379,
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "dimensions": {
+        "radius": 50
+      },
+      "parent": "cylinder_1748439132456_3971"
     }
   ],
   "isWorld": false,
-  "_sourceId": "source-base-1748188360248",
-  "_compoundId": "compound-PMT-box",
-  "debug": {
-    "exportedAt": "2025-05-26T07:34:46.090Z",
-    "objectType": "box",
-    "objectName": "PMT_base_0",
-    "descendantCount": 2
+  "_compoundId": "assembly_1748439124292_lgqxee",
+  "_debug": {
+    "exportedAt": "2025-05-28T13:37:49.568Z",
+    "sourceApplication": "Geant4 Geometry Editor",
+    "version": "1.0.0"
   },
   "metadata": {
     "name": "PMT",
     "description": "",
-    "createdAt": "2025-05-26T07:34:51.012Z",
-    "updatedAt": "2025-05-26T07:34:51.012Z",
+    "createdAt": "2025-05-28T13:37:53.002Z",
+    "updatedAt": "2025-05-28T13:37:53.002Z",
     "formatVersion": "2.0"
   }
 }
