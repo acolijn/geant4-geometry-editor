@@ -125,17 +125,20 @@ export function convertToMultiplePlacements(geometry) {
     
     // Create a compound object for this assembly type
     // Assembly is just a container - no material, color, or dimensions
+    
+    // Get the displayName and remove any trailing _number pattern
+    let compoundName = templateVolume.displayName || templateVolume.name;
+    compoundName = compoundName.replace(/_\d+$/, '');
+    
     const compoundObject = {
       type: 'compound',
-      // Use the _compoundId as the unique identifier
-      ID: assemblyTypeId,
-      // Use a descriptive name from the template volume
-      name: templateVolume.displayName || templateVolume.name,
+      // Use the clean name without trailing numbers
+      name: compoundName,
       components: [],
       placements: []
     };
     
-    console.log(`Created compound object with ID: ${assemblyTypeId} and name: ${compoundObject.name}`);
+    console.log(`Created compound object with name: ${compoundObject.name} (from original: ${templateVolume.displayName || templateVolume.name})`);
     
     // No hitCollection at the assembly level
     
@@ -452,12 +455,13 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   // Use the internal name from the object's first component
   const rootComponentName = rootVolume.name;
   
+  // Clean the compound name by removing any trailing _number pattern
+  compoundName = compoundName.replace(/_\d+$/, '');
+  
   // Create the compound object
   const compoundObject = {
     type: 'compound',
     name: compoundName,
-    // Add the _compoundId as the ID property for unique identification
-    ID: rootVolume._compoundId,
     placements: rootInstances.map((instance, index) => {
       // Use displayName if available, otherwise fall back to compoundName
       const displayName = instance.displayName || compoundName;

@@ -148,10 +148,10 @@ const JsonViewer = ({ geometries, materials }) => {
         // Copy the name
         convertedVolume.name = volume.name;
         
-        // Always include _compoundId as ID if it exists - this is critical for assembly identification
+        // We're using _compoundId internally for identification, but not including it in the output JSON
+        // Just log for debugging purposes
         if (volume._compoundId) {
-          convertedVolume.ID = volume._compoundId;
-          console.log(`JsonViewer - Added ID ${volume._compoundId} to volume ${volume.name}`);
+          console.log(`JsonViewer - Volume ${volume.name} has _compoundId: ${volume._compoundId} (not included in output)`);
         } else if (volume.type === 'assembly') {
           console.warn(`JsonViewer - WARNING: Assembly ${volume.name} has no _compoundId!`);
         }
