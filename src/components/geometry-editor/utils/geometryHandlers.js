@@ -171,6 +171,12 @@ export const createGeometryHandlers = (props, state) => {
     }
     
     // For basic geometries, create a new object with default properties
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 10);
+    
+    // Generate a unique component ID that will persist throughout the object's lifecycle
+    const componentId = `component_${timestamp}_${randomSuffix}`;
+    
     const newObject = {
       name: generateUniqueName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
       type: newGeometryType,
@@ -178,7 +184,8 @@ export const createGeometryHandlers = (props, state) => {
       mother_volume: newMotherVolume,
       position: { x: 0, y: 0, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
-      visible: true
+      visible: true,
+      _componentId: componentId  // Add a stable component ID at creation time
     };
     
     // Add type-specific properties

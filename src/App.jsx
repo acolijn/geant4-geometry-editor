@@ -381,26 +381,6 @@ function App() {
         const processedDesc = { ...desc };
         const originalName = processedDesc.name;
         
-        // Ensure each descendant has all required properties
-/*         if (processedDesc.type === 'cylinder') {
-          if (!processedDesc.radius) processedDesc.radius = 5;
-          if (!processedDesc.height) processedDesc.height = 10;
-          
-          // Standardize inner_radius property name
-          if (processedDesc.innerRadius !== undefined && processedDesc.inner_radius === undefined) {
-            // Convert innerRadius to inner_radius for consistency
-            processedDesc.inner_radius = processedDesc.innerRadius;
-            delete processedDesc.innerRadius;
-          } else if (!processedDesc.inner_radius) {
-            // Set default if neither property exists
-            processedDesc.inner_radius = 0;
-          }
-        } else if (processedDesc.type === 'box') {
-          if (!processedDesc.size) {
-            processedDesc.size = { x: 10, y: 10, z: 10 };
-          }
-        } */
-        
         // Ensure position and rotation
         if (!processedDesc.position) {
           processedDesc.position = { x: 0, y: 0, z: 0 };
