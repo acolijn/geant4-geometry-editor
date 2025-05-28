@@ -21,6 +21,7 @@ import JsonViewer from './components/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
 import { standardizeProjectData, restoreProjectData } from './utils/ObjectFormatStandardizer';
+import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
 import './App.css';
 
 // Create a theme
@@ -77,6 +78,9 @@ function App() {
       // Check if the name has changed (for updating daughter references)
       let oldName = null;
       let newName = updatedObject.name;
+      let oldMotherVolume = null;
+      let newMotherVolume = updatedObject.mother_volume;
+      let isParentChanged = false;
       
       if (id === 'world') {
         oldName = geometries.world.name;
@@ -104,6 +108,10 @@ function App() {
       } else if (id.startsWith('volume-')) {
         const index = parseInt(id.split('-')[1]);
         oldName = geometries.volumes[index].name;
+        oldMotherVolume = geometries.volumes[index].mother_volume;
+        
+        // Check if the parent has changed
+        isParentChanged = oldMotherVolume !== newMotherVolume;
         
         setGeometries(prevGeometries => {
           const updatedVolumes = [...prevGeometries.volumes];
@@ -128,6 +136,36 @@ function App() {
                 updatedVolumes[i] = { ...volume, mother_volume: newName };
               }
             });
+          }
+          
+          // If parent changed and new parent is an assembly, propagate the _compoundId
+          if (isParentChanged && newMotherVolume) {
+            // Find the new parent object
+            const newParentIndex = updatedVolumes.findIndex(vol => vol.name === newMotherVolume);
+            const newParent = newParentIndex !== -1 ? updatedVolumes[newParentIndex] : 
+                             (newMotherVolume === prevGeometries.world.name ? prevGeometries.world : null);
+            
+            // If the new parent is an assembly and has a _compoundId, propagate it
+            if (newParent && newParent.type === 'assembly' && newParent._compoundId) {
+              console.log(`Parent changed to assembly ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
+              
+              // Add _compoundId to the updated object
+              updatedVolumes[index]._compoundId = newParent._compoundId;
+              console.log(`Added _compoundId ${newParent._compoundId} to object ${updatedObject.name}`);
+              
+              // Propagate _compoundId to all descendants
+              const updatedWithDescendants = propagateCompoundIdToDescendants(
+                updatedObject.name, 
+                newParent._compoundId, 
+                updatedVolumes
+              );
+              
+              // Update the volumes with the propagated _compoundId
+              return {
+                ...prevGeometries,
+                volumes: updatedWithDescendants
+              };
+            }
           }
           
           return {
@@ -180,6 +218,19 @@ function App() {
       newGeometry.displayName = `${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}_${existingCount + 1}`;
     }
     
+    // Check if the parent is an assembly and propagate _compoundId if needed
+    if (newGeometry.mother_volume && newGeometry.mother_volume !== 'World') {
+      // Find the parent object
+      const parentVolume = geometries.volumes.find(vol => vol.name === newGeometry.mother_volume);
+      
+      // If the parent is an assembly and has a _compoundId, propagate it to the new object
+      if (parentVolume && parentVolume.type === 'assembly' && parentVolume._compoundId) {
+        console.log(`New object's parent is assembly ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
+        newGeometry._compoundId = parentVolume._compoundId;
+        console.log(`Added _compoundId ${parentVolume._compoundId} to new object ${newGeometry.name}`);
+      }
+    }
+    
     // Log the geometry being added
     console.log('Adding geometry:', newGeometry);
     
@@ -188,9 +239,26 @@ function App() {
     const newVolumeKey = `volume-${newVolumeIndex}`;
     
     // Update geometries with the new object
-    setGeometries({
-      ...geometries,
-      volumes: [...geometries.volumes, newGeometry]
+    setGeometries(prevGeometries => {
+      const updatedGeometries = {
+        ...prevGeometries,
+        volumes: [...prevGeometries.volumes, newGeometry]
+      };
+      
+      // If the new object has a _compoundId (from an assembly parent), we need to propagate it to any descendants
+      // This is for cases where a complex object with children is added to an assembly
+      if (newGeometry._compoundId) {
+        return {
+          ...updatedGeometries,
+          volumes: propagateCompoundIdToDescendants(
+            newGeometry.name,
+            newGeometry._compoundId,
+            updatedGeometries.volumes
+          )
+        };
+      }
+      
+      return updatedGeometries;
     });
     
     // Select the newly added geometry
