@@ -184,61 +184,65 @@ export const createGeometryHandlers = (props, state) => {
     // Add type-specific properties
     switch (newGeometryType) {
       case 'box':
-        newObject.dimensions = { x: 10, y: 10, z: 10 };
+        newObject.size = { x: 100, y: 100, z: 100 };
         break;
         
       case 'cylinder':
-        newObject.dimensions = {
-          radius: 5,
-          height: 10,
-          innerRadius: 0,
-          startAngle: 0,
-          spanningAngle: 360
-        };
+        newObject.radius = 50;
+        newObject.height = 100;
+        newObject.innerRadius = 0;
+        newObject.startAngle = 0;
+        newObject.spanningAngle = 2 * Math.PI;  // Use radians (2π) instead of 360 degrees
         break;
         
       case 'sphere':
-        newObject.dimensions = {
-          radius: 5,
-          innerRadius: 0,
-          startPhi: 0,
-          spanningPhi: 360,
-          startTheta: 0,
-          spanningTheta: 180
-        };
+        newObject.radius = 50;
+        newObject.innerRadius = 0;
+        newObject.startPhi = 0;
+        newObject.spanningPhi = 2 * Math.PI;  // Use radians (2π) instead of 360 degrees
+        newObject.startTheta = 0;
+        newObject.spanningTheta = Math.PI;    // Use radians (π) instead of 180 degrees
         break;
         
       case 'cone':
-        newObject.dimensions = {
-          radiusTop: 0,
-          radiusBottom: 5,
-          height: 10,
-          innerRadiusTop: 0,
-          innerRadiusBottom: 0,
-          startAngle: 0,
-          spanningAngle: 360
-        };
+        newObject.radiusTop = 0;
+        newObject.radiusBottom = 50;
+        newObject.height = 100;
+        newObject.innerRadiusTop = 0;
+        newObject.innerRadiusBottom = 0;
+        newObject.startAngle = 0;
+        newObject.spanningAngle = 2 * Math.PI;  // Use radians (2π) instead of 360 degrees
         break;
         
       case 'torus':
-        newObject.dimensions = {
-          radius: 10,
-          tubeRadius: 2,
-          startAngle: 0,
-          spanningAngle: 360
-        };
+        newObject.majorRadius = 50;
+        newObject.minorRadius = 10;
+        newObject.startAngle = 0;
+        newObject.spanningAngle = 2 * Math.PI;  // Use radians (2π) instead of 360 degrees
+        break;
+        
+      case 'ellipsoid':
+        newObject.xRadius = 50;
+        newObject.yRadius = 30;
+        newObject.zRadius = 40;
         break;
         
       case 'polycone':
-        newObject.dimensions = {
-          startAngle: 0,
-          spanningAngle: 360,
-          zSections: [
-            { z: -10, rInner: 0, rOuter: 5 },
-            { z: 0, rInner: 0, rOuter: 10 },
-            { z: 10, rInner: 0, rOuter: 5 }
-          ]
-        };
+        newObject.startAngle = 0;
+        newObject.spanningAngle = 2 * Math.PI;  // Use radians (2π) instead of 360 degrees
+        newObject.zSections = [
+          { z: -50, rMin: 0, rMax: 30 },
+          { z: 0, rMin: 0, rMax: 50 },
+          { z: 50, rMin: 0, rMax: 30 }
+        ];
+        break;
+        
+      case 'trapezoid':
+        newObject.dx1 = 50; // Half-length in x at -z/2
+        newObject.dx2 = 50; // Half-length in x at +z/2
+        newObject.dy1 = 50; // Half-length in y at -z/2
+        newObject.dy2 = 50; // Half-length in y at +z/2
+        newObject.dz = 50;  // Half-length in z
         break;
         
       case 'assembly':
