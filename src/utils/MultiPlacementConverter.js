@@ -31,7 +31,7 @@ export function convertToMultiplePlacements(geometry) {
   // Group volumes by compound ID and identify assemblies
   const compoundGroups = {};
   const assemblies = {};
-  const assemblyTypes = {}; // Group assemblies by type
+  const assemblyTypes = {}; // Group assemblies by their _compoundId
   const standaloneVolumes = [];
   
   // First pass: identify compound objects, assemblies, and standalone volumes
@@ -43,34 +43,27 @@ export function convertToMultiplePlacements(geometry) {
         children: []
       };
       
-      // Group assemblies by their type
-      // First check for explicit assembly type
-      let assemblyType = volume._assemblyType;
+      // Group assemblies by their _compoundId - this is the unique identifier for assembly types
+      const assemblyTypeId = volume._compoundId;
       
-      // If no explicit type, try to extract type from name pattern
-      if (!assemblyType && volume.name) {
-        // Look for patterns like "Type_Instance" or "Type_Instance_ID"
-        const nameParts = volume.name.split('_');
-        if (nameParts.length >= 2) {
-          // Use the first part as the type
-          assemblyType = nameParts[0];
-          console.log(`Extracted assembly type ${assemblyType} from name ${volume.name}`);
-        }
+      if (!assemblyTypeId) {
+        console.warn(`Assembly ${volume.name} has no _compoundId - this will cause issues with identification`);
+        return;
       }
       
-      // If still no type, use the full name
-      if (!assemblyType) {
-        assemblyType = volume.name;
-      }
+      console.log(`Processing assembly ${volume.name} with _compoundId: ${assemblyTypeId}`);
       
-      // Add to the appropriate type group
-      if (!assemblyTypes[assemblyType]) {
-        assemblyTypes[assemblyType] = {
+      // Add to the appropriate type group based on _compoundId
+      if (!assemblyTypes[assemblyTypeId]) {
+        assemblyTypes[assemblyTypeId] = {
           template: volume,
           instances: []
         };
+        console.log(`Created new assembly type with ID: ${assemblyTypeId}`);
       }
-      assemblyTypes[assemblyType].instances.push(volume);
+      
+      assemblyTypes[assemblyTypeId].instances.push(volume);
+      console.log(`Added assembly ${volume.name} to type group with ID: ${assemblyTypeId}`);
     } else if (volume._compoundId) {
       // This is part of a compound object
       if (!compoundGroups[volume._compoundId]) {
@@ -117,10 +110,12 @@ export function convertToMultiplePlacements(geometry) {
   console.log(`Found ${Object.keys(assemblyTypes).length} assembly types with ${Object.keys(assemblies).length} total instances`);
   
   // Process assembly types as compound objects with multiple placements
-  Object.entries(assemblyTypes).forEach(([assemblyType, typeData]) => {
+  Object.entries(assemblyTypes).forEach(([assemblyTypeId, typeData]) => {
     // Get the first instance as a template
     const templateVolume = typeData.template;
     const templateAssembly = assemblies[templateVolume.name];
+    
+    console.log(`Processing assembly type with ID: ${assemblyTypeId} using template: ${templateVolume.name}`);
     
     if (!templateAssembly || templateAssembly.children.length === 0) {
       // Skip empty assemblies
@@ -132,11 +127,15 @@ export function convertToMultiplePlacements(geometry) {
     // Assembly is just a container - no material, color, or dimensions
     const compoundObject = {
       type: 'compound',
-      // Use the assembly type as the name (without any suffixes)
-      name: assemblyType,
+      // Use the _compoundId as the unique identifier
+      ID: assemblyTypeId,
+      // Use a descriptive name from the template volume
+      name: templateVolume.displayName || templateVolume.name,
       components: [],
       placements: []
     };
+    
+    console.log(`Created compound object with ID: ${assemblyTypeId} and name: ${compoundObject.name}`);
     
     // No hitCollection at the assembly level
     
@@ -440,20 +439,13 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   let compoundName;
   
   if (rootVolume._compoundId) {
-    // Extract the original object name from the compound ID
-    const match = rootVolume._compoundId.match(/^compound-(.+?)-[^-]+$/);
-    if (match && match[1]) {
-      compoundName = match[1];
-      console.log(`Using saved object name from _compoundId: ${compoundName}`);
-    } else {
-      // If the pattern doesn't match, just use the first part after 'compound-'
-      compoundName = rootVolume._compoundId.replace('compound-', '').split('-')[0];
-      console.log(`Extracted name from _compoundId: ${compoundName}`);
-    }
+    // Use the _compoundId directly as the unique identifier
+    compoundName = rootVolume.displayName || rootVolume.name;
+    console.log(`Using name ${compoundName} for compound with ID: ${rootVolume._compoundId}`);
   } else {
     // Fall back to the base name without index if no compound ID is available
     compoundName = rootVolume.name.replace(/_\d+$/, '');
-    console.log(`Falling back to instance name: ${compoundName}`);
+    console.log(`Falling back to instance name: ${compoundName} (no _compoundId found)`);
   }
   
   // First, define the root component name (needed for placements)
@@ -464,6 +456,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   const compoundObject = {
     type: 'compound',
     name: compoundName,
+    // Add the _compoundId as the ID property for unique identification
+    ID: rootVolume._compoundId,
     placements: rootInstances.map((instance, index) => {
       // Use displayName if available, otherwise fall back to compoundName
       const displayName = instance.displayName || compoundName;
