@@ -262,8 +262,8 @@ export const createGeometryHandlers = (props, state) => {
         break;
         
       default:
-        // For any other types, use default dimensions
-        newObject.dimensions = { x: 10, y: 10, z: 10 };
+        // Print a warning for unknown geometry types
+        console.warn(`Unknown geometry type: ${newGeometryType}`);
     }
     
     // Add the new object to the scene
