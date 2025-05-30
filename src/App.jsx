@@ -13,7 +13,7 @@ import {
   Button,
   Tooltip
 } from '@mui/material';
-import Viewer3D from './components/Viewer3D';
+import Viewer3D from './components/viewer3D/Viewer3D';
 //import GeometryEditor from './components/GeometryEditor';
 import GeometryEditor from './components/geometry-editor/RefactoredGeometryEditor';
 import MaterialsEditor from './components/MaterialsEditor';

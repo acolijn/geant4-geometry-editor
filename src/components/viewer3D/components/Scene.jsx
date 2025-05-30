@@ -4,7 +4,7 @@ import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVol
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
-import TransformableObject from '../TransformableObject';
+import TransformableObject from './TransformableObject';
 import CoordinateSystem from './CoordinateSystem';
 import CameraSetup from './CameraSetup';
 

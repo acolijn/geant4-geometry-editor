@@ -3,8 +3,8 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
-import Scene from './viewer3D/components/Scene';
-import GeometryTree from './viewer3D/components/GeometryTree';
+import Scene from './components/Scene';
+import GeometryTree from './components/GeometryTree';
 
 const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) => {
   const [transformMode, setTransformMode] = useState('translate');
