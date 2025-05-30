@@ -75,6 +75,7 @@ export default function TransformableObject({
   const [isDragging, setIsDragging] = useState(false);
   const lastPositionRef = useRef(null); // Track last position to prevent jumps
   
+  console.log(`TransformableObject props: (${objectKey})`, object);
   // Log when the component is mounted or updated
   useEffect(() => {
     console.log(`TransformableObject mounted/updated: ${objectKey} (${object.type})`);
