@@ -478,10 +478,11 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       return null;
     }
     
-    // Sort volumes alphabetically by name
+    // Sort volumes alphabetically by displayName (if available) or name
     const sortedVolumes = [...volumesByParent[parentKey]].sort((a, b) => {
-      const nameA = a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`;
-      const nameB = b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`;
+      // Use displayName if available, otherwise fall back to name or generate a default name
+      const nameA = a.volume.displayName || a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`;
+      const nameB = b.volume.displayName || b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`;
       return nameA.localeCompare(nameB);
     });
     
