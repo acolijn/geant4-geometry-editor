@@ -90,7 +90,7 @@ const SaveObjectDialog = ({
     setIsLoading(true);
     try {
       // Import dynamically to avoid server-side issues
-      const { listObjects } = await import('../../utils/ObjectStorage');
+      const { listObjects } = await import('../utils/ObjectStorage');
       const objectsList = await listObjects();
       
       // Sort by name

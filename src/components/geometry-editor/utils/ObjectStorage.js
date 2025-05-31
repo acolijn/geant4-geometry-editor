@@ -9,10 +9,10 @@
  */
 
 // Import the FileSystemManager
-import FileSystemManager from './FileSystemManager';
+import FileSystemManager from '../../../utils/FileSystemManager';
 
 // Import the ObjectFormatStandardizer
-import { standardizeObjectFormat, restoreOriginalFormat } from './ObjectFormatStandardizer';
+import { standardizeObjectFormat, restoreOriginalFormat } from '../../../utils/ObjectFormatStandardizer';
 
 /**
  * Save a compound object to the objects directory

@@ -27,12 +27,12 @@ import {
 import { generateAssemblyId } from './utils/assemblyManager';
 
 // Import components
-import PropertyEditor from './PropertyEditor';
-import AddNewTab from './AddNewTab';
-import UpdateObjectsDialog from './UpdateObjectsDialog';
-import LoadObjectDialog from './LoadObjectDialog';
-import SaveObjectDialog from './SaveObjectDialog';
-import HitCollectionsDialog from './HitCollectionsDialog';
+import PropertyEditor from './components/PropertyEditor';
+import AddNewTab from './components/AddNewTab';
+import UpdateObjectsDialog from './components/UpdateObjectsDialog';
+import LoadObjectDialog from './components/LoadObjectDialog';
+import SaveObjectDialog from './components/SaveObjectDialog';
+import HitCollectionsDialog from './components/HitCollectionsDialog';
 
 /**
  * Main GeometryEditor component - Refactored Version
@@ -322,7 +322,7 @@ const RefactoredGeometryEditor = ({
           
           try {
             // Import the ObjectStorage utility
-            const { saveObject } = await import('../../utils/ObjectStorage');
+            const { saveObject } = await import('./utils/ObjectStorage');
             
             // Generate a default file name if none is provided
             const fileName = name || objectToSave.object.name || 'geometry';

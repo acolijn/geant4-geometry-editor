@@ -13,7 +13,7 @@ import {
   Tooltip
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../../utils/UnitConverter';
+import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../utils/UnitConverter';
 
 /**
  * PropertyEditor Component

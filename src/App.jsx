@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import Viewer3D from './components/viewer3D/Viewer3D';
 //import GeometryEditor from './components/GeometryEditor';
-import GeometryEditor from './components/geometry-editor/RefactoredGeometryEditor';
+import GeometryEditor from './components/geometry-editor/GeometryEditor';
 import MaterialsEditor from './components/MaterialsEditor';
 import JsonViewer from './components/JsonViewer';
 import ProjectManager from './components/ProjectManager';
@@ -48,9 +48,6 @@ function App() {
   // Reference to the updateAssemblies function from Viewer3D
   const [updateAssembliesFunc, setUpdateAssembliesFunc] = useState(null);
   
-  // No localStorage loading - starting with default values
-  
-  // No localStorage saving
   
   // Handle updating a geometry
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false, extraData = null) => {
