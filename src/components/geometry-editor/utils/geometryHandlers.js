@@ -255,17 +255,19 @@ export const createGeometryHandlers = (props, state) => {
         break;
         
       case 'assembly':
-        // Always use a consistent naming pattern for assemblies
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        // Use the standard generateUniqueName function for consistency
         const typeName = newObject.displayName || 'assembly';
         
-        // Use assembly_<timestamp>_<randomSuffix> format for the name
-        newObject.name = `assembly_${timestamp}_${randomSuffix}`;
+        // Import the generateUniqueName function from GeometryOperations
+        const { generateUniqueName } = require('./GeometryOperations');
+        
+        // Use the standard name generation format: type_timestamp_random
+        newObject.name = generateUniqueName('assembly');
         console.log('newObject.name:', newObject.name);
         
         // Store the typeName in the _compoundId for type identification
-        newObject._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
+        // Use the same format but with the display name for type identification
+        newObject._compoundId = newObject.name;
         
         console.log(`Created new assembly with name: ${newObject.name} and ID: ${newObject._compoundId}`);
         newObject.components = [];

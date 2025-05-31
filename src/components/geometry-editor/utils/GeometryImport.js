@@ -73,9 +73,7 @@ export const importPartialFromAddNew = (
   const randomSuffix = Math.random().toString(36).substring(2, 10);
   mainObject._instanceId = `instance-${mainObject.name}-${timestamp}-${randomSuffix}`;
   console.log(`IMPORT - Generated unique instance ID: ${mainObject._instanceId}`);
-  
-  // Store the original name for special handling of PMT objects
-  const isPMTObject = originalMainName === 'PMT';
+
   
   // Set the mother volume, defaulting to "World" if undefined
   mainObject.mother_volume = motherVolume || 'World';
@@ -186,10 +184,21 @@ export const importPartialFromAddNew = (
       
       // Check if the name already exists and generate a unique name if needed
       if (existingNames.includes(originalName) || nameMapping[originalName]) {
-        // Generate a simplified unique internal name for the descendant
-        const typeForNaming = processedDesc.type || 'part';
-        // Just use the type and a random number, without the assembly prefix
-        processedDesc.name = `${typeForNaming}_${Math.floor(Math.random() * 100000)}`;
+        // Extract just the component part (box, sphere, etc.) with its timestamp and random string
+        // This will match patterns like assembly_1748447699555_gsm4h2_box_1748447699556_2192
+        // and extract just box_1748447699556_2192
+        const componentMatch = originalName.match(/(?:assembly|compound)(?:_[^_]+){2,}_((box|sphere|cylinder|tube|cone)(?:_[^_]+)+)/);
+        
+        if (componentMatch && componentMatch[1]) {
+          // If we found a pattern like assembly_123_abc_box_456_def, just use box_456_def
+          processedDesc.name = componentMatch[1];
+          console.log(`IMPORT - Extracted component name from ${originalName} to ${processedDesc.name}`);
+        } else {
+          // Otherwise generate a name using the type
+          const typeForNaming = processedDesc.type || 'part';
+          // Keep the timestamp and random string format
+          processedDesc.name = `${typeForNaming}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        }
         
         // Add to the name mapping
         nameMapping[originalName] = processedDesc.name;

@@ -289,14 +289,15 @@ export const createImportExportHandlers = (props) => {
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
       
-      // Always use assembly_<timestamp>_<randomSuffix> format for the name
-      processedData.object.name = `assembly_${timestamp}_${randomSuffix}`;
+      // Import the generateUniqueName function from GeometryOperations
+      const { generateUniqueName } = require('./GeometryOperations');
       
-      // Preserve the existing _compoundId if it exists, otherwise create a new one
+      // Use the standard name generation format: type_timestamp_random
+      processedData.object.name = generateUniqueName('assembly');
+      
+      // Preserve the existing _compoundId if it exists, otherwise use the same name
       if (!processedData.object._compoundId) {
-        // Generate a stable compound ID based on the display name or name
-        const typeName = processedData.object.displayName || baseName;
-        processedData.object._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
+        processedData.object._compoundId = processedData.object.name;
       }
       
       console.log(`Imported assembly with name: ${processedData.object.name} and ID: ${processedData.object._compoundId}`);
