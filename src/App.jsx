@@ -14,7 +14,7 @@ import {
   Tooltip
 } from '@mui/material';
 // Import utility functions from GeometryOperations.js
-import { updateGeometry, addGeometry, generateId, generateUniqueName } from './components/geometry-editor/utils/GeometryOperations';
+import { updateGeometry, addGeometry, removeGeometry, generateId, generateUniqueName } from './components/geometry-editor/utils/GeometryOperations';
 import Viewer3D from './components/viewer3D/Viewer3D';
 //import GeometryEditor from './components/GeometryEditor';
 import GeometryEditor from './components/geometry-editor/GeometryEditor';
@@ -77,6 +77,17 @@ function App() {
       setGeometries,
       setSelectedGeometry,
       propagateCompoundIdToDescendants
+    );
+  };
+  
+  // Handle removing a geometry using the imported utility function
+  const handleRemoveGeometry = (id) => {
+    removeGeometry(
+      id,
+      geometries,
+      setGeometries,
+      setSelectedGeometry,
+      selectedGeometry
     );
   };
   
@@ -458,97 +469,6 @@ function App() {
       message: `Imported ${addedMainName} successfully`,
       mainObjectName: addedMainName
     };
-  };
-  
-  // Handle removing a geometry
-  const handleRemoveGeometry = (id) => {
-    if (id.startsWith('volume-')) {
-      const index = parseInt(id.split('-')[1]);
-      const volumeToRemove = geometries.volumes[index];
-      
-      if (!volumeToRemove) {
-        console.error(`Volume at index ${index} not found`);
-        return;
-      }
-      
-      // Create a map of volume names to their indices for easy lookup
-      const volumeNameToIndex = {};
-      geometries.volumes.forEach((volume, idx) => {
-        if (volume.name) {
-          volumeNameToIndex[volume.name] = idx;
-        }
-      });
-      
-      // Function to recursively find all descendants of a volume
-      const findDescendants = (volumeName, descendantIndices = []) => {
-        geometries.volumes.forEach((volume, idx) => {
-          if (volume.mother_volume === volumeName) {
-            descendantIndices.push(idx);
-            // Recursively find descendants of this volume
-            findDescendants(volume.name, descendantIndices);
-          }
-        });
-        return descendantIndices;
-      };
-      
-      // Find all descendants of the volume to remove
-      const descendantIndices = findDescendants(volumeToRemove.name);
-      
-      // Sort indices in descending order to avoid shifting issues when removing
-      const indicesToRemove = [index, ...descendantIndices].sort((a, b) => b - a);
-      
-      // Create a copy of the volumes array
-      const updatedVolumes = [...geometries.volumes];
-      
-      // Remove the volumes in descending index order
-      indicesToRemove.forEach(idx => {
-        updatedVolumes.splice(idx, 1);
-      });
-      
-      // Update the geometries state
-      setGeometries({
-        ...geometries,
-        volumes: updatedVolumes
-      });
-      
-      // Clear the selection
-      setSelectedGeometry(null);
-      
-      // Log the operation for debugging
-      console.log(`Removed volume ${volumeToRemove.name} and ${descendantIndices.length} descendants`);
-    }
-  };
-  
-  // Handle updating materials
-  const handleUpdateMaterials = (updatedMaterials) => {
-    setMaterials(updatedMaterials);
-  };
-  
-  // Handle importing geometries from a JSON file
-  const handleImportGeometries = (importedGeometries) => {
-    // Validate the imported geometries structure
-    if (!importedGeometries.world || !Array.isArray(importedGeometries.volumes)) {
-      console.error('Invalid geometry format');
-      return;
-    }
-    
-    // Set the geometries state with the imported data
-    setGeometries(importedGeometries);
-    
-    // Reset the selection
-    setSelectedGeometry(null);
-  };
-  
-  // Handle importing materials from a JSON file
-  const handleImportMaterials = (importedMaterials) => {
-    // Validate the imported materials structure
-    if (typeof importedMaterials !== 'object') {
-      console.error('Invalid materials format');
-      return;
-    }
-    
-    // Set the materials state with the imported data
-    setMaterials(importedMaterials);
   };
   
   // Extract an object and all its descendants
