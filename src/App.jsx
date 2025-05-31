@@ -733,7 +733,7 @@ function App() {
   };
   
   // Handle importing a partial geometry (a specific object and its descendants)
-  const handleImportPartialGeometry = (partialGeometry) => {
+  /* const handleImportPartialGeometry = (partialGeometry) => {
     // Validate the imported partial geometry structure
     if (!partialGeometry.object || !Array.isArray(partialGeometry.descendants)) {
       console.error('Invalid partial geometry format');
@@ -786,7 +786,7 @@ function App() {
     // Update the geometries state
     setGeometries(updatedGeometries);
   };
-  
+  */ 
   // Handle importing materials from a JSON file
   const handleImportMaterials = (importedMaterials) => {
     // Validate the imported materials structure
@@ -1072,7 +1072,6 @@ return (
                 materials={materials} 
                 onImportGeometries={handleImportGeometries}
                 onImportMaterials={handleImportMaterials}
-                onImportPartialGeometry={handleImportPartialGeometry}
               />
             </Container>
           )}
