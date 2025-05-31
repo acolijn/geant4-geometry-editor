@@ -255,14 +255,17 @@ export const createGeometryHandlers = (props, state) => {
         break;
         
       case 'assembly':
-        // Use the standard generateUniqueName function for consistency
+        // Use the standard name generation format for consistency
         const typeName = newObject.displayName || 'assembly';
         
-        // Import the generateUniqueName function from GeometryOperations
-        const { generateUniqueName } = require('./GeometryOperations');
+        // Generate a unique name directly using the same format as in GeometryOperations.js
+        // This avoids import issues between modules
+        const generateUniqueNameInline = (type) => {
+          return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        };
         
         // Use the standard name generation format: type_timestamp_random
-        newObject.name = generateUniqueName('assembly');
+        newObject.name = generateUniqueNameInline('assembly');
         console.log('newObject.name:', newObject.name);
         
         // Store the typeName in the _compoundId for type identification

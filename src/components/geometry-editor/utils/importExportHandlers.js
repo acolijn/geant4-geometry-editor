@@ -289,11 +289,14 @@ export const createImportExportHandlers = (props) => {
       const timestamp = Date.now();
       const randomSuffix = Math.random().toString(36).substring(2, 8);
       
-      // Import the generateUniqueName function from GeometryOperations
-      const { generateUniqueName } = require('./GeometryOperations');
+      // Generate a unique name directly using the same format as in GeometryOperations.js
+      // This avoids import issues between modules
+      const generateUniqueNameInline = (type) => {
+        return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      };
       
       // Use the standard name generation format: type_timestamp_random
-      processedData.object.name = generateUniqueName('assembly');
+      processedData.object.name = generateUniqueNameInline('assembly');
       
       // Preserve the existing _compoundId if it exists, otherwise use the same name
       if (!processedData.object._compoundId) {
@@ -313,10 +316,17 @@ export const createImportExportHandlers = (props) => {
     if (processedData.descendants && processedData.descendants.length > 0) {
       processedData.descendants.forEach(descendant => {
         const originalName = descendant.name;
-        const componentName = originalName || 'Component';
         
-        // Generate a new structured name
-        const newName = `${baseName}_${componentName}_${importId}`;
+        // Extract the component type (box, sphere, etc.) from the original name or use the type property
+        const componentType = descendant.type || 
+                            (originalName && originalName.match(/^(box|sphere|cylinder|tube|cone)/) ? 
+                             originalName.match(/^(box|sphere|cylinder|tube|cone)/)[1] : 'component');
+        
+        // Generate a unique name using just the component type, timestamp, and random number
+        // This ensures the name is clean and follows the standard format without assembly prefixes
+        const timestamp = Date.now();
+        const randomNum = Math.floor(Math.random() * 10000);
+        const newName = `${componentType}_${timestamp}_${randomNum}`;
         
         // Update the descendant's name
         descendant.name = newName;

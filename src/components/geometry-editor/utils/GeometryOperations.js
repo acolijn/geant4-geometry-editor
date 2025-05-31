@@ -295,28 +295,58 @@ export const removeGeometry = (
     const index = parseInt(id.split('-')[1]);
     const volumeToRemove = geometries.volumes[index];
     
-    // Check if this volume is a mother volume for any other volumes
-    const hasChildren = geometries.volumes.some(vol => vol.mother_volume === volumeToRemove.name);
+    // Find all volumes to remove (the selected volume and all its descendants recursively)
+    let volumesToRemove = [];
     
-    if (hasChildren) {
-      console.error('Cannot remove volume that is a mother volume for other volumes');
-      return;
-    }
+    // Function to recursively find all descendants
+    const findDescendants = (parentName) => {
+      geometries.volumes.forEach((vol, idx) => {
+        if (vol.mother_volume === parentName) {
+          volumesToRemove.push(idx);
+          // Recursively find descendants of this volume
+          findDescendants(vol.name);
+        }
+      });
+    };
     
-    // Remove the volume
+    // Start with the selected volume
+    volumesToRemove.push(index);
+    
+    // Find all descendants
+    findDescendants(volumeToRemove.name);
+    
+    console.log(`Removing volume ${volumeToRemove.name} with ${volumesToRemove.length - 1} descendants`);
+    
+    // Remove all volumes in the volumesToRemove array
     setGeometries(prevGeometries => {
-      // Create a new array without the removed volume
-      const newVolumes = prevGeometries.volumes.filter((_, i) => i !== index);
+      // Sort indices in descending order to avoid index shifting issues
+      volumesToRemove.sort((a, b) => b - a);
+      
+      // Create a copy of the volumes array
+      let newVolumes = [...prevGeometries.volumes];
+      
+      // Remove volumes at the specified indices
+      for (const idx of volumesToRemove) {
+        newVolumes.splice(idx, 1);
+      }
       
       // Adjust the indices in the selectedGeometry if needed
       if (selectedGeometry && selectedGeometry.startsWith('volume-')) {
         const selectedIndex = parseInt(selectedGeometry.split('-')[1]);
-        if (selectedIndex === index) {
+        
+        // Check if the selected geometry is being removed
+        if (volumesToRemove.includes(selectedIndex)) {
           // If the selected geometry is being removed, deselect it
           setSelectedGeometry(null);
-        } else if (selectedIndex > index) {
-          // If the selected geometry comes after the removed one, adjust its index
-          setSelectedGeometry(`volume-${selectedIndex - 1}`);
+        } else {
+          // Calculate the new index after removals
+          let newIndex = selectedIndex;
+          for (const idx of volumesToRemove) {
+            if (idx < selectedIndex) {
+              newIndex--;
+            }
+          }
+          setSelectedGeometry(`volume-${newIndex}`);
         }
       }
       
