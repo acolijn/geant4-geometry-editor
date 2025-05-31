@@ -13,8 +13,6 @@ import {
   Button,
   Tooltip
 } from '@mui/material';
-// Import utility functions from GeometryOperations.js
-import { updateGeometry, addGeometry, generateId, generateUniqueName } from './components/geometry-editor/utils/GeometryOperations';
 import Viewer3D from './components/viewer3D/Viewer3D';
 //import GeometryEditor from './components/GeometryEditor';
 import GeometryEditor from './components/geometry-editor/GeometryEditor';
@@ -50,34 +48,226 @@ function App() {
   // Reference to the updateAssemblies function from Viewer3D
   const [updateAssembliesFunc, setUpdateAssembliesFunc] = useState(null);
   
-  // Handle updating a geometry using the imported utility function
+  
+  // Handle updating a geometry
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false, extraData = null) => {
-    updateGeometry(
-      geometries,
-      id,
-      updatedObject,
-      keepSelected,
-      isLiveUpdate,
-      extraData,
-      setGeometries,
-      setSelectedGeometry,
-      selectedGeometry,
-      updateAssembliesFunc,
-      propagateCompoundIdToDescendants
-    );
+    // Handle special case for assembly update via dialog
+    if (extraData && id === null && updatedObject === null) {
+      console.log('App: Handling assembly update via dialog', extraData);
+      if (updateAssembliesFunc && typeof updateAssembliesFunc === 'function') {
+        updateAssembliesFunc(extraData.updateData, extraData.objectDefinition);
+      }
+      return;
+    }
+    
+    // If updatedObject is null, we can't proceed with regular updates
+    if (!updatedObject) {
+      console.error('App: Cannot update geometry with null object');
+      return;
+    }
+    
+    // Store the current selection before any updates
+    const currentSelection = selectedGeometry;
+    
+    // Create a new state update that includes both geometry and selection changes
+    // to ensure they happen atomically and prevent flickering/jumping
+    const updateState = () => {
+      // Check if the name has changed (for updating daughter references)
+      let oldName = null;
+      let newName = updatedObject.name;
+      let oldMotherVolume = null;
+      let newMotherVolume = updatedObject.mother_volume;
+      let isParentChanged = false;
+      
+      if (id === 'world') {
+        oldName = geometries.world.name;
+        
+        // First update the geometry
+        setGeometries(prevGeometries => {
+          // Update the world object
+          const updatedGeometries = {
+            ...prevGeometries,
+            world: updatedObject
+          };
+          
+          // If name changed, update all daughter volumes that reference this as mother
+          if (oldName !== newName) {
+            updatedGeometries.volumes = prevGeometries.volumes.map(volume => {
+              if (volume.mother_volume === oldName) {
+                return { ...volume, mother_volume: newName };
+              }
+              return volume;
+            });
+          }
+          
+          return updatedGeometries;
+        });
+      } else if (id.startsWith('volume-')) {
+        const index = parseInt(id.split('-')[1]);
+        oldName = geometries.volumes[index].name;
+        oldMotherVolume = geometries.volumes[index].mother_volume;
+        
+        // Check if the parent has changed
+        isParentChanged = oldMotherVolume !== newMotherVolume;
+        
+        setGeometries(prevGeometries => {
+          const updatedVolumes = [...prevGeometries.volumes];
+          
+          // Check if this is an intermediate object using world coordinates
+          if (updatedObject._usingWorldCoordinates) {
+            // For intermediate objects using world coordinates, we need to handle them differently
+            // Remove the special flag before storing in state
+            const { _usingWorldCoordinates, _isIntermediateObject, ...cleanObject } = updatedObject;
+            updatedVolumes[index] = cleanObject;
+          } else {
+            // Normal update for regular objects
+            // Remove any special flags if present
+            const { _isIntermediateObject, ...cleanObject } = updatedObject;
+            updatedVolumes[index] = cleanObject;
+          }
+          
+          // If name changed, update all daughter volumes that reference this as mother
+          if (oldName !== newName) {
+            updatedVolumes.forEach((volume, i) => {
+              if (i !== index && volume.mother_volume === oldName) {
+                updatedVolumes[i] = { ...volume, mother_volume: newName };
+              }
+            });
+          }
+          
+          // If parent changed and new parent is an assembly, propagate the _compoundId
+          if (isParentChanged && newMotherVolume) {
+            // Find the new parent object
+            const newParentIndex = updatedVolumes.findIndex(vol => vol.name === newMotherVolume);
+            const newParent = newParentIndex !== -1 ? updatedVolumes[newParentIndex] : 
+                             (newMotherVolume === prevGeometries.world.name ? prevGeometries.world : null);
+            
+            // If the new parent is an assembly and has a _compoundId, propagate it
+            if (newParent && newParent.type === 'assembly' && newParent._compoundId) {
+              console.log(`Parent changed to assembly ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
+              
+              // Add _compoundId to the updated object
+              updatedVolumes[index]._compoundId = newParent._compoundId;
+              console.log(`Added _compoundId ${newParent._compoundId} to object ${updatedObject.name}`);
+              
+              // Propagate _compoundId to all descendants
+              const updatedWithDescendants = propagateCompoundIdToDescendants(
+                updatedObject.name, 
+                newParent._compoundId, 
+                updatedVolumes
+              );
+              
+              // Update the volumes with the propagated _compoundId
+              return {
+                ...prevGeometries,
+                volumes: updatedWithDescendants
+              };
+            }
+          }
+          
+          return {
+            ...prevGeometries,
+            volumes: updatedVolumes
+          };
+        });
+      }
+    };
+    
+    // Execute the state update
+    updateState();
+    
+    // CRITICAL: When keepSelected is false, we should NOT change the selection at all
+    // This allows the Viewer3D component to manage selection explicitly
+    if (keepSelected) {
+      // Only change selection when explicitly requested
+      setSelectedGeometry(id);
+      console.log(`Setting selection to ${id} as requested`);
+    } else {
+      // When keepSelected is false, maintain the current selection
+      console.log(`Keeping current selection (${currentSelection}) as requested`);
+    }
   };
   
-  // Using imported generateId and generateUniqueName functions from GeometryOperations.js
+  // Generate a unique ID
+  const generateId = () => {
+    return `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  };
   
-  // Handle adding a new geometry using the imported utility function
+  // Generate a unique internal name for a geometry object
+  // This creates names that don't require string parsing for internal references
+  const generateUniqueName = (type) => {
+    // Create a timestamp-based unique name that's guaranteed to be unique
+    // Format: type_timestamp_random
+    return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+  };
+  
+  // Handle adding a new geometry
   const handleAddGeometry = (newGeometry) => {
-    return addGeometry(
-      newGeometry,
-      geometries,
-      setGeometries,
-      setSelectedGeometry,
-      propagateCompoundIdToDescendants
-    );
+    // Always generate a unique internal name for references
+    // This ensures we don't need string parsing for references
+    newGeometry.name = generateUniqueName(newGeometry.type);
+    
+    // Set a user-friendly displayName if not already provided
+    if (!newGeometry.displayName || newGeometry.displayName === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
+      // Find existing objects of this type to determine the next number
+      const existingCount = geometries.volumes.filter(vol => vol.type === newGeometry.type).length;
+      // Format: Type_Number (e.g., Box_1, Sphere_2)
+      newGeometry.displayName = `${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}_${existingCount + 1}`;
+    }
+    
+    // Check if the parent is an assembly and propagate _compoundId if needed
+    if (newGeometry.mother_volume && newGeometry.mother_volume !== 'World') {
+      // Find the parent object
+      const parentVolume = geometries.volumes.find(vol => vol.name === newGeometry.mother_volume);
+      
+      // If the parent is an assembly and has a _compoundId, propagate it to the new object
+      if (parentVolume && parentVolume.type === 'assembly' && parentVolume._compoundId) {
+        console.log(`New object's parent is assembly ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
+        newGeometry._compoundId = parentVolume._compoundId;
+        console.log(`Added _compoundId ${parentVolume._compoundId} to new object ${newGeometry.name}`);
+      }
+    }
+    
+    // Log the geometry being added
+    console.log('Adding geometry:', newGeometry);
+    
+    // Get the index that the new volume will have
+    const newVolumeIndex = geometries.volumes.length;
+    const newVolumeKey = `volume-${newVolumeIndex}`;
+    
+    // Update geometries with the new object
+    setGeometries(prevGeometries => {
+      const updatedGeometries = {
+        ...prevGeometries,
+        volumes: [...prevGeometries.volumes, newGeometry]
+      };
+      
+      // If the new object has a _compoundId (from an assembly parent), we need to propagate it to any descendants
+      // This is for cases where a complex object with children is added to an assembly
+      if (newGeometry._compoundId) {
+        return {
+          ...updatedGeometries,
+          volumes: propagateCompoundIdToDescendants(
+            newGeometry.name,
+            newGeometry._compoundId,
+            updatedGeometries.volumes
+          )
+        };
+      }
+      
+      return updatedGeometries;
+    });
+    
+    // Select the newly added geometry
+    // Use a small timeout to ensure the geometry is added to the DOM before selecting
+    // This ensures the transform controls appear immediately
+    setTimeout(() => {
+      console.log(`Selecting newly created object: ${newVolumeKey}`);
+      setSelectedGeometry(newVolumeKey);
+    }, 50);
+    
+    // Return the name of the added geometry (useful for tracking)
+    return newGeometry.name;
   };
   
   // Handle importing a partial geometry from the Add New tab
@@ -539,6 +729,61 @@ function App() {
     setSelectedGeometry(null);
   };
   
+  // Handle importing a partial geometry (a specific object and its descendants)
+  /* const handleImportPartialGeometry = (partialGeometry) => {
+    // Validate the imported partial geometry structure
+    if (!partialGeometry.object || !Array.isArray(partialGeometry.descendants)) {
+      console.error('Invalid partial geometry format');
+      return;
+    }
+    
+    // Create a copy of the current geometries
+    const updatedGeometries = { ...geometries };
+    
+    // If the imported object is a world object, replace the current world
+    if (partialGeometry.object.name === 'World' || partialGeometry.isWorld) {
+      updatedGeometries.world = partialGeometry.object;
+    } else {
+      // Add the main object to volumes
+      const mainObject = { ...partialGeometry.object };
+      
+      // Generate a unique name if needed
+      if (updatedGeometries.world.name === mainObject.name || 
+          updatedGeometries.volumes.some(vol => vol.name === mainObject.name)) {
+        mainObject.name = generateUniqueName(mainObject.type);
+      }
+      
+      updatedGeometries.volumes = [...updatedGeometries.volumes, mainObject];
+    }
+    
+    // Add all descendants, updating their mother_volume references if needed
+    if (partialGeometry.descendants.length > 0) {
+      const originalMainName = partialGeometry.object.name;
+      const newMainName = updatedGeometries.volumes[updatedGeometries.volumes.length - 1].name;
+      
+      // Process each descendant
+      partialGeometry.descendants.forEach(descendant => {
+        const updatedDescendant = { ...descendant };
+        
+        // Update mother_volume reference if it was pointing to the main object
+        if (updatedDescendant.mother_volume === originalMainName) {
+          updatedDescendant.mother_volume = newMainName;
+        }
+        
+        // Generate a unique name if needed
+        if (updatedGeometries.world.name === updatedDescendant.name || 
+            updatedGeometries.volumes.some(vol => vol.name === updatedDescendant.name)) {
+          updatedDescendant.name = generateUniqueName(updatedDescendant.type);
+        }
+        
+        updatedGeometries.volumes = [...updatedGeometries.volumes, updatedDescendant];
+      });
+    }
+    
+    // Update the geometries state
+    setGeometries(updatedGeometries);
+  };
+  */ 
   // Handle importing materials from a JSON file
   const handleImportMaterials = (importedMaterials) => {
     // Validate the imported materials structure

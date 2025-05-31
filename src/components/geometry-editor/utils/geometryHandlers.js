@@ -50,8 +50,9 @@ export const createGeometryHandlers = (props, state) => {
    * @param {string} type - Type of the object
    * @returns {string} A unique name for the object
    */
-  const generateUniqueName = (baseName, type) => {
+  const generateInternalName = (baseName, type) => {
     // Start with the base name and type
+    console.log('generateInternalName:', baseName, type);
     let name = `${baseName}_${type}`;
     let counter = 1;
     
@@ -124,7 +125,7 @@ export const createGeometryHandlers = (props, state) => {
       
       // Create the union object
       const unionObject = {
-        name: generateUniqueName('Union', 'solid'),
+        name: generateInternalName('Union', 'solid'),
         type: 'union',
         material: defaultMaterial,
         mother_volume: newMotherVolume,
@@ -178,7 +179,7 @@ export const createGeometryHandlers = (props, state) => {
     const componentId = `component_${timestamp}_${randomSuffix}`;
     
     const newObject = {
-      name: generateUniqueName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
+      name: generateInternalName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
       type: newGeometryType,
       material: defaultMaterial,
       mother_volume: newMotherVolume,
@@ -187,6 +188,7 @@ export const createGeometryHandlers = (props, state) => {
       visible: true,
       _componentId: componentId  // Add a stable component ID at creation time
     };
+    console.log('newObject:', newObject.name);
     
     // Add type-specific properties
     switch (newGeometryType) {
@@ -260,6 +262,7 @@ export const createGeometryHandlers = (props, state) => {
         
         // Use assembly_<timestamp>_<randomSuffix> format for the name
         newObject.name = `assembly_${timestamp}_${randomSuffix}`;
+        console.log('newObject.name:', newObject.name);
         
         // Store the typeName in the _compoundId for type identification
         newObject._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
@@ -396,7 +399,7 @@ export const createGeometryHandlers = (props, state) => {
   };
 
   return {
-    generateUniqueName,
+    generateInternalName,
     handleAddGeometry,
     handleUpdateObjects
   };
