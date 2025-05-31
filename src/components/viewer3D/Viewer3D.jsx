@@ -5,35 +5,11 @@ import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
 import Scene from './Scene';
 import GeometryTree from './GeometryTree';
+import CameraSetup from './components/CameraSetup';
 
 const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) => {
   const [transformMode, setTransformMode] = useState('translate');
-  const [frontViewCamera, setFrontViewCamera] = useState(null);
-  
-  // Calculate camera distance based on world size
-  const calculateCameraDistance = () => {
-    // Get the maximum dimension of the world volume
-    const maxDimension = Math.max(
-      geometries.world.size?.x || 2000,
-      geometries.world.size?.y || 2000,
-      geometries.world.size?.z || 2000
-    );
-    
-    // Set camera distance to be 2x the maximum dimension to ensure everything is visible
-    // This allows the camera to scale properly with larger world volumes
-    return -2 * maxDimension;
-  };
-
-  // Function to set front view
-  const setFrontView = () => {
-    if (frontViewCamera) {
-      const cameraDistance = calculateCameraDistance();
-      frontViewCamera.position.set(0, cameraDistance, 0);
-      frontViewCamera.lookAt(0, 0, 0);
-      frontViewCamera.up.set(0, 0, 1); // Maintain z-axis as up direction
-      frontViewCamera.updateProjectionMatrix();
-    }
-  };
+  const [cameraControls, setCameraControls] = useState(null);
   
   // Handle canvas click to deselect
   const handleCanvasClick = (e) => {
@@ -254,7 +230,7 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
           zIndex: 100
         }}>
           <button 
-            onClick={setFrontView}
+            onClick={() => cameraControls?.setFrontView()}
             style={{
               backgroundColor: '#1976d2',
               color: 'white',
@@ -272,17 +248,17 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
           style={{ background: '#f0f0f0' }} 
           onClick={handleCanvasClick}
           camera={{
-            position: [0, calculateCameraDistance(), 0], 
+            position: [0, -4000, 0], // Default position until CameraSetup takes over
             fov: 50, 
             near: 0.1, 
-            far: Math.abs(calculateCameraDistance()) * 4
+            far: 20000 // Default far value until CameraSetup takes over
           }}
         >
+          <CameraSetup setFrontViewCamera={setCameraControls} worldSize={geometries.world.size} />
           <Scene 
             geometries={geometries} 
             selectedGeometry={selectedGeometry} 
             onSelect={onSelect}
-            setFrontViewCamera={setFrontViewCamera}
             transformMode={transformMode}
             onTransformEnd={handleTransformEnd}
             worldSize={geometries.world.size}
@@ -290,7 +266,7 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
           <OrbitControls 
             makeDefault 
             enableDamping={false} 
-            maxDistance={Math.abs(calculateCameraDistance()) * 10} // Scale maxDistance with world size
+            maxDistance={20000} // Default value, CameraSetup will handle proper scaling
           />
         </Canvas>
       </div>
