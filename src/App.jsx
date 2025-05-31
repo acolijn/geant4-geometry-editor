@@ -25,6 +25,7 @@ import { defaultGeometry, defaultMaterials } from './utils/defaults';
 import { standardizeProjectData, restoreProjectData } from './utils/ObjectFormatStandardizer';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
 import { importPartialFromAddNew } from './components/geometry-editor/utils/GeometryImport';
+import { extractObjectWithDescendants } from './components/geometry-editor/utils/GeometryUtils';
 import './App.css';
 
 // Create a theme
@@ -140,40 +141,15 @@ function App() {
   };
   
   // Extract an object and all its descendants
-  const extractObjectWithDescendants = (objectId) => {
-    let mainObject;
-    let isWorld = false;
+  // This is a wrapper around the imported extractObjectWithDescendants function from GeometryUtils.js
+  // It adds additional processing specific to the App component's needs
+  const processObjectWithDescendants = (objectId) => {
+    // Use the imported function to get the basic object and descendants
+    const result = extractObjectWithDescendants(objectId, geometries);
     
-    // Get the main object
-    if (objectId === 'world') {
-      mainObject = { ...geometries.world };
-      isWorld = true;
-    } else if (objectId.startsWith('volume-')) {
-      const index = parseInt(objectId.split('-')[1]);
-      mainObject = { ...geometries.volumes[index] };
-    } else {
-      return null; // Invalid ID
-    }
+    if (!result) return null;
     
-    // Find all descendants recursively
-    const findDescendants = (parentName, allVolumes) => {
-      return allVolumes.filter(volume => volume.mother_volume === parentName);
-    };
-    
-    // Start with direct children
-    let descendants = findDescendants(mainObject.name, geometries.volumes);
-    let allDescendants = [...descendants];
-    
-    // Find descendants of descendants (recursive)
-    for (let i = 0; i < descendants.length; i++) {
-      const childDescendants = findDescendants(descendants[i].name, geometries.volumes);
-      if (childDescendants.length > 0) {
-        allDescendants = [...allDescendants, ...childDescendants];
-        descendants = [...descendants, ...childDescendants];
-      }
-    }
-    
-    // Removed _sourceId generation as it's not used for anything useful
+    const { object: mainObject, descendants: allDescendants, isWorld } = result;
     
     // Check if the object already has a compound ID (from a previous save)
     // If it does, preserve it to maintain the relationship between all instances
@@ -190,7 +166,6 @@ function App() {
     
     // Ensure the mother_volume property is included for the main object if it exists
     // This fixes the issue where the top-level object of a compound object doesn't have its mother_volume in the exported JSON
-    // We need to make sure the mother_volume is explicitly preserved
     const exportedMainObject = { ...mainObject, _compoundId: compoundId };
     console.log(`Using _compoundId ${compoundId} for main object ${exportedMainObject.name}`);
     
@@ -384,7 +359,7 @@ return (
                   onUpdateGeometry={handleUpdateGeometry}
                   onAddGeometry={handleAddGeometry}
                   onRemoveGeometry={handleRemoveGeometry}
-                  extractObjectWithDescendants={extractObjectWithDescendants}
+                  extractObjectWithDescendants={processObjectWithDescendants}
                   handleImportPartialFromAddNew={handleImportPartialFromAddNew}
                   externalUpdateDialogData={updateDialogData}
                   updateDialogOpen={updateDialogOpen}

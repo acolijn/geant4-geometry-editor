@@ -59,42 +59,73 @@ export const propagateCompoundIdToDescendants = (parentName, compoundId, volumes
 
 /**
  * Extract an object and all its descendants
- * @param {string} objectName - The name of the object to extract
+ * @param {string|Object} objectIdentifier - Either the name of the object, an object ID (e.g. 'world', 'volume-1'), or the object itself
  * @param {Object} geometries - The current geometries state
  * @returns {Object} The extracted object and its descendants
  */
-export const extractObjectWithDescendants = (objectName, geometries) => {
+export const extractObjectWithDescendants = (objectIdentifier, geometries) => {
   // Find the object in the geometries
-  let object = null;
+  let mainObject = null;
   let objectType = '';
+  let isWorld = false;
   
-  // Check if the object is the world
-  if (geometries.world.name === objectName) {
-    object = { ...geometries.world };
-    objectType = 'world';
-  } else {
-    // Find the object in the volumes array
-    const volumeIndex = geometries.volumes.findIndex(vol => vol.name === objectName);
-    if (volumeIndex !== -1) {
-      object = { ...geometries.volumes[volumeIndex] };
-      objectType = 'volume';
+  // Handle different types of object identifiers
+  if (typeof objectIdentifier === 'string') {
+    // Case 1: objectIdentifier is a string ID like 'world' or 'volume-1'
+    if (objectIdentifier === 'world') {
+      mainObject = { ...geometries.world };
+      objectType = 'world';
+      isWorld = true;
+    } else if (objectIdentifier.startsWith('volume-')) {
+      const index = parseInt(objectIdentifier.split('-')[1]);
+      if (!isNaN(index) && geometries.volumes[index]) {
+        mainObject = { ...geometries.volumes[index] };
+        objectType = 'volume';
+      }
+    } else {
+      // Case 2: objectIdentifier is a name string
+      // Check if the object is the world
+      if (geometries.world.name === objectIdentifier) {
+        mainObject = { ...geometries.world };
+        objectType = 'world';
+        isWorld = true;
+      } else {
+        // Find the object in the volumes array by name
+        const volumeIndex = geometries.volumes.findIndex(vol => vol.name === objectIdentifier);
+        if (volumeIndex !== -1) {
+          mainObject = { ...geometries.volumes[volumeIndex] };
+          objectType = 'volume';
+        }
+      }
     }
+  } else if (objectIdentifier && typeof objectIdentifier === 'object') {
+    // Case 3: objectIdentifier is the actual object
+    mainObject = { ...objectIdentifier };
+    // Determine if it's the world object
+    isWorld = mainObject.name === geometries.world.name;
+    objectType = isWorld ? 'world' : 'volume';
   }
   
   // If the object is not found, return null
-  if (!object) {
-    console.error(`Object with name ${objectName} not found`);
+  if (!mainObject) {
+    console.error(`Object not found: ${typeof objectIdentifier === 'string' ? objectIdentifier : 'object'}`);
     return null;
   }
   
-  // Find all descendants recursively
-  const descendants = findAllDescendants(objectName, geometries.volumes);
+  // Remove displayName property if it exists - it should not be saved
+  if (mainObject.displayName) {
+    delete mainObject.displayName;
+  }
+  
+  // Find all descendants recursively using the helper function
+  const descendants = findAllDescendants(mainObject.name, geometries.volumes);
   
   // Return the object and its descendants
   return {
-    object,
+    object: mainObject,
     objectType,
-    descendants
+    descendants,
+    isWorld
   };
 };
 

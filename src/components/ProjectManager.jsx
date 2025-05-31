@@ -37,70 +37,13 @@ import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import CategoryIcon from '@mui/icons-material/Category';
 import fileSystemManager from '../utils/FileSystemManager';
 import { standardizeProjectData, restoreProjectData } from '../utils/ObjectFormatStandardizer';
+// Import the extractObjectWithDescendants function from GeometryUtils
+import { extractObjectWithDescendants } from './geometry-editor/utils/GeometryUtils';
 // LocalStorageManager has been removed to avoid browser storage usage
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
 
 const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, handleImportPartialFromAddNew, compactMode = false }) => {
-  // Extract an object and all its descendants - comprehensive version
-  const extractObjectWithDescendants = (selectedObject, geometriesData) => {
-    // Get the main object and remove displayName property
-    const mainObject = { ...selectedObject };
-    // Remove displayName property if it exists - it should not be saved
-    if (mainObject.displayName) {
-      delete mainObject.displayName;
-    }
-    const isWorld = mainObject.name === geometriesData.world.name;
-    
-    // Find all descendants recursively
-    const findDescendants = (parentName, allVolumes) => {
-      return allVolumes.filter(volume => volume.mother_volume === parentName);
-    };
-    
-    // Start with direct children
-    let descendants = findDescendants(mainObject.name, geometriesData.volumes);
-    let allDescendants = [...descendants];
-    
-    // Find descendants of descendants (recursive)
-    for (let i = 0; i < descendants.length; i++) {
-      const childDescendants = findDescendants(descendants[i].name, geometriesData.volumes);
-      if (childDescendants.length > 0) {
-        allDescendants = [...allDescendants, ...childDescendants];
-        descendants = [...descendants, ...childDescendants];
-      }
-    }
-    
-    // Removed _sourceId generation as it's not used for anything useful
-    
-    // Process descendants to ensure hit collection information is preserved
-    const processedDescendants = allDescendants.map(descendant => {
-      // Create a deep copy to avoid modifying the original
-      const processedDescendant = { ...descendant };
-      
-      // Remove displayName property if it exists - it should not be saved
-      if (processedDescendant.displayName) {
-        delete processedDescendant.displayName;
-      }
-      
-      // Ensure hit collection properties are explicitly preserved
-      if (descendant.isActive !== undefined) {
-        processedDescendant.isActive = descendant.isActive;
-      }
-      
-      if (descendant.hitsCollectionName) {
-        processedDescendant.hitsCollectionName = descendant.hitsCollectionName;
-      }
-      
-      return processedDescendant;
-    });
-    
-    // Return the main object and all its descendants
-    return {
-      object: mainObject,
-      descendants: processedDescendants,
-      isWorld
-    };
-  };
   // UI state
   const [currentTab, setCurrentTab] = useState(0);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
