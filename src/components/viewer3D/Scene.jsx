@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from '../utils/geometryUtils';
+import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
-import TransformableObject from './TransformableObject';
-import CoordinateSystem from './CoordinateSystem';
-import CameraSetup from './CameraSetup';
+import TransformableObject from './components/TransformableObject';
+import CoordinateSystem from './components/CoordinateSystem';
+import CameraSetup from './components/CameraSetup';
 
 // Scene component with all 3D elements
 

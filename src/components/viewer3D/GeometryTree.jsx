@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from '../utils/geometryUtils';
+import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
 
 
 // GeometryTree component for the left panel

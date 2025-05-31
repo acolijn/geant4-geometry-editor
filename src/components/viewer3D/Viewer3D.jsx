@@ -3,16 +3,12 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
-import Scene from './components/Scene';
-import GeometryTree from './components/GeometryTree';
+import Scene from './Scene';
+import GeometryTree from './GeometryTree';
 
 const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) => {
   const [transformMode, setTransformMode] = useState('translate');
   const [frontViewCamera, setFrontViewCamera] = useState(null);
-  
-  // Register update handler with the InstanceTracker
-  // Instance tracking functionality has been removed for a cleaner implementation
-  // The update handler will be reimplemented in a simpler way
   
   // Calculate camera distance based on world size
   const calculateCameraDistance = () => {
