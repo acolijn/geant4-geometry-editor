@@ -632,17 +632,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             zIndex: 1000
           }}
         >
-          <div
-            onClick={() => handleAddToAssembly(contextMenu.volumeIndex)}
-            style={{
-              padding: '8px 16px',
-              cursor: 'pointer',
-              hover: { backgroundColor: '#f5f5f5' }
-            }}
-          >
-            Add to Assembly
-          </div>
-          
           {/* Only show update options for assemblies */}
           {geometries.volumes[contextMenu.volumeIndex]?.type === 'assembly' && (
             <>
@@ -654,17 +643,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                   hover: { backgroundColor: '#f5f5f5' }
                 }}
               >
-                Update All Similar Assemblies
-              </div>
-              <div
-                onClick={() => handleUpdateSelectedAssemblies(contextMenu.volumeIndex)}
-                style={{
-                  padding: '8px 16px',
-                  cursor: 'pointer',
-                  hover: { backgroundColor: '#f5f5f5' }
-                }}
-              >
-                Update Selected Assemblies
+                Update All
               </div>
             </>
           )}
