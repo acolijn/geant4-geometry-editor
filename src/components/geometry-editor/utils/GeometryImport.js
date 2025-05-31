@@ -80,29 +80,6 @@ export const importPartialFromAddNew = (
   // Set the mother volume, defaulting to "World" if undefined
   mainObject.mother_volume = motherVolume || 'World';
   
-  // CRITICAL FIX: Ensure the box has all required properties
-  if (mainObject.type === 'box') {
-    console.log('IMPORT - Processing box object:', mainObject);
-    
-    // Ensure size property exists
-    if (!mainObject.size) {
-      console.warn('IMPORT WARNING - Box missing size property, adding default');
-      mainObject.size = { x: 10, y: 10, z: 10 };
-    }
-    
-    // Ensure position property exists
-    if (!mainObject.position) {
-      console.warn('IMPORT WARNING - Box missing position property, adding default');
-      mainObject.position = { x: 0, y: 0, z: 0 };
-    }
-    
-    // Ensure rotation property exists
-    if (!mainObject.rotation) {
-      console.warn('IMPORT WARNING - Box missing rotation property, adding default');
-      mainObject.rotation = { x: 0, y: 0, z: 0 };
-    }
-  }
-  
   // Check if the name already exists and generate a unique name if needed
   if (existingNames.includes(originalMainName)) {
     // Generate a unique internal name for the main object
@@ -209,9 +186,10 @@ export const importPartialFromAddNew = (
       
       // Check if the name already exists and generate a unique name if needed
       if (existingNames.includes(originalName) || nameMapping[originalName]) {
-        // Generate a unique internal name for the descendant
+        // Generate a simplified unique internal name for the descendant
         const typeForNaming = processedDesc.type || 'part';
-        processedDesc.name = generateUniqueName(typeForNaming);
+        // Just use the type and a random number, without the assembly prefix
+        processedDesc.name = `${typeForNaming}_${Math.floor(Math.random() * 100000)}`;
         
         // Add to the name mapping
         nameMapping[originalName] = processedDesc.name;
@@ -221,14 +199,11 @@ export const importPartialFromAddNew = (
       // Add the new name to the list of existing names to avoid duplicates
       existingNames.push(processedDesc.name);
       
-      // Set the displayName based on metadata name with a serial number and the component name
+      // Set the displayName - keep just the component name for better readability
       if (metadataName && objectSerial !== undefined) {
-        // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
-        const objectType = metadataName.split('.')[0];
-        
-        // Format: <object>_<serial>_<component>
+        // Just use the component name directly without prepending parent assembly name
         const componentName = processedDesc.displayName || originalName;
-        processedDesc.displayName = `${objectType}_${objectSerial}_${componentName}`;
+        processedDesc.displayName = componentName;
         console.log(`IMPORT - Set displayName for descendant to ${processedDesc.displayName}`);
       }
       
