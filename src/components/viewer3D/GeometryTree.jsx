@@ -176,7 +176,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         position: { ...volume.position },
         rotation: { ...volume.rotation },
         name: targetAssemblyName, // Preserve assembly name
-        mother_volume: volume.mother_volume
+        mother_volume: volume.mother_volume,
+          // CRITICAL: Preserve the _compoundId which is essential for grouping assemblies
+          _compoundId: volume._compoundId
       };
       
       // If the assembly has an instance ID, preserve it

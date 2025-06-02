@@ -53,17 +53,17 @@ export function convertToMultiplePlacements(geometry) {
       
       console.log(`Processing assembly ${volume.name} with _compoundId: ${assemblyTypeId}`);
       
-      // Add to the appropriate type group based on _compoundId
+      // Add to the appropriate type group based on _compoundId only
       if (!assemblyTypes[assemblyTypeId]) {
         assemblyTypes[assemblyTypeId] = {
           template: volume,
           instances: []
         };
-        console.log(`Created new assembly type with ID: ${assemblyTypeId}`);
+        console.log(`Created new assembly type with _compoundId: ${assemblyTypeId}`);
       }
       
       assemblyTypes[assemblyTypeId].instances.push(volume);
-      console.log(`Added assembly ${volume.name} to type group with ID: ${assemblyTypeId}`);
+      console.log(`Added assembly ${volume.name} to type group with _compoundId: ${assemblyTypeId}`);
     } else if (volume._compoundId) {
       // This is part of a compound object
       if (!compoundGroups[volume._compoundId]) {
@@ -109,26 +109,55 @@ export function convertToMultiplePlacements(geometry) {
   // Debug info
   console.log(`Found ${Object.keys(assemblyTypes).length} assembly types with ${Object.keys(assemblies).length} total instances`);
   
-  // Process assembly types as compound objects with multiple placements
-  Object.entries(assemblyTypes).forEach(([assemblyTypeId, typeData]) => {
-    // Get the first instance as a template
+  // Keep track of processed assembly types to avoid duplicates
+  const processedAssemblyTypes = new Set();
+  
+  // Process all assembly types and create compound objects for them
+  Object.keys(assemblyTypes).forEach(assemblyTypeId => {
+    // Skip if we've already processed this assembly type
+    if (processedAssemblyTypes.has(assemblyTypeId)) {
+      console.log(`Skipping duplicate assembly type with ID: ${assemblyTypeId} - already processed`);
+      return;
+    }
+    
+    // Mark this assembly type as processed
+    processedAssemblyTypes.add(assemblyTypeId);
+    
+    const typeData = assemblyTypes[assemblyTypeId];
     const templateVolume = typeData.template;
+    
+    console.log(`Processing assembly type with ID: ${assemblyTypeId}`);
+    console.log(`Template volume: ${templateVolume.name}`);
+    console.log(`Number of instances: ${typeData.instances.length}`);
+    
+    // Get the template assembly
     const templateAssembly = assemblies[templateVolume.name];
     
-    console.log(`Processing assembly type with ID: ${assemblyTypeId} using template: ${templateVolume.name}`);
+    if (!templateAssembly) {
+      console.warn(`Template assembly ${templateVolume.name} not found - skipping`);
+      return;
+    }
+    
+    // Log all instances in this type group to verify they're correctly grouped
+    typeData.instances.forEach((instance, index) => {
+      console.log(`  Instance ${index}: ${instance.name}, _compoundId: ${instance._compoundId}`);
+    });
     
     if (!templateAssembly || templateAssembly.children.length === 0) {
       // Skip empty assemblies
-      console.log(`Skipping empty assembly type: ${assemblyType}`);
+      console.log(`Skipping empty assembly type: ${assemblyTypeId}`);
       return;
     }
     
     // Create a compound object for this assembly type
     // Assembly is just a container - no material, color, or dimensions
     
-    // Get the displayName and remove any trailing _number pattern
+    // Extract the assembly type name from the _compoundId or use the name
+    // Remove any trailing numbers (e.g., "PMT_1" -> "PMT")
     let compoundName = templateVolume.displayName || templateVolume.name;
     compoundName = compoundName.replace(/_\d+$/, '');
+    
+    console.log(`Using compound name: ${compoundName} for assembly type with ID: ${assemblyTypeId}`);
     
     const compoundObject = {
       type: 'compound',
@@ -138,7 +167,7 @@ export function convertToMultiplePlacements(geometry) {
       placements: []
     };
     
-    console.log(`Created compound object with name: ${compoundObject.name} (from original: ${templateVolume.displayName || templateVolume.name})`);
+    console.log(`Created compound object with name: ${compoundObject.name}`);
     
     // No hitCollection at the assembly level
     
@@ -208,9 +237,18 @@ export function convertToMultiplePlacements(geometry) {
     });
     
     // Add placements for all instances of this assembly type
-    typeData.instances.forEach(instance => {
+    console.log(`Adding placements for assembly type: ${compoundObject.name}, ID: ${assemblyTypeId}`);
+    console.log(`Number of instances to process: ${typeData.instances.length}`);
+    
+    typeData.instances.forEach((instance, index) => {
+      // Log detailed information about each instance
+      console.log(`Processing instance ${index}: ${instance.name}, _compoundId: ${instance._compoundId}`);
+      console.log(`  Position: x=${instance.position?.x || 0}, y=${instance.position?.y || 0}, z=${instance.position?.z || 0}`);
+      console.log(`  Rotation: x=${instance.rotation?.x || 0}, y=${instance.rotation?.y || 0}, z=${instance.rotation?.z || 0}`);
+      console.log(`  Parent: ${instance.mother_volume || 'World'}`);
+      
       // Add a placement for each instance - no units (all in mm and rad)
-      compoundObject.placements.push({
+      const placement = {
         // Use the Geant4 name (displayName) as g4name for identification in placements
         g4name: instance.displayName || instance.name,
         x: instance.position?.x || 0,
@@ -224,8 +262,16 @@ export function convertToMultiplePlacements(geometry) {
         // The parent is where this instance will be placed - use internal name for parent reference
         // For top-level assemblies, this is typically 'World'
         parent: instance.mother_volume || 'World'
-      });
+      };
+      
+      compoundObject.placements.push(placement);
+      console.log(`  Added placement for instance ${instance.name} to compound object ${compoundObject.name}`);
     });
+    
+    console.log(`Total placements added for ${compoundObject.name}: ${compoundObject.placements.length}`);
+    if (compoundObject.placements.length === 0) {
+      console.warn(`WARNING: No placements were added for assembly type: ${compoundObject.name}`);
+    }
     
     // Add the compound object to the converted geometry
     convertedGeometry.volumes.push(compoundObject);
@@ -373,7 +419,7 @@ function convertStandardVolume(volume, originalGeometry) {
   // Get the parent name (mother_volume) and use its Geant4 name if available
   let parentName = 'World';
   let isChildOfAssembly = false;
-  
+
   if (volume.mother_volume && volume.mother_volume !== 'World') {
     // Find the mother volume in the original geometry to get its displayName
     const motherVolume = originalGeometry.volumes.find(vol => vol.name === volume.mother_volume);
@@ -397,7 +443,7 @@ function convertStandardVolume(volume, originalGeometry) {
       parentName = volume.mother_volume;
     }
   }
-  
+
   return {
     type: volume.type,
     // Use the internal name for consistency
@@ -407,7 +453,10 @@ function convertStandardVolume(volume, originalGeometry) {
     material: volume.material,
     color: convertColor(volume.color),
     visible: volume.visible !== undefined ? volume.visible : true,
-    ...(volume.isActive && { hitCollection: volume.hitsCollectionName || "DefaultHitCollection" }),
+    ...(volume.isActive && { 
+      hitCollection: volume.hitsCollectionName || "DefaultHitCollection",
+      hitsCollectionName: volume.hitsCollectionName || "DefaultHitCollection"
+    }),
     dimensions: convertDimensions(volume),
     placements: [
       {
@@ -433,6 +482,7 @@ function convertStandardVolume(volume, originalGeometry) {
  * @param {Array} rootInstances - All instances of the root volume
  * @param {Array} components - The components of the compound object
  * @param {Map} nameToBaseNameMap - Map of volume names to their base names
+ * @param {Object} geometry - The original geometry object with all volumes
  * @returns {Object} - The compound object
  */
 function createCompoundObject(rootVolume, rootInstances, components, nameToBaseNameMap, geometry) {
@@ -515,7 +565,10 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
-    ...(rootVolume.isActive && { hitCollection: rootVolume.hitsCollectionName || "DefaultHitCollection" }),
+    ...(rootVolume.isActive && { 
+      hitCollection: rootVolume.hitsCollectionName || "DefaultHitCollection",
+      hitsCollectionName: rootVolume.hitsCollectionName || "DefaultHitCollection"
+    }),
     dimensions: convertDimensions(rootVolume),
     placements: [{
       x: 0,
@@ -558,7 +611,10 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       material: component.material,
       color: convertColor(component.color),
       visible: component.visible !== undefined ? component.visible : true,
-      ...(component.isActive && { hitCollection: component.hitsCollectionName || "DefaultHitCollection" }),
+      ...(component.isActive && { 
+        hitCollection: component.hitsCollectionName || "DefaultHitCollection",
+        hitsCollectionName: component.hitsCollectionName || "DefaultHitCollection"
+      }),
       dimensions: convertDimensions(component),
       placements: [{
         x: component.position?.x || 0,

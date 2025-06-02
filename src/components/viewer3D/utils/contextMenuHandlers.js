@@ -69,13 +69,18 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
       position: { ...volume.position },
       rotation: { ...volume.rotation },
       name: targetAssemblyName, // Preserve assembly name
-      mother_volume: volume.mother_volume
+      mother_volume: volume.mother_volume,
+      // CRITICAL: Preserve the _compoundId which is essential for grouping assemblies
+      _compoundId: volume._compoundId
     };
     
     // If the assembly has an instance ID, preserve it
     if (volume._instanceId) {
       updatedAssembly._instanceId = volume._instanceId;
     }
+    
+    // Log the compoundId preservation
+    console.log(`Preserving _compoundId: ${volume._compoundId} for assembly ${targetAssemblyName}`);
     
     // Preserve displayName and g4name if they exist
     if (volume.displayName) {
@@ -127,8 +132,12 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
           // CRITICAL: Preserve these identifiers
           name: matchingTargetComponent.volume.name, // Preserve internal name
           mother_volume: targetAssemblyName, // Preserve parent relationship
-          _componentId: matchingTargetComponent.volume._componentId // Preserve component ID
+          _componentId: matchingTargetComponent.volume._componentId, // Preserve component ID
+          _compoundId: matchingTargetComponent.volume._compoundId // Preserve compound ID for correct grouping
         };
+        
+        // Log the compoundId preservation
+        console.log(`Preserving _compoundId: ${matchingTargetComponent.volume._compoundId} for component ${matchingTargetComponent.volume.name}`);
         
         // Preserve displayName and g4name if they exist
         if (matchingTargetComponent.volume.displayName) {
