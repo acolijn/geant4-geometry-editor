@@ -12,51 +12,18 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
 
-  // Create a custom extractObjectWithDescendants function that works with our data structure
-  const extractObjectWithDescendantsWrapper = (objectIdentifier) => {
-    // If we have a volumeIndex from context menu, use that
-    let volumeIndex;
-    if (typeof objectIdentifier === 'string' && objectIdentifier.startsWith('volume-')) {
-      volumeIndex = parseInt(objectIdentifier.split('-')[1]);
-    } else if (contextMenu && contextMenu.volumeIndex !== undefined) {
-      volumeIndex = contextMenu.volumeIndex;
-      objectIdentifier = `volume-${volumeIndex}`;
-    }
-    
-    if (volumeIndex === undefined || !geometries.volumes[volumeIndex]) {
-      console.error('Invalid object identifier:', objectIdentifier);
-      return { object: null, descendants: [] };
-    }
-    
-    // Get the main object
-    const mainObject = { ...geometries.volumes[volumeIndex] };
-    
-    // Find all descendants (children of this object)
-    const descendants = [];
-    const objectName = mainObject.name;
-    
-    // If this is an assembly, find all objects that have this as mother_volume
-    if (mainObject.type === 'assembly') {
-      for (let i = 0; i < geometries.volumes.length; i++) {
-        const volume = geometries.volumes[i];
-        if (volume.mother_volume === objectName) {
-          descendants.push({
-            ...volume,
-            parent: objectName
-          });
-        }
-      }
-    }
-    
-    return { object: mainObject, descendants };
-  };
+  // We'll use the existing extractObjectWithDescendants function from GeometryUtils
+  // but we need to adapt our geometries structure to match what it expects
   
-  // Import the handleExportObject function from importExportHandlers
-  const { handleExportObject } = createImportExportHandlers({
-    geometries,
+  // Get the importExportHandlers functions
+  const importExportHandlers = createImportExportHandlers({
+    geometries: {
+      volumes: geometries.volumes,
+      world: geometries.world || { name: 'world' } // Provide a default world if not available
+    },
     selectedGeometry,
     onUpdateGeometry,
-    extractObjectWithDescendants: extractObjectWithDescendantsWrapper,
+    extractObjectWithDescendants, // Use the original function
     setObjectToSave,
     setSaveObjectDialogOpen,
     getSelectedGeometryObjectLocal: () => {
@@ -72,6 +39,40 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       return null;
     }
   });
+  
+  // Create a wrapper for handleExportObject that ensures geometries is passed correctly
+  const handleExportObject = () => {
+    // Get the currently selected geometry object
+    const selectedObject = importExportHandlers.getSelectedGeometryObjectLocal();
+    if (!selectedObject) {
+      alert('Please select a geometry object to export');
+      return;
+    }
+    
+    // Create a proper geometries structure
+    const geometriesForExport = {
+      volumes: geometries.volumes,
+      world: geometries.world || { name: 'world' }
+    };
+    
+    // Extract the object and its descendants
+    let objectId;
+    if (contextMenu && contextMenu.volumeIndex !== undefined) {
+      objectId = `volume-${contextMenu.volumeIndex}`;
+    } else {
+      objectId = selectedGeometry;
+    }
+    
+    const exportData = extractObjectWithDescendants(objectId, geometriesForExport);
+    if (!exportData) {
+      console.error('Failed to extract object data');
+      return;
+    }
+    
+    // Set the object to save and open the dialog
+    setObjectToSave(exportData);
+    setSaveObjectDialogOpen(true);
+  };
   // State to track expanded nodes - initially only World is expanded
   const [expandedNodes, setExpandedNodes] = useState({ world: true });
   
@@ -840,7 +841,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                   // This ensures handleExportObject gets the right object
                   const volumeKey = `volume-${contextMenu.volumeIndex}`;
                   onSelect(volumeKey);
-                  // Call handleExportObject and close the context menu
+                  // Call our custom handleExportObject and close the context menu
                   handleExportObject();
                   handleCloseContextMenu();
                 }}
