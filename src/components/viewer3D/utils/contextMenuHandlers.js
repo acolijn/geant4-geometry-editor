@@ -79,9 +79,6 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
       updatedAssembly._instanceId = volume._instanceId;
     }
     
-    // Log the compoundId preservation
-    console.log(`Preserving _compoundId: ${volume._compoundId} for assembly ${targetAssemblyName}`);
-    
     // Preserve displayName and g4name if they exist
     if (volume.displayName) {
       updatedAssembly.displayName = volume.displayName;
@@ -136,9 +133,6 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
           _compoundId: matchingTargetComponent.volume._compoundId // Preserve compound ID for correct grouping
         };
         
-        // Log the compoundId preservation
-        console.log(`Preserving _compoundId: ${matchingTargetComponent.volume._compoundId} for component ${matchingTargetComponent.volume.name}`);
-        
         // Preserve displayName and g4name if they exist
         if (matchingTargetComponent.volume.displayName) {
           updatedComponent.displayName = matchingTargetComponent.volume.displayName;
@@ -169,37 +163,4 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
   } else {
     console.log('No other assemblies found to update.');
   }
-};
-
-// Function to update selected assemblies
-export const handleUpdateSelectedAssemblies = (volumeIndex, geometries, setUpdateAssembliesDialog, setContextMenu) => {
-  // Close the context menu
-  setContextMenu(null);
-  
-  // Get the selected volume
-  const selectedVolume = geometries.volumes[volumeIndex];
-  
-  // Only proceed if the selected volume is an assembly
-  if (selectedVolume.type !== 'assembly') {
-    alert('Only assemblies can be updated. Please select an assembly.');
-    return;
-  }
-  
-  // Find all assemblies in the scene
-  const allAssemblies = geometries.volumes
-    .map((volume, index) => ({ volume, index }))
-    .filter(item => item.volume.type === 'assembly' && item.index !== volumeIndex);
-  
-  if (allAssemblies.length === 0) {
-    console.log('No other assemblies found to update.');
-    return;
-  }
-  
-  // Open the update assemblies dialog
-  setUpdateAssembliesDialog({
-    open: true,
-    sourceIndex: volumeIndex,
-    selectedIndices: [],
-    allAssemblies: allAssemblies
-  });
 };
