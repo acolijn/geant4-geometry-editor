@@ -6,6 +6,7 @@
  */
 
 import { getSelectedGeometryObject } from './GeometryUtils';
+import { toInternalUnit, fromInternalUnit } from './UnitConverter';
 
 /**
  * Creates property handler functions with access to state and setState
@@ -18,6 +19,8 @@ import { getSelectedGeometryObject } from './GeometryUtils';
  */
 export const createPropertyHandlers = (props) => {
   const { onUpdateGeometry, selectedGeometry, geometries } = props;
+  
+  // We'll get the current unit from the PropertyEditor component when it calls handlePropertyChange
 
   /**
    * Get the currently selected geometry object using the shared utility function
@@ -65,20 +68,61 @@ export const createPropertyHandlers = (props) => {
   };
 
   /**
-   * Handle changes to geometry properties
+   * Handle property changes for the selected geometry object
    * 
-   * @param {string} property - The name of the property to change (can be nested like 'position.x')
+   * @param {string} property - The property to change
    * @param {any} value - The new value for the property
-   * @param {boolean} allowNegative - Whether to allow negative values for numeric properties
+   * @param {string} unit - The unit of the input value (e.g., 'cm', 'mm', 'deg', 'rad')
    * @param {boolean} isStringProperty - Whether the property is a string (no numeric conversion)
    */
-  const handlePropertyChange = (property, value, allowNegative = true, isStringProperty = false) => {
+  const handlePropertyChange = (property, value, unit = 'cm', isStringProperty = false) => {
     // Get the currently selected geometry object
     const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
     
     // Create a deep copy of the selected object to avoid mutating the original
     const updatedObject = JSON.parse(JSON.stringify(selectedObject));
+    
+    // Parse the value if it's a number
+    let finalValue = value;
+    
+    // Special handling for array properties (like zSections for polycone)
+    if (Array.isArray(value)) {
+      // For array properties, we don't need to do any conversion here
+      // as it should already be handled in the PropertyEditor component
+      finalValue = value;
+    } else {
+      // Determine if this is a numeric field that needs unit conversion
+      const isNumberField = !isStringProperty && typeof value === 'string' && /^-?\d*\.?\d*$/.test(value);
+      
+      if (isNumberField) {
+        // For empty string or just a minus sign, don't process yet
+        if (value === '' || value === '-') {
+          finalValue = value;
+        } else {
+          const parsed = parseFloat(value);
+          if (!isNaN(parsed)) {
+            // Determine if this is a length or angle property
+            const isAngle = property.includes('rotation');
+            const unitType = isAngle ? 'angle' : 'length';
+            
+            // Convert from the current display unit to internal units (mm or rad)
+            finalValue = toInternalUnit(parsed, unit, unitType);
+            console.log(`Converting ${parsed} ${unit} to ${finalValue} internal units (${unitType})`);
+          } else {
+            // If parsing fails, keep the original value
+            finalValue = isStringProperty ? value : 0;
+          }
+        }
+      } else if (!isStringProperty && typeof value !== 'object') {
+        const parsed = parseFloat(value);
+        if (!isNaN(parsed)) {
+          finalValue = parsed;
+        } else {
+          finalValue = 0;
+        }
+      }
+    }
     
     // Handle nested properties like 'position.x'
     if (property.includes('.')) {
@@ -89,28 +133,30 @@ export const createPropertyHandlers = (props) => {
         updatedObject[parent] = {};
       }
       
-      // Convert the value to a number if it's not a string property
-      let newValue = isStringProperty ? value : parseFloat(value);
+      // Apply the value to the property
+      updatedObject[parent][child] = finalValue;
       
-      // Ensure the value is valid
-      if (!isStringProperty && isNaN(newValue)) {
-        newValue = 0;
+      // For rotation, always store in radians (no unit needed)
+      // For position, preserve the length unit
+      if (parent === 'position') {
+        updatedObject[parent].unit = unit; // Use the unit passed to the function
+      } else if (updatedObject[parent].unit) {
+        // For other properties, remove unit as it's no longer needed
+        delete updatedObject[parent].unit;
       }
       
-      // Apply the value to the property
-      updatedObject[parent][child] = newValue;
+      // Special handling for box dimensions - update both dimensions and size
+      if (parent === 'dimensions' && updatedObject.type === 'box') {
+        // Ensure size property exists and is updated to match dimensions
+        if (!updatedObject.size) {
+          updatedObject.size = {};
+        }
+        updatedObject.size[child] = finalValue;
+        console.log(`Updated box ${child} dimension to ${finalValue} and synchronized with size property`);
+      }
     } else {
       // Handle direct properties
-      // Convert the value to a number if it's not a string property
-      let newValue = isStringProperty ? value : parseFloat(value);
-      
-      // Ensure the value is valid
-      if (!isStringProperty && isNaN(newValue)) {
-        newValue = 0;
-      }
-      
-      // Apply the value to the property
-      updatedObject[property] = newValue;
+      updatedObject[property] = finalValue;
     }
     
     // Update the geometry with the new object

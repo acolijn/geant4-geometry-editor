@@ -15,6 +15,7 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../utils/UnitConverter';
 import { getSelectedGeometryObject } from '../utils/GeometryUtils';
+import { createPropertyHandlers } from '../utils/propertyHandlers';
 
 /**
  * PropertyEditor Component
@@ -34,7 +35,8 @@ const PropertyEditor = ({
   handleExportObject,
   handleInputFocus,
   handleNumberKeyDown,
-  setUpdateObjectsDialogOpen
+  setUpdateObjectsDialogOpen,
+  handlePropertyChange,
 }) => {
   // State for the menu
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
@@ -59,8 +61,8 @@ const PropertyEditor = ({
   };
 
 
-  // Handle property changes
-  const handlePropertyChange = (key, value, isString = false) => {
+/*   // Handle property changes
+  const handlePropertyChangeLocal = (key, value, isString = false) => {
     const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
   
@@ -123,50 +125,9 @@ const PropertyEditor = ({
     }
   
     onUpdateGeometry(selectedGeometry, updatedObject);
-  };
-  
-/*   const handlePropertyChange = (property, value, isString = false, skipConversion = false) => {
-    const selectedObject = getSelectedGeometryObjectLocal();
-    if (!selectedObject) return;
-    
-    // Create a deep copy of the selected object
-    const updatedObject = { ...selectedObject };
-    
-    // Handle nested properties (e.g., 'position.x')
-    if (property.includes('.')) {
-      const [parentProp, childProp] = property.split('.');
-      
-      // Ensure the parent property exists
-      if (!updatedObject[parentProp]) {
-        updatedObject[parentProp] = {};
-      }
-      
-      // Update the child property with the appropriate type conversion
-      if (isString || skipConversion) {
-        updatedObject[parentProp] = {
-          ...updatedObject[parentProp],
-          [childProp]: value
-        };
-      } else {
-        updatedObject[parentProp] = {
-          ...updatedObject[parentProp],
-          [childProp]: parseFloat(value) || 0
-        };
-      }
-    } else {
-      // Handle direct properties with appropriate type conversion
-      if (isString || skipConversion) {
-        updatedObject[property] = value;
-      } else {
-        updatedObject[property] = parseFloat(value) || 0;
-      }
-    }
-    
-    // Update the geometry with the modified object
-    onUpdateGeometry(selectedGeometry, updatedObject);
   }; */
-
-  // Get the selected object
+  
+// Get the selected object
   const selectedObject = getSelectedGeometryObjectLocal();
   
   if (!selectedObject) {
@@ -355,7 +316,7 @@ const PropertyEditor = ({
             ? fromInternalUnit(selectedObject.position.x, lengthUnit, 'length')
             : 0
           }
-          onChange={(e) => handlePropertyChange('position.x', e.target.value)}
+          onChange={(e) => handlePropertyChange('position.x', e.target.value, lengthUnit)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
@@ -368,7 +329,7 @@ const PropertyEditor = ({
             ? fromInternalUnit(selectedObject.position.y, lengthUnit, 'length')
             : 0
           }
-          onChange={(e) => handlePropertyChange('position.y', e.target.value)}
+          onChange={(e) => handlePropertyChange('position.y', e.target.value, lengthUnit)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
@@ -381,7 +342,7 @@ const PropertyEditor = ({
             ? fromInternalUnit(selectedObject.position.z, lengthUnit, 'length')
             : 0
           }
-          onChange={(e) => handlePropertyChange('position.z', e.target.value)}
+          onChange={(e) => handlePropertyChange('position.z', e.target.value, lengthUnit)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
@@ -414,7 +375,7 @@ const PropertyEditor = ({
             ? fromInternalUnit(selectedObject.rotation.x, angleUnit, 'angle')
             : 0
           }
-          onChange={(e) => handlePropertyChange('rotation.x', e.target.value)}
+          onChange={(e) => handlePropertyChange('rotation.x', e.target.value, angleUnit)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
@@ -427,7 +388,7 @@ const PropertyEditor = ({
             ? fromInternalUnit(selectedObject.rotation.y, angleUnit, 'angle')
             : 0
           }
-          onChange={(e) => handlePropertyChange('rotation.y', e.target.value)}
+          onChange={(e) => handlePropertyChange('rotation.y', e.target.value, angleUnit)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
@@ -440,7 +401,7 @@ const PropertyEditor = ({
             ? fromInternalUnit(selectedObject.rotation.z, angleUnit, 'angle')
             : 0
           }
-          onChange={(e) => handlePropertyChange('rotation.z', e.target.value)}
+          onChange={(e) => handlePropertyChange('rotation.z', e.target.value, angleUnit)}
           onFocus={handleInputFocus}
           onKeyDown={handleNumberKeyDown}
           size="small"
@@ -475,7 +436,7 @@ const PropertyEditor = ({
                   ? fromInternalUnit(selectedObject.size.x, lengthUnit, 'length')
                   : 0)
               }
-              onChange={(e) => handlePropertyChange('dimensions.x', e.target.value)}
+              onChange={(e) => handlePropertyChange('dimensions.x', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -489,7 +450,7 @@ const PropertyEditor = ({
                   ? fromInternalUnit(selectedObject.size.y, lengthUnit, 'length')
                   : 0)
               }
-              onChange={(e) => handlePropertyChange('dimensions.y', e.target.value)}
+              onChange={(e) => handlePropertyChange('dimensions.y', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -503,7 +464,7 @@ const PropertyEditor = ({
                   ? fromInternalUnit(selectedObject.size.z, lengthUnit, 'length')
                   : 0)
               }
-              onChange={(e) => handlePropertyChange('dimensions.z', e.target.value)}
+              onChange={(e) => handlePropertyChange('dimensions.z', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -536,7 +497,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.radius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('radius', e.target.value)}
+              onChange={(e) => handlePropertyChange('radius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -548,7 +509,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.height, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('height', e.target.value)}
+              onChange={(e) => handlePropertyChange('height', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -575,7 +536,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.innerRadius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('innerRadius', e.target.value)}
+              onChange={(e) => handlePropertyChange('innerRadius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -608,7 +569,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.radius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('radius', e.target.value)}
+              onChange={(e) => handlePropertyChange('radius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -641,7 +602,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.dx1, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('dx1', e.target.value)}
+              onChange={(e) => handlePropertyChange('dx1', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -653,7 +614,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.dx2, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('dx2', e.target.value)}
+              onChange={(e) => handlePropertyChange('dx2', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -680,7 +641,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.dy1, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('dy1', e.target.value)}
+              onChange={(e) => handlePropertyChange('dy1', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -692,7 +653,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.dy2, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('dy2', e.target.value)}
+              onChange={(e) => handlePropertyChange('dy2', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -719,7 +680,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.dz, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('dz', e.target.value)}
+              onChange={(e) => handlePropertyChange('dz', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -752,7 +713,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.xRadius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('xRadius', e.target.value)}
+              onChange={(e) => handlePropertyChange('xRadius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -764,7 +725,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.yRadius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('yRadius', e.target.value)}
+              onChange={(e) => handlePropertyChange('yRadius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -776,7 +737,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.zRadius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('zRadius', e.target.value)}
+              onChange={(e) => handlePropertyChange('zRadius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -809,7 +770,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.majorRadius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('majorRadius', e.target.value)}
+              onChange={(e) => handlePropertyChange('majorRadius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -821,7 +782,7 @@ const PropertyEditor = ({
                 ? fromInternalUnit(selectedObject.minorRadius, lengthUnit, 'length')
                 : 0
               }
-              onChange={(e) => handlePropertyChange('minorRadius', e.target.value)}
+              onChange={(e) => handlePropertyChange('minorRadius', e.target.value, lengthUnit)}
               onFocus={handleInputFocus}
               size="small"
               inputProps={{ step: 'any', min: 0 }}
@@ -878,7 +839,7 @@ const PropertyEditor = ({
                   // Convert to internal units (mm)
                   const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
                   newSections[index] = { ...newSections[index], z: valueInMm };
-                  handlePropertyChange('zSections', newSections, true);
+                  handlePropertyChange('zSections', newSections, lengthUnit, true);
                 }}
                 onFocus={handleInputFocus}
                 size="small"
@@ -896,7 +857,7 @@ const PropertyEditor = ({
                   // Convert to internal units (mm)
                   const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
                   newSections[index] = { ...newSections[index], rMin: valueInMm };
-                  handlePropertyChange('zSections', newSections, true);
+                  handlePropertyChange('zSections', newSections, lengthUnit, true);
                 }}
                 onFocus={handleInputFocus}
                 size="small"
@@ -914,7 +875,7 @@ const PropertyEditor = ({
                   // Convert to internal units (mm)
                   const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
                   newSections[index] = { ...newSections[index], rMax: valueInMm };
-                  handlePropertyChange('zSections', newSections, true);
+                  handlePropertyChange('zSections', newSections, lengthUnit, true);
                 }}
                 onFocus={handleInputFocus}
                 size="small"
@@ -928,7 +889,7 @@ const PropertyEditor = ({
                   if (selectedObject?.zSections?.length > 2) {
                     const newSections = [...selectedObject?.zSections];
                     newSections.splice(index, 1);
-                    handlePropertyChange('zSections', newSections, true);
+                    handlePropertyChange('zSections', newSections, lengthUnit, true);
                   }
                 }}
                 disabled={selectedObject?.zSections?.length <= 2}
@@ -952,7 +913,7 @@ const PropertyEditor = ({
                 rMin: 0, 
                 rMax: toInternalUnit(5, lengthUnit, 'length') 
               });
-              handlePropertyChange('zSections', newSections, true);
+              handlePropertyChange('zSections', newSections, lengthUnit, true);
             }}
             sx={{ mb: 1 }}
           >
