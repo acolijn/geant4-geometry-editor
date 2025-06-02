@@ -14,6 +14,9 @@ export const handleCloseContextMenu = (setContextMenu) => {
   setContextMenu(null);
 };
 
+// Import the findAllDescendants function from GeometryUtils
+import { findAllDescendants } from '../../geometry-editor/utils/GeometryUtils';
+
 // Function to update all similar assemblies
 export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeometry, setContextMenu) => {
   // Close the context menu first
@@ -31,23 +34,21 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
   // Count of updated assemblies
   let updatedCount = 0;
   
-  // First, find all components in the source assembly
-  const sourceComponents = [];
+  // Get the source assembly name
   const sourceAssemblyName = selectedVolume.name;
   
-  // Find all components that belong to the source assembly
-  for (let i = 0; i < geometries.volumes.length; i++) {
-    const volume = geometries.volumes[i];
-    if (volume.mother_volume === sourceAssemblyName) {
-      sourceComponents.push({
-        index: i,
-        volume: volume,
-        _componentId: volume._componentId
-      });
-    }
-  }
+  // Find all descendants (direct and indirect children) of the source assembly recursively
+  const sourceDescendants = findAllDescendants(sourceAssemblyName, geometries.volumes);
   
-  console.log(`Found ${sourceComponents.length} components in source assembly ${sourceAssemblyName}:`, sourceComponents);
+  // Map the source descendants by their _componentId for easier lookup
+  const sourceDescendantsMap = new Map();
+  sourceDescendants.forEach(desc => {
+    if (desc._componentId) {
+      sourceDescendantsMap.set(desc._componentId, desc);
+    }
+  });
+  
+  console.log(`Found ${sourceDescendants.length} descendants in source assembly ${sourceAssemblyName}:`, sourceDescendants);
   
   // Update all assemblies except the selected one
   for (let i = 0; i < geometries.volumes.length; i++) {
@@ -98,61 +99,83 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
     // Use the volume ID format: 'volume-index'
     onUpdateGeometry(`volume-${i}`, updatedAssembly, true, false);
     
-    // Now update all components of this assembly
-    // First, find all components that belong to this target assembly
-    const targetComponents = [];
-    for (let j = 0; j < geometries.volumes.length; j++) {
-      const component = geometries.volumes[j];
-      if (component.mother_volume === targetAssemblyName) {
-        targetComponents.push({
-          index: j,
-          volume: component,
-          _componentId: component._componentId
-        });
+    // Find all descendants of the target assembly recursively
+    const targetDescendants = findAllDescendants(targetAssemblyName, geometries.volumes);
+    
+    console.log(`Found ${targetDescendants.length} descendants in target assembly ${targetAssemblyName}:`, targetDescendants);
+    
+    // Create a map of all volumes by name for quick lookup
+    const volumesByName = new Map();
+    geometries.volumes.forEach((vol, idx) => {
+      if (vol.name) {
+        volumesByName.set(vol.name, { volume: vol, index: idx });
       }
-    }
+    });
     
-    console.log(`Found ${targetComponents.length} components in target assembly ${targetAssemblyName}:`, targetComponents);
+    // Process the target assembly's descendants
+    // First, create a map of parent-child relationships for the target assembly
+    const parentChildMap = new Map();
+    targetDescendants.forEach(desc => {
+      if (!parentChildMap.has(desc.mother_volume)) {
+        parentChildMap.set(desc.mother_volume, []);
+      }
+      parentChildMap.get(desc.mother_volume).push(desc);
+    });
     
-    // For each source component, find matching target component by _componentId
-    // and update it with the source component's properties
-    for (const sourceComponent of sourceComponents) {
-      // Find matching target component by _componentId
-      const matchingTargetComponent = targetComponents.find(tc => 
-        tc._componentId && sourceComponent._componentId && tc._componentId === sourceComponent._componentId
-      );
+    // Function to recursively update descendants
+    const updateDescendantsRecursively = (parentName, newParentName) => {
+      // Get children of this parent
+      const children = parentChildMap.get(parentName) || [];
       
-      if (matchingTargetComponent) {
-        // Create updated component with properties from source but preserve critical identifiers
-        const updatedComponent = {
-          ...sourceComponent.volume,
-          // CRITICAL: Preserve these identifiers
-          name: matchingTargetComponent.volume.name, // Preserve internal name
-          mother_volume: targetAssemblyName, // Preserve parent relationship
-          _componentId: matchingTargetComponent.volume._componentId, // Preserve component ID
-          _compoundId: matchingTargetComponent.volume._compoundId // Preserve compound ID for correct grouping
-        };
+      for (const child of children) {
+        // Find the corresponding source component by _componentId
+        const sourceComponent = child._componentId ? sourceDescendantsMap.get(child._componentId) : null;
         
-        // Preserve displayName and g4name if they exist
-        if (matchingTargetComponent.volume.displayName) {
-          updatedComponent.displayName = matchingTargetComponent.volume.displayName;
+        // Find the volume index in the geometries array
+        const volumeInfo = volumesByName.get(child.name);
+        if (!volumeInfo) continue;
+        
+        const childIndex = volumeInfo.index;
+        
+        // If we found a matching source component, update this component with its properties
+        if (sourceComponent) {
+          // Create updated component with properties from source but preserve critical identifiers
+          const updatedComponent = {
+            ...sourceComponent,
+            // CRITICAL: Preserve these identifiers
+            name: child.name, // Preserve internal name
+            mother_volume: newParentName, // Use the new parent name
+            _componentId: child._componentId, // Preserve component ID
+            _compoundId: child._compoundId // Preserve compound ID for correct grouping
+          };
+          
+          // Preserve displayName and g4name if they exist
+          if (child.displayName) {
+            updatedComponent.displayName = child.displayName;
+          }
+          if (child.g4name) {
+            updatedComponent.g4name = child.g4name;
+          }
+          
+          console.log(`Updating component at index ${childIndex}:`, {
+            sourceComponent,
+            targetComponent: child,
+            updatedComponent
+          });
+          
+          // Update this specific component
+          onUpdateGeometry(`volume-${childIndex}`, updatedComponent, true, false);
+          
+          // Recursively update this component's children
+          updateDescendantsRecursively(child.name, child.name);
+        } else {
+          console.log(`No matching source component found for target component ${child.name}`);
         }
-        if (matchingTargetComponent.volume.g4name) {
-          updatedComponent.g4name = matchingTargetComponent.volume.g4name;
-        }
-        
-        console.log(`Updating component at index ${matchingTargetComponent.index}:`, {
-          sourceComponent: sourceComponent.volume,
-          targetComponent: matchingTargetComponent.volume,
-          updatedComponent: updatedComponent
-        });
-        
-        // Update this specific component
-        onUpdateGeometry(`volume-${matchingTargetComponent.index}`, updatedComponent, true, false);
-      } else {
-        console.log(`No matching component found for source component with ID ${sourceComponent._componentId}`);
       }
-    }
+    };
+    
+    // Start the recursive update from the target assembly
+    updateDescendantsRecursively(targetAssemblyName, targetAssemblyName);
     
     updatedCount++;
   }
