@@ -164,3 +164,26 @@ export const findAllDescendants = (parentName, volumes) => {
 export const hasChildren = (objectName, volumes) => {
   return volumes.some(vol => vol.mother_volume === objectName);
 };
+
+/**
+ * Get the currently selected geometry object based on the selectedGeometry ID
+ * 
+ * @param {string} selectedGeometry - ID of currently selected geometry
+ * @param {Object} geometries - Object containing all geometries
+ * @returns {Object|null} The selected geometry object or null if no geometry is selected
+ */
+export const getSelectedGeometryObject = (selectedGeometry, geometries) => {
+  // Return null if no geometry is selected
+  if (!selectedGeometry) return null;
+  
+  // Return the world volume if 'world' is selected
+  if (selectedGeometry === 'world') return geometries.world;
+  
+  // Return the volume at the specified index if a volume is selected
+  if (selectedGeometry.startsWith('volume-')) {
+    const index = parseInt(selectedGeometry.split('-')[1]);
+    return geometries.volumes[index];
+  }
+  
+  return null;
+};

@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../utils/UnitConverter';
+import { getSelectedGeometryObject } from '../utils/GeometryUtils';
 
 /**
  * PropertyEditor Component
@@ -52,22 +53,15 @@ const PropertyEditor = ({
     setMenuAnchorEl(null);
   };
 
-  // Helper function to get the selected geometry object
-  const getSelectedGeometryObject = () => {
-    if (!selectedGeometry) return null;
-    
-    if (selectedGeometry === 'world') {
-      return geometries.world;
-    } else {
-      const volumeIndex = parseInt(selectedGeometry.split('-')[1]);
-      return geometries.volumes[volumeIndex];
-    }
+  // Helper function to get the selected geometry object using the shared utility
+  const getSelectedGeometryObjectLocal = () => {
+    return getSelectedGeometryObject(selectedGeometry, geometries);
   };
 
 
   // Handle property changes
   const handlePropertyChange = (key, value, isString = false) => {
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
   
     // Determine if this is a numeric field that needs unit conversion
@@ -132,7 +126,7 @@ const PropertyEditor = ({
   };
   
 /*   const handlePropertyChange = (property, value, isString = false, skipConversion = false) => {
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
     
     // Create a deep copy of the selected object
@@ -173,7 +167,7 @@ const PropertyEditor = ({
   }; */
 
   // Get the selected object
-  const selectedObject = getSelectedGeometryObject();
+  const selectedObject = getSelectedGeometryObjectLocal();
   
   if (!selectedObject) {
     return (
@@ -279,7 +273,7 @@ const PropertyEditor = ({
             label="Hits Collection"
             onChange={(e) => {
               e.stopPropagation();
-              const currentObject = getSelectedGeometryObject();
+              const currentObject = getSelectedGeometryObjectLocal();
               if (!currentObject) return;
               
               const updatedObject = { ...currentObject };
@@ -973,7 +967,7 @@ const PropertyEditor = ({
           {/* Only enabled for top-level assemblies */}
           {(() => {
             // Get the selected object
-            const selectedObj = getSelectedGeometryObject();
+            const selectedObj = getSelectedGeometryObjectLocal();
             
             // Check if this is a top-level assembly
             const isTopLevelAssembly = selectedObj && 

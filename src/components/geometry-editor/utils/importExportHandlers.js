@@ -4,8 +4,9 @@
  * This module contains handler functions for importing and exporting geometry objects.
  */
 
-// Import the assemblyManager utility
+// Import utilities
 import { ensureStableAssemblyId } from './assemblyManager';
+import { getSelectedGeometryObject } from './GeometryUtils';
 
 /**
  * Creates import/export handler functions with access to state and setState
@@ -32,24 +33,12 @@ export const createImportExportHandlers = (props) => {
   } = props;
 
   /**
-   * Get the currently selected geometry object based on the selectedGeometry ID
+   * Get the currently selected geometry object using the shared utility function
    * 
    * @returns {Object|null} The selected geometry object or null if no geometry is selected
    */
-  const getSelectedGeometryObject = () => {
-    // Return null if no geometry is selected
-    if (!selectedGeometry) return null;
-    
-    // Return the world volume if 'world' is selected
-    if (selectedGeometry === 'world') return geometries.world;
-    
-    // Return the volume at the specified index if a volume is selected
-    if (selectedGeometry.startsWith('volume-')) {
-      const index = parseInt(selectedGeometry.split('-')[1]);
-      return geometries.volumes[index];
-    }
-    
-    return null;
+  const getSelectedGeometryObjectLocal = () => {
+    return getSelectedGeometryObject(selectedGeometry, geometries);
   };
 
   /**
@@ -357,7 +346,7 @@ export const createImportExportHandlers = (props) => {
    */
   const handleExportObject = () => {
     // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) {
       alert('Please select a geometry object to export');
       return;
@@ -593,6 +582,7 @@ export const createImportExportHandlers = (props) => {
     handleImportFromFileSystem,
     handleImportObjectFile,
     processStandardizedFormat,
-    handleLoadObject
+    handleLoadObject,
+    getSelectedGeometryObjectLocal
   };
 };

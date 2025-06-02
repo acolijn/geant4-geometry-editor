@@ -5,6 +5,8 @@
  * including rotation, position, and other object properties.
  */
 
+import { getSelectedGeometryObject } from './GeometryUtils';
+
 /**
  * Creates property handler functions with access to state and setState
  * 
@@ -18,24 +20,12 @@ export const createPropertyHandlers = (props) => {
   const { onUpdateGeometry, selectedGeometry, geometries } = props;
 
   /**
-   * Get the currently selected geometry object based on the selectedGeometry ID
+   * Get the currently selected geometry object using the shared utility function
    * 
    * @returns {Object|null} The selected geometry object or null if no geometry is selected
    */
-  const getSelectedGeometryObject = () => {
-    // Return null if no geometry is selected
-    if (!selectedGeometry) return null;
-    
-    // Return the world volume if 'world' is selected
-    if (selectedGeometry === 'world') return geometries.world;
-    
-    // Return the volume at the specified index if a volume is selected
-    if (selectedGeometry.startsWith('volume-')) {
-      const index = parseInt(selectedGeometry.split('-')[1]);
-      return geometries.volumes[index];
-    }
-    
-    return null;
+  const getSelectedGeometryObjectLocal = () => {
+    return getSelectedGeometryObject(selectedGeometry, geometries);
   };
 
   /**
@@ -84,7 +74,7 @@ export const createPropertyHandlers = (props) => {
    */
   const handlePropertyChange = (property, value, allowNegative = true, isStringProperty = false) => {
     // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
     
     // Create a deep copy of the selected object to avoid mutating the original
@@ -135,7 +125,7 @@ export const createPropertyHandlers = (props) => {
    */
   const handleRotationChange = (axis, value) => {
     // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
     
     // Create a deep copy of the selected object to avoid mutating the original
@@ -165,7 +155,7 @@ export const createPropertyHandlers = (props) => {
    */
   const handleRelativePositionChange = (axis, value) => {
     // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject || selectedObject.type !== 'union') return;
     
     // Create a deep copy of the selected object to avoid mutating the original
@@ -195,7 +185,7 @@ export const createPropertyHandlers = (props) => {
    */
   const handleRelativeRotationChange = (axis, value) => {
     // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObject();
+    const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject || selectedObject.type !== 'union') return;
     
     // Create a deep copy of the selected object to avoid mutating the original
@@ -218,7 +208,7 @@ export const createPropertyHandlers = (props) => {
   };
 
   return {
-    getSelectedGeometryObject,
+    getSelectedGeometryObjectLocal,
     handleInputFocus,
     handleNumberKeyDown,
     handlePropertyChange,
