@@ -61,24 +61,35 @@ export const createImportExportHandlers = (props) => {
     if (processedData.object) {
       // We require the placement property to be present
       if (!processedData.object.placement) {
-        throw new Error('Object is missing required placement property');
+        processedData.object.position = {
+          x: 0,
+          y: 0,
+          z: 0
+        };
+        processedData.object.rotation = {
+          x: 0,
+          y: 0,
+          z: 0
+        };
+
+      } else {
+      
+        // Convert placement to position and rotation
+        processedData.object.position = {
+          x: processedData.object.placement.x || 0,
+          y: processedData.object.placement.y || 0,
+          z: processedData.object.placement.z || 0
+        };
+      
+        processedData.object.rotation = {
+          x: processedData.object.placement.rotation?.x || 0,
+          y: processedData.object.placement.rotation?.y || 0,
+          z: processedData.object.placement.rotation?.z || 0
+        };
+
+        // Remove the placement property
+        delete processedData.object.placement;
       }
-      
-      // Convert placement to position and rotation
-      processedData.object.position = {
-        x: processedData.object.placement.x || 0,
-        y: processedData.object.placement.y || 0,
-        z: processedData.object.placement.z || 0
-      };
-      
-      processedData.object.rotation = {
-        x: processedData.object.placement.rotation?.x || 0,
-        y: processedData.object.placement.rotation?.y || 0,
-        z: processedData.object.placement.rotation?.z || 0
-      };
-      
-      // Remove the placement property
-      delete processedData.object.placement;
       
       // We require the dimensions property to be present
       if (!processedData.object.dimensions) {
