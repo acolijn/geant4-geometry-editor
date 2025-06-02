@@ -66,7 +66,8 @@ export default function TransformableObject({
   onTransformEnd,
   worldPosition,
   worldRotation,
-  isSourceObject = false
+  isSourceObject = false,
+  isMotherVolume = false
 }) {
   // Create a ref for the object
   const groupRef = useRef();
@@ -157,7 +158,7 @@ export default function TransformableObject({
       };
       
       // Check if this is an intermediate object (both a mother and a daughter)
-      const isIntermediateObject = isMotherVolume && (motherVolume && motherVolume !== 'World');
+      const isIntermediateObject = isMotherVolume && (object.mother_volume && object.mother_volume !== 'World');
       
       // Send live updates to the Viewer3D component
       // The Viewer3D component will handle mother volumes and daughter objects differently

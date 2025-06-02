@@ -3,6 +3,14 @@ import * as THREE from 'three';
 // Function to calculate the world position of a volume based on its parent hierarchy
 // We use a visited set to prevent circular references
 export const calculateWorldPosition = (volume, visited = new Set(), geometries, volumeNameToIndex) => {
+  if (!volume) {
+    console.warn('Invalid volume passed to calculateWorldPosition');
+    return {
+      position: [0, 0, 0],
+      rotation: [0, 0, 0]
+    };
+  }
+
   // Check for circular references
   if (visited.has(volume.name)) {
     console.warn(`Circular reference detected for volume: ${volume.name}`);
@@ -12,8 +20,10 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
     };
   }
   
-  // Add this volume to the visited set
-  visited.add(volume.name);
+  // Create a new copy of the visited set for this level of recursion
+  // This prevents issues with shared visited sets across different branches of recursion
+  const currentVisited = new Set(visited);
+  currentVisited.add(volume.name);
   
   if (!volume.mother_volume || volume.mother_volume === 'World') {
     // Direct child of world - use its own position
@@ -37,13 +47,6 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
   
   // Special handling for assembly parents
   if (parentVolume.type === 'assembly') {
-    // For assemblies, we use the assembly's position directly without recursion
-    // This prevents circular references when working with assemblies
-    const assemblyPos = parentVolume.position ? 
-      [parentVolume.position.x || 0, parentVolume.position.y || 0, parentVolume.position.z || 0] : [0, 0, 0];
-    const assemblyRot = parentVolume.rotation ? 
-      [parentVolume.rotation.x || 0, parentVolume.rotation.y || 0, parentVolume.rotation.z || 0] : [0, 0, 0];
-    
     // Check for self-reference (assembly referencing itself as parent)
     if (parentVolume.name === volume.name) {
       console.error(`Self-reference detected: ${volume.name} has itself as parent. Using World position.`);
@@ -55,20 +58,53 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
       };
     }
     
-    // Check if the assembly's parent is also an assembly (to avoid nested assembly issues)
-    if (parentVolume.mother_volume && 
-        parentVolume.mother_volume !== 'World' && 
-        parentVolume.mother_volume !== volume.name) { // Avoid circular reference
-      
-      const grandparentIndex = volumeNameToIndex[parentVolume.mother_volume];
-      if (grandparentIndex !== undefined) {
-        const grandparentVolume = geometries.volumes[grandparentIndex];
-        if (grandparentVolume && grandparentVolume.type === 'assembly') {
-          console.warn(`Nested assemblies detected: ${volume.name} -> ${parentVolume.name} -> ${grandparentVolume.name}. Using direct parent only.`);
-          // We'll still use the direct parent's position, but log a warning
+    // Get the full world position of the assembly, including any transforms from its parent
+    // This ensures that when an assembly is a daughter of another object, its components inherit the full transform chain
+    let assemblyWorld;
+    
+    // If the assembly has a parent that's not World, calculate its world position recursively
+    if (parentVolume.mother_volume && parentVolume.mother_volume !== 'World') {
+      // Find the assembly's parent
+      const assemblyParentIndex = volumeNameToIndex[parentVolume.mother_volume];
+      if (assemblyParentIndex !== undefined) {
+        const assemblyParent = geometries.volumes[assemblyParentIndex];
+        
+        // Check for circular reference between parent and child
+        if (parentVolume.mother_volume === volume.name) {
+          console.warn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);
+          // Use local position to break the circular reference
+          assemblyWorld = {
+            position: parentVolume.position ? 
+              [parentVolume.position.x || 0, parentVolume.position.y || 0, parentVolume.position.z || 0] : [0, 0, 0],
+            rotation: parentVolume.rotation ? 
+              [parentVolume.rotation.x || 0, parentVolume.rotation.y || 0, parentVolume.rotation.z || 0] : [0, 0, 0]
+          };
+        } else {
+          // Get the assembly's world position by calculating it from its parent
+          assemblyWorld = calculateWorldPosition(parentVolume, currentVisited, geometries, volumeNameToIndex);
         }
+      } else {
+        // If parent not found, use assembly's local position
+        assemblyWorld = {
+          position: parentVolume.position ? 
+            [parentVolume.position.x || 0, parentVolume.position.y || 0, parentVolume.position.z || 0] : [0, 0, 0],
+          rotation: parentVolume.rotation ? 
+            [parentVolume.rotation.x || 0, parentVolume.rotation.y || 0, parentVolume.rotation.z || 0] : [0, 0, 0]
+        };
       }
+    } else {
+      // If the assembly's parent is World, use its position directly
+      assemblyWorld = {
+        position: parentVolume.position ? 
+          [parentVolume.position.x || 0, parentVolume.position.y || 0, parentVolume.position.z || 0] : [0, 0, 0],
+        rotation: parentVolume.rotation ? 
+          [parentVolume.rotation.x || 0, parentVolume.rotation.y || 0, parentVolume.rotation.z || 0] : [0, 0, 0]
+      };
     }
+    
+    // Now use the assembly's world position instead of just its local position
+    const assemblyPos = assemblyWorld.position;
+    const assemblyRot = assemblyWorld.rotation;
     
     // For components in an assembly, we need to properly transform the local position
     // using the assembly's rotation, not just add positions
@@ -153,7 +189,20 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
   }
   
   // Get parent's world position recursively
-  const parentWorld = calculateWorldPosition(parentVolume, visited, geometries, volumeNameToIndex);
+  // Check for circular reference between parent and child
+  if (parentVolume.mother_volume === volume.name) {
+    console.warn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);
+    // Use local position to break the circular reference
+    return {
+      position: volume.position ? 
+        [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0],
+      rotation: volume.rotation ? 
+        [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0]
+    };
+  }
+  
+  // Use the currentVisited set to track visited volumes and prevent circular references
+  const parentWorld = calculateWorldPosition(parentVolume, currentVisited, geometries, volumeNameToIndex);
   
   // Convert volume's local position to world position based on parent
   const localPos = volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0];
