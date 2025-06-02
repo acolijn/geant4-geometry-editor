@@ -1,10 +1,77 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
+import { createImportExportHandlers } from '../geometry-editor/utils/importExportHandlers';
+import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryUtils';
+import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
+  // State for save object dialog
+  const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
+  const [objectToSave, setObjectToSave] = useState(null);
+
+  // Create a custom extractObjectWithDescendants function that works with our data structure
+  const extractObjectWithDescendantsWrapper = (objectIdentifier) => {
+    // If we have a volumeIndex from context menu, use that
+    let volumeIndex;
+    if (typeof objectIdentifier === 'string' && objectIdentifier.startsWith('volume-')) {
+      volumeIndex = parseInt(objectIdentifier.split('-')[1]);
+    } else if (contextMenu && contextMenu.volumeIndex !== undefined) {
+      volumeIndex = contextMenu.volumeIndex;
+      objectIdentifier = `volume-${volumeIndex}`;
+    }
+    
+    if (volumeIndex === undefined || !geometries.volumes[volumeIndex]) {
+      console.error('Invalid object identifier:', objectIdentifier);
+      return { object: null, descendants: [] };
+    }
+    
+    // Get the main object
+    const mainObject = { ...geometries.volumes[volumeIndex] };
+    
+    // Find all descendants (children of this object)
+    const descendants = [];
+    const objectName = mainObject.name;
+    
+    // If this is an assembly, find all objects that have this as mother_volume
+    if (mainObject.type === 'assembly') {
+      for (let i = 0; i < geometries.volumes.length; i++) {
+        const volume = geometries.volumes[i];
+        if (volume.mother_volume === objectName) {
+          descendants.push({
+            ...volume,
+            parent: objectName
+          });
+        }
+      }
+    }
+    
+    return { object: mainObject, descendants };
+  };
+  
+  // Import the handleExportObject function from importExportHandlers
+  const { handleExportObject } = createImportExportHandlers({
+    geometries,
+    selectedGeometry,
+    onUpdateGeometry,
+    extractObjectWithDescendants: extractObjectWithDescendantsWrapper,
+    setObjectToSave,
+    setSaveObjectDialogOpen,
+    getSelectedGeometryObjectLocal: () => {
+      // If we have a volumeIndex from context menu, use that
+      if (contextMenu && contextMenu.volumeIndex !== undefined) {
+        return geometries.volumes[contextMenu.volumeIndex];
+      }
+      // Otherwise use the currently selected geometry
+      if (selectedGeometry && selectedGeometry !== 'world') {
+        const volumeIndex = parseInt(selectedGeometry.split('-')[1]);
+        return geometries.volumes[volumeIndex];
+      }
+      return null;
+    }
+  });
   // State to track expanded nodes - initially only World is expanded
   const [expandedNodes, setExpandedNodes] = useState({ world: true });
   
@@ -574,9 +641,131 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     });
   };
   
+  // Function to apply structured naming to objects (similar to GeometryEditor)
+  const applyStructuredNaming = (data) => {
+    if (!data || !data.object) return data;
+    
+    // Create a deep copy to avoid modifying the original
+    const result = JSON.parse(JSON.stringify(data));
+    
+    // Generate a unique prefix for all components
+    const prefix = `${result.object.type}_${Date.now()}`;
+    let counter = 0;
+    
+    // Update the main object ID if it's an assembly
+    if (result.object.type === 'assembly') {
+      const originalName = result.object.name;
+      result.object.name = `${prefix}_main`;
+      
+      // Update all descendants that reference the original name
+      result.descendants.forEach(desc => {
+        if (desc.mother_volume === originalName) {
+          desc.mother_volume = result.object.name;
+        }
+        // Also update the descendant's name
+        const oldName = desc.name;
+        desc.name = `${prefix}_part_${counter++}`;
+        
+        // Update any references to this descendant in other descendants
+        result.descendants.forEach(otherDesc => {
+          if (otherDesc.mother_volume === oldName) {
+            otherDesc.mother_volume = desc.name;
+          }
+        });
+      });
+    }
+    
+    return result;
+  };
+  
+  // State for import alert
+  const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
+
   return (
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
       <h3 style={{ margin: '0 0 10px 0' }}>Geometry Tree</h3>
+      
+      {/* SaveObjectDialog for saving objects with a nicer interface - using the same component as GeometryEditor */}
+      <SaveObjectDialog
+        open={saveObjectDialogOpen}
+        onClose={() => setSaveObjectDialogOpen(false)}
+        onSave={async (name, description, preserveComponentIds) => {
+          if (!objectToSave) {
+            return { success: false, message: 'No object selected' };
+          }
+          
+          try {
+            // Import the ObjectStorage utility
+            const { saveObject } = await import('../geometry-editor/utils/ObjectStorage');
+            
+            // Generate a default file name if none is provided
+            const fileName = name || objectToSave.object.name || 'geometry';
+            
+            // Apply structured naming if needed
+            const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
+            
+            // Save the object to the library
+            await saveObject(fileName, description, dataToSave);
+            
+            // Show success message in our component
+            setImportAlert({
+              show: true,
+              message: `Object saved as ${fileName}`,
+              severity: 'success'
+            });
+            
+            // Hide the alert after 5 seconds
+            setTimeout(() => {
+              setImportAlert({ show: false, message: '', severity: 'info' });
+            }, 5000);
+            
+            // Return success result for the SaveObjectDialog component
+            return { 
+              success: true, 
+              message: `Object saved as ${fileName}` 
+            };
+          } catch (error) {
+            console.error('Error saving object:', error);
+            
+            // Show error message in our component
+            setImportAlert({
+              show: true,
+              message: `Error saving object: ${error.message}`,
+              severity: 'error'
+            });
+            
+            // Hide the alert after 5 seconds
+            setTimeout(() => {
+              setImportAlert({ show: false, message: '', severity: 'info' });
+            }, 5000);
+            
+            // Return error result for the SaveObjectDialog component
+            return { 
+              success: false, 
+              message: `Error saving object: ${error.message}` 
+            };
+          }
+        }}
+        objectData={objectToSave}
+        defaultName={objectToSave?.object?.name || ''}
+      />
+      
+      {/* Alert message */}
+      {importAlert.show && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          padding: '10px 20px',
+          backgroundColor: importAlert.severity === 'success' ? '#4caf50' : '#f44336',
+          color: 'white',
+          borderRadius: '4px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+          zIndex: 1000
+        }}>
+          {importAlert.message}
+        </div>
+      )}
       <div style={{ marginBottom: '5px' }}>
         {/* World volume - selectable but not movable */}
         <div 
@@ -644,6 +833,24 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 }}
               >
                 Update All
+              </div>
+              <div
+                onClick={() => {
+                  // Set the selected geometry to the current context menu item
+                  // This ensures handleExportObject gets the right object
+                  const volumeKey = `volume-${contextMenu.volumeIndex}`;
+                  onSelect(volumeKey);
+                  // Call handleExportObject and close the context menu
+                  handleExportObject();
+                  handleCloseContextMenu();
+                }}
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  hover: { backgroundColor: '#f5f5f5' }
+                }}
+              >
+                Save to Library
               </div>
             </>
           )}
