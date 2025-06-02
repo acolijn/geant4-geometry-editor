@@ -12,6 +12,7 @@ import {
   Menu,
   Tooltip
 } from '@mui/material';
+import NumericInput from './NumericInput';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../utils/UnitConverter';
 import { getSelectedGeometryObject } from '../utils/GeometryUtils';
@@ -34,7 +35,6 @@ const PropertyEditor = ({
   onRemoveGeometry,
   handleExportObject,
   handleInputFocus,
-  handleNumberKeyDown,
   setUpdateObjectsDialogOpen,
   handlePropertyChange,
 }) => {
@@ -309,44 +309,29 @@ const PropertyEditor = ({
       
       <Typography variant="subtitle1" sx={{ mt: 2 }}>Position</Typography>
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <TextField
+        <NumericInput
           label="X"
-          type="number"
-          value={selectedObject?.position?.x !== undefined 
-            ? fromInternalUnit(selectedObject.position.x, lengthUnit, 'length')
-            : 0
-          }
-          onChange={(e) => handlePropertyChange('position.x', e.target.value, lengthUnit)}
+          internalValue={selectedObject?.position?.x}
+          unit={lengthUnit}
+          type="length"
+          onUpdate={(newValue) => handlePropertyChange('position.x', newValue)}
           onFocus={handleInputFocus}
-          onKeyDown={handleNumberKeyDown}
-          size="small"
-          inputProps={{ step: 'any' }}
         />
-        <TextField
+        <NumericInput
           label="Y"
-          type="number"
-          value={selectedObject?.position?.y !== undefined 
-            ? fromInternalUnit(selectedObject.position.y, lengthUnit, 'length')
-            : 0
-          }
-          onChange={(e) => handlePropertyChange('position.y', e.target.value, lengthUnit)}
+          internalValue={selectedObject?.position?.y}
+          unit={lengthUnit}
+          type="length"
+          onUpdate={(newValue) => handlePropertyChange('position.y', newValue)}
           onFocus={handleInputFocus}
-          onKeyDown={handleNumberKeyDown}
-          size="small"
-          inputProps={{ step: 'any' }}
         />
-        <TextField
+        <NumericInput
           label="Z"
-          type="number"
-          value={selectedObject?.position?.z !== undefined 
-            ? fromInternalUnit(selectedObject.position.z, lengthUnit, 'length')
-            : 0
-          }
-          onChange={(e) => handlePropertyChange('position.z', e.target.value, lengthUnit)}
+          internalValue={selectedObject?.position?.z}
+          unit={lengthUnit}
+          type="length"
+          onUpdate={(newValue) => handlePropertyChange('position.z', newValue)}
           onFocus={handleInputFocus}
-          onKeyDown={handleNumberKeyDown}
-          size="small"
-          inputProps={{ step: 'any' }}
         />
         <FormControl size="small" sx={{ minWidth: '90px' }}>
           <InputLabel>Unit</InputLabel>
@@ -368,44 +353,29 @@ const PropertyEditor = ({
         Rotations are applied sequentially in Geant4 order: first X, then Y (around new Y axis), then Z (around new Z axis).
       </Typography>
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <TextField
+        <NumericInput
           label="X"
-          type="number"
-          value={selectedObject?.rotation?.x !== undefined 
-            ? fromInternalUnit(selectedObject.rotation.x, angleUnit, 'angle')
-            : 0
-          }
-          onChange={(e) => handlePropertyChange('rotation.x', e.target.value, angleUnit)}
+          internalValue={selectedObject?.rotation?.x}
+          unit={angleUnit}
+          type="angle"
+          onUpdate={(newValue) => handlePropertyChange('rotation.x', newValue)}
           onFocus={handleInputFocus}
-          onKeyDown={handleNumberKeyDown}
-          size="small"
-          inputProps={{ step: 'any' }}
         />
-        <TextField
+        <NumericInput
           label="Y"
-          type="number"
-          value={selectedObject?.rotation?.y !== undefined 
-            ? fromInternalUnit(selectedObject.rotation.y, angleUnit, 'angle')
-            : 0
-          }
-          onChange={(e) => handlePropertyChange('rotation.y', e.target.value, angleUnit)}
+          internalValue={selectedObject?.rotation?.y}
+          unit={angleUnit}
+          type="angle"
+          onUpdate={(newValue) => handlePropertyChange('rotation.y', newValue)}
           onFocus={handleInputFocus}
-          onKeyDown={handleNumberKeyDown}
-          size="small"
-          inputProps={{ step: 'any' }}
         />
-        <TextField
+        <NumericInput
           label="Z"
-          type="number"
-          value={selectedObject?.rotation?.z !== undefined 
-            ? fromInternalUnit(selectedObject.rotation.z, angleUnit, 'angle')
-            : 0
-          }
-          onChange={(e) => handlePropertyChange('rotation.z', e.target.value, angleUnit)}
+          internalValue={selectedObject?.rotation?.z}
+          unit={angleUnit}
+          type="angle"
+          onUpdate={(newValue) => handlePropertyChange('rotation.z', newValue)}
           onFocus={handleInputFocus}
-          onKeyDown={handleNumberKeyDown}
-          size="small"
-          inputProps={{ step: 'any' }}
         />
         <FormControl size="small" sx={{ minWidth: '90px' }}>
           <InputLabel>Unit</InputLabel>
@@ -427,47 +397,44 @@ const PropertyEditor = ({
         <>
           <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField
+            <NumericInput
               label="X"
-              type="number"
-              value={selectedObject?.dimensions?.x !== undefined 
-                ? fromInternalUnit(selectedObject.dimensions.x, lengthUnit, 'length')
+              internalValue={selectedObject?.dimensions?.x !== undefined 
+                ? selectedObject.dimensions.x
                 : (selectedObject?.size?.x !== undefined 
-                  ? fromInternalUnit(selectedObject.size.x, lengthUnit, 'length')
+                  ? selectedObject.size.x
                   : 0)
               }
-              onChange={(e) => handlePropertyChange('dimensions.x', e.target.value, lengthUnit)}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dimensions.x', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
+            <NumericInput
               label="Y"
-              type="number"
-              value={selectedObject?.dimensions?.y !== undefined 
-                ? fromInternalUnit(selectedObject.dimensions.y, lengthUnit, 'length')
+              internalValue={selectedObject?.dimensions?.y !== undefined 
+                ? selectedObject.dimensions.y
                 : (selectedObject?.size?.y !== undefined 
-                  ? fromInternalUnit(selectedObject.size.y, lengthUnit, 'length')
+                  ? selectedObject.size.y
                   : 0)
               }
-              onChange={(e) => handlePropertyChange('dimensions.y', e.target.value, lengthUnit)}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dimensions.y', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
+            <NumericInput
               label="Z"
-              type="number"
-              value={selectedObject?.dimensions?.z !== undefined 
-                ? fromInternalUnit(selectedObject.dimensions.z, lengthUnit, 'length')
+              internalValue={selectedObject?.dimensions?.z !== undefined 
+                ? selectedObject.dimensions.z
                 : (selectedObject?.size?.z !== undefined 
-                  ? fromInternalUnit(selectedObject.size.z, lengthUnit, 'length')
+                  ? selectedObject.size.z
                   : 0)
               }
-              onChange={(e) => handlePropertyChange('dimensions.z', e.target.value, lengthUnit)}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dimensions.z', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
@@ -490,29 +457,21 @@ const PropertyEditor = ({
         <>
           <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="Radius"
-              type="number"
-              value={selectedObject?.radius !== undefined 
-                ? fromInternalUnit(selectedObject.radius, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('radius', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.radius !== undefined ? selectedObject.radius : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('radius', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
+            <NumericInput
               label="Height"
-              type="number"
-              value={selectedObject?.height !== undefined 
-                ? fromInternalUnit(selectedObject.height, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('height', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.height !== undefined ? selectedObject.height : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('height', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
@@ -562,17 +521,13 @@ const PropertyEditor = ({
         <>
           <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="Radius"
-              type="number"
-              value={selectedObject?.radius !== undefined 
-                ? fromInternalUnit(selectedObject.radius, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('radius', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.radius !== undefined ? selectedObject.radius : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('radius', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
@@ -595,29 +550,21 @@ const PropertyEditor = ({
         <>
           <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="dx1 (X at -z/2)"
-              type="number"
-              value={selectedObject?.dx1 !== undefined 
-                ? fromInternalUnit(selectedObject.dx1, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('dx1', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.dx1 !== undefined ? selectedObject.dx1 : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dx1', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
+            <NumericInput
               label="dx2 (X at +z/2)"
-              type="number"
-              value={selectedObject?.dx2 !== undefined 
-                ? fromInternalUnit(selectedObject.dx2, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('dx2', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.dx2 !== undefined ? selectedObject.dx2 : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dx2', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
@@ -634,29 +581,21 @@ const PropertyEditor = ({
             </FormControl>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="dy1 (Y at -z/2)"
-              type="number"
-              value={selectedObject?.dy1 !== undefined 
-                ? fromInternalUnit(selectedObject.dy1, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('dy1', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.dy1 !== undefined ? selectedObject.dy1 : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dy1', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
+            <NumericInput
               label="dy2 (Y at +z/2)"
-              type="number"
-              value={selectedObject?.dy2 !== undefined 
-                ? fromInternalUnit(selectedObject.dy2, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('dy2', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.dy2 !== undefined ? selectedObject.dy2 : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dy2', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
@@ -673,17 +612,13 @@ const PropertyEditor = ({
             </FormControl>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="dz (Half-length in Z)"
-              type="number"
-              value={selectedObject?.dz !== undefined 
-                ? fromInternalUnit(selectedObject.dz, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('dz', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.dz !== undefined ? selectedObject.dz : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('dz', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>

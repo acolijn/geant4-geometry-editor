@@ -40,32 +40,6 @@ export const createPropertyHandlers = (props) => {
     event.target.select();
   };
 
-  /**
-   * Handle key events for number input fields to allow negative numbers
-   * 
-   * @param {Object} e - The keyboard event
-   */
-  const handleNumberKeyDown = (e) => {
-    // Allow: backspace, delete, tab, escape, enter, decimal point, minus sign
-    const allowedKeys = [8, 46, 9, 27, 13, 110, 190, 189, 109];
-    
-    // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-    if (
-      allowedKeys.includes(e.keyCode) ||
-      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-      ((e.keyCode === 65 || e.keyCode === 67 || e.keyCode === 86 || e.keyCode === 88) && e.ctrlKey === true) ||
-      // Allow: home, end, left, right
-      (e.keyCode >= 35 && e.keyCode <= 39)
-    ) {
-      // Let it happen, don't do anything
-      return;
-    }
-    
-    // Ensure that it's a number and stop the keypress if not
-    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-      e.preventDefault();
-    }
-  };
 
   /**
    * Handle property changes for the selected geometry object
@@ -77,6 +51,7 @@ export const createPropertyHandlers = (props) => {
    */
   const handlePropertyChange = (property, value, unit = 'cm', isStringProperty = false) => {
     // Get the currently selected geometry object
+    console.log(`handlePropertyChange called for property ${property} with value ${value} and unit ${unit}`);
     const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
     
@@ -91,7 +66,12 @@ export const createPropertyHandlers = (props) => {
       // For array properties, we don't need to do any conversion here
       // as it should already be handled in the PropertyEditor component
       finalValue = value;
-    } else {
+    } else if (typeof value === 'number') {
+      // If the value is already a number (from NumericInput), use it directly
+      // The NumericInput component has already done the unit conversion
+      finalValue = value;
+    }; /* else {
+      // For string values (from regular TextField inputs)
       // Determine if this is a numeric field that needs unit conversion
       const isNumberField = !isStringProperty && typeof value === 'string' && /^-?\d*\.?\d*$/.test(value);
       
@@ -122,10 +102,11 @@ export const createPropertyHandlers = (props) => {
           finalValue = 0;
         }
       }
-    }
+    } */
     
     // Handle nested properties like 'position.x'
     if (property.includes('.')) {
+      
       const [parent, child] = property.split('.');
       
       // Ensure the parent property exists
@@ -136,24 +117,15 @@ export const createPropertyHandlers = (props) => {
       // Apply the value to the property
       updatedObject[parent][child] = finalValue;
       
-      // For rotation, always store in radians (no unit needed)
-      // For position, preserve the length unit
-      if (parent === 'position') {
-        updatedObject[parent].unit = unit; // Use the unit passed to the function
-      } else if (updatedObject[parent].unit) {
-        // For other properties, remove unit as it's no longer needed
-        delete updatedObject[parent].unit;
-      }
-      
       // Special handling for box dimensions - update both dimensions and size
-      if (parent === 'dimensions' && updatedObject.type === 'box') {
+/*       if (parent === 'dimensions' && updatedObject.type === 'box') {
         // Ensure size property exists and is updated to match dimensions
         if (!updatedObject.size) {
           updatedObject.size = {};
         }
         updatedObject.size[child] = finalValue;
         console.log(`Updated box ${child} dimension to ${finalValue} and synchronized with size property`);
-      }
+      } */
     } else {
       // Handle direct properties
       updatedObject[property] = finalValue;
@@ -256,7 +228,6 @@ export const createPropertyHandlers = (props) => {
   return {
     getSelectedGeometryObjectLocal,
     handleInputFocus,
-    handleNumberKeyDown,
     handlePropertyChange,
     handleRotationChange,
     handleRelativePositionChange,

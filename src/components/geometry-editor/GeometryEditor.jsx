@@ -123,7 +123,6 @@ const RefactoredGeometryEditor = ({
   const {
     getSelectedGeometryObject,
     handleInputFocus,
-    handleNumberKeyDown,
     handlePropertyChange,
     handleRotationChange,
     handleRelativePositionChange,
@@ -247,7 +246,6 @@ const RefactoredGeometryEditor = ({
         handleRelativePositionChange={handleRelativePositionChange}
         handleRelativeRotationChange={handleRelativeRotationChange}
         handleInputFocus={handleInputFocus}
-        handleNumberKeyDown={handleNumberKeyDown}
         handleExportObject={handleExportObject}
       />
     );
