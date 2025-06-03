@@ -1,8 +1,21 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 
+// Helper function to get color from material
+const getMaterialColor = (materialName, materials) => {
+  const defaultColor = "rgba(100, 255, 255, 0.7)";
+  if (!materialName || !materials || Object.keys(materials).length === 0) {
+    return defaultColor;
+  }
+  const material = materials[materialName];
+  if (material && material.color) {
+    return `rgba(${Math.floor(material.color[0] * 255)}, ${Math.floor(material.color[1] * 255)}, ${Math.floor(material.color[2] * 255)}, ${material.color[3] || 0.7})`;
+  }
+  return defaultColor;
+};
+
 // Torus Object Component
-const TorusObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
+const TorusObject = React.forwardRef(({ object, isSelected, onClick, materials }, ref) => {
   const position = object.position ? [
     object.position.x, 
     object.position.y, 
@@ -53,7 +66,7 @@ const TorusObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
     >
       <primitive object={geometry} />
       <meshStandardMaterial 
-        color="rgba(255, 100, 100, 0.7)" 
+        color={getMaterialColor(object.material, materials)} 
         transparent={true}
         opacity={0.7}
       />

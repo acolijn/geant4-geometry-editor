@@ -67,7 +67,8 @@ export default function TransformableObject({
   worldPosition,
   worldRotation,
   isSourceObject = false,
-  isMotherVolume = false
+  isMotherVolume = false,
+  materials = {}
 }) {
   // Create a ref for the object
   const groupRef = useRef();
@@ -322,23 +323,23 @@ export default function TransformableObject({
     // Render the appropriate object type
     switch (object.type) {
       case 'box':
-        return <BoxObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <BoxObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'cylinder':
-        return <CylinderObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <CylinderObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'sphere':
-        return <SphereObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <SphereObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'trapezoid':
-        return <TrapezoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <TrapezoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'torus':
-        return <TorusObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <TorusObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'ellipsoid':
-        return <EllipsoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <EllipsoidObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'polycone':
-        return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'union':
-        return <UnionObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <UnionObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'assembly':
-        return <AssemblyObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} />;
+        return <AssemblyObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       default:
         console.error(`Unknown object type: ${object.type}`);
         return null;

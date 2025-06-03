@@ -338,7 +338,6 @@ return (
                   onUpdateGeometry={handleUpdateGeometry}
                   onOpenUpdateDialog={(data) => {
                     console.log('App: onOpenUpdateDialog called with data:', data);
-                    // Set the update dialog data and open state
                     setUpdateDialogData(data);
                     setUpdateDialogOpen(true);
                     console.log('App: Set updateDialogData and updateDialogOpen');
@@ -347,6 +346,7 @@ return (
                     console.log('App: Registering updateAssemblies function');
                     setUpdateAssembliesFunc(updateFunc);
                   }}
+                  materials={materials}
                 />
               </Box>
               <Box sx={{ width: '30%', height: '100%', overflow: 'auto' }}>

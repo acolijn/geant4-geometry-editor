@@ -7,7 +7,7 @@ import Scene from './Scene';
 import GeometryTree from './GeometryTree';
 import CameraSetup from './components/CameraSetup';
 
-const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) => {
+const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, materials }) => {
   const [transformMode, setTransformMode] = useState('translate');
   const [cameraControls, setCameraControls] = useState(null);
   
@@ -153,6 +153,9 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
     }
   };
   
+  // Get world size for use in children
+  const worldSize = geometries && geometries.world && geometries.world.size ? geometries.world.size : { x: 1000, y: 1000, z: 1000 };
+
   // Check if geometries is valid
   if (!geometries || !geometries.world) {
     return <div>Loading geometries...</div>;
@@ -256,12 +259,14 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) 
         >
           <CameraSetup setFrontViewCamera={setCameraControls} worldSize={geometries.world.size} />
           <Scene 
-            geometries={geometries} 
-            selectedGeometry={selectedGeometry} 
+            geometries={geometries}
+            selectedGeometry={selectedGeometry}
             onSelect={onSelect}
+            setFrontViewCamera={setCameraControls}
             transformMode={transformMode}
             onTransformEnd={handleTransformEnd}
-            worldSize={geometries.world.size}
+            worldSize={worldSize}
+            materials={materials}
           />
           <OrbitControls 
             makeDefault 

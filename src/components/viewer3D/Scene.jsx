@@ -11,7 +11,7 @@ import CameraSetup from './components/CameraSetup';
 // Scene component with all 3D elements
 
 // Simple Scene component with flat object structure
-export default function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize }) {
+export default function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize, materials }) {
   // Track which objects are source objects (objects that have been loaded from files)
   const [sourceObjects, setSourceObjects] = useState({});
   
@@ -316,6 +316,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           worldRotation={[euler.x, euler.y, euler.z]}
           isSourceObject={sourceObjects[key] === true}
           onTransformEnd={(objKey, updatedProps, keepSelected, isLiveUpdate) => handleVolumeTransform(objKey, updatedProps, keepSelected, isLiveUpdate)}
+          materials={materials}
         />
       );
     });
@@ -349,6 +350,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           onTransformEnd={onTransformEnd}
           isSourceObject={sourceObjects['world'] === true}
           visible={false}
+          materials={materials}
         />
       )}
       
