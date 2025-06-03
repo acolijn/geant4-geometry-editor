@@ -187,6 +187,11 @@ export function convertToMultiplePlacements(geometry) {
         //color: Array.isArray(volume.color) ? volume.color : 
         //       (volume.color ? [volume.color.r, volume.color.g, volume.color.b, volume.color.a] : [0.7, 0.7, 0.7, 1.0]),
         dimensions: convertDimensions(volume),
+
+        // if isActive is true, add it to the object
+        isActive: volume.isActive || false,
+        // if hitsColectionName is not empty, add it to the object
+        ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
         
         // No individual hitCollection tags for components in assemblies
         // For top-level components in an assembly, we need special handling
@@ -432,6 +437,10 @@ function convertStandardVolume(volume, originalGeometry) {
     //color: convertColor(volume.color),
     visible: volume.visible !== undefined ? volume.visible : true,
     // if hitsColectionName is not empty, add it to the object
+    // add isActive to all and if it is true also add teh hitsCollectionName
+    isActive: volume.isActive,
+    ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
+
     // 
     dimensions: convertDimensions(volume),
     placements: [
@@ -462,6 +471,14 @@ function convertStandardVolume(volume, originalGeometry) {
  * @returns {Object} - The compound object
  */
 function createCompoundObject(rootVolume, rootInstances, components, nameToBaseNameMap, geometry) {
+  
+  console.log(`Creating compound object from root volume: ${rootVolume.name}`);
+  console.log(`Root volume: ${JSON.stringify(rootVolume)}`);
+  console.log(`Root instances: ${JSON.stringify(rootInstances)}`);
+  console.log(`Components: ${JSON.stringify(components)}`);
+  console.log(`Name to base name map: ${JSON.stringify(nameToBaseNameMap)}`);
+  console.log(`Geometry: ${JSON.stringify(geometry)}`);
+  
   // Get the name for the compound object from the _compoundId
   // The _compoundId now contains the original object name from the save dialog
   // Format is: compound-{savedName}-{type}
@@ -531,6 +548,9 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   // First, identify the first instance by its _instanceId if available
   const firstInstanceId = rootInstances[0]._instanceId;
   
+  console.log(`First instance ID: ${firstInstanceId}`);
+  console.log(`Root instances: ${JSON.stringify(rootInstances)}`);
+  
   // Start with the root component from the first instance
   templateComponents.push({
     type: rootVolume.type,
@@ -541,8 +561,10 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
-// if hitsColectionName is not empty, add it to the object
+    // if hitsColectionName is not empty, add it to the object
+    isActive: rootVolume.isActive,
     ...(rootVolume.hitsCollectionName && { hitsCollectionName: rootVolume.hitsCollectionName }),
+
     dimensions: convertDimensions(rootVolume),
     placements: [{
       x: 0,
@@ -572,6 +594,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   
   // Process each component from the first instance only
   firstInstanceComponents.forEach(component => {
+    console.log(`YOOOOOOOO: ${component.name}`);
     // Get the parent name
     const parentName = component.mother_volume || rootVolume.name;
     
@@ -586,6 +609,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       color: convertColor(component.color),
       visible: component.visible !== undefined ? component.visible : true,
       // if hitsColectionName is not empty, add it to the object
+      isActive: component.isActive,
       ...(component.hitsCollectionName && { hitsCollectionName: component.hitsCollectionName }),
       dimensions: convertDimensions(component),
       placements: [{
