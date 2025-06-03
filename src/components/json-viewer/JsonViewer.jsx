@@ -9,81 +9,27 @@ import {
   Alert,
   Snackbar
 } from '@mui/material';
-import { createPlacementObject, createDimensionsObject } from '../utils/ObjectFormatStandardizer';
-import { convertToMultiplePlacements } from '../utils/MultiPlacementConverter';
+import {
+  formatJson,
+  ensureOrderedZPlanes,
+  generateMaterialsJson,
+  generateGeometryJson,
+  handleDownload
+} from './utils/jsonHandlers';
 
 const JsonViewer = ({ geometries, materials }) => {
   const [tabValue, setTabValue] = useState(0);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
   
-  // Format the JSON with proper indentation for display
-  const formatJson = (data) => {
-    return JSON.stringify(data, null, 2);
-  };
-  
-  // Ensure polycone and polyhedra z-planes are sorted
-  const ensureOrderedZPlanes = (volume) => {
-    if (volume.type === 'polycone' || volume.type === 'polyhedra') {
-      if (volume.dimensions && 
-          Array.isArray(volume.dimensions.z) && 
-          Array.isArray(volume.dimensions.rmax)) {
-        
-        // Create an array of indices
-        const indices = Array.from({ length: volume.dimensions.z.length }, (_, i) => i);
-        
-        // Sort indices based on z values
-        indices.sort((a, b) => volume.dimensions.z[a] - volume.dimensions.z[b]);
-        
-        // Check if already sorted
-        const isSorted = indices.every((val, idx) => val === idx);
-        if (!isSorted) {
-          // Create new sorted arrays
-          const sortedZ = indices.map(i => volume.dimensions.z[i]);
-          const sortedRmax = indices.map(i => volume.dimensions.rmax[i]);
-          
-          // Handle rmin if it exists
-          let sortedRmin = [];
-          if (Array.isArray(volume.dimensions.rmin)) {
-            sortedRmin = indices.map(i => volume.dimensions.rmin[i]);
-            volume.dimensions.rmin = sortedRmin;
-          }
-          
-          // Update the volume with sorted arrays
-          volume.dimensions.z = sortedZ;
-          volume.dimensions.rmax = sortedRmax;
-          
-          console.log(`Sorted z-planes for ${volume.name} (${volume.type})`);
-        }
-      }
-    }
-    return volume;
-  };
-  
   // Generate the materials JSON
-  const materialsJson = formatJson({ materials });
+  const materialsJson = generateMaterialsJson(materials);
   
-  // Generate the multiple placements JSON - this is the only JSON format we use now
-  const multiplePlacementsJson = formatJson(convertToMultiplePlacements({
-    world: geometries.world,
-    volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))
-  }));
+  // Generate the geometry JSON with multiple placements
+  const multiplePlacementsJson = generateGeometryJson(geometries);
   
   // Alert handling functions
   const handleAlertClose = () => {
     setAlert({ ...alert, open: false });
-  };
-  
-  // Handle download of JSON file
-  const handleDownload = (content, filename) => {
-    const blob = new Blob([content], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
   
 

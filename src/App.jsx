@@ -18,8 +18,8 @@ import { updateGeometry, addGeometry, removeGeometry, generateId, generateUnique
 import Viewer3D from './components/viewer3D/Viewer3D';
 //import GeometryEditor from './components/GeometryEditor';
 import GeometryEditor from './components/geometry-editor/GeometryEditor';
-import MaterialsEditor from './components/material-editor';
-import JsonViewer from './components/JsonViewer';
+import MaterialsEditor from './components/material-editor/MaterialsEditor';
+import JsonViewer from './components/json-viewer/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
 import { standardizeProjectData, restoreProjectData } from './utils/ObjectFormatStandardizer';
