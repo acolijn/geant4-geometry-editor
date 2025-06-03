@@ -118,14 +118,24 @@ export const createPropertyHandlers = (props) => {
       updatedObject[parent][child] = finalValue;
       
       // Special handling for box dimensions - update both dimensions and size
-/*       if (parent === 'dimensions' && updatedObject.type === 'box') {
+      if (parent === 'dimensions' && updatedObject.type === 'box') {
         // Ensure size property exists and is updated to match dimensions
         if (!updatedObject.size) {
           updatedObject.size = {};
         }
         updatedObject.size[child] = finalValue;
         console.log(`Updated box ${child} dimension to ${finalValue} and synchronized with size property`);
-      } */
+      }
+      
+      // Also handle the reverse case - if size is updated, update dimensions too
+      if (parent === 'size' && updatedObject.type === 'box') {
+        // Ensure dimensions property exists and is updated to match size
+        if (!updatedObject.dimensions) {
+          updatedObject.dimensions = {};
+        }
+        updatedObject.dimensions[child] = finalValue;
+        console.log(`Updated box ${child} size to ${finalValue} and synchronized with dimensions property`);
+      }
     } else {
       // Handle direct properties
       updatedObject[property] = finalValue;

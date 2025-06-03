@@ -488,17 +488,13 @@ const PropertyEditor = ({
             </FormControl>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="Inner Radius"
-              type="number"
-              value={selectedObject?.innerRadius !== undefined 
-                ? fromInternalUnit(selectedObject.innerRadius, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('innerRadius', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.innerRadius !== undefined ? selectedObject.innerRadius : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('innerRadius', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
@@ -698,29 +694,21 @@ const PropertyEditor = ({
         <>
           <Typography variant="subtitle1" sx={{ mt: 2 }}>Dimensions</Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField
+            <NumericInput
               label="Major Radius"
-              type="number"
-              value={selectedObject?.majorRadius !== undefined 
-                ? fromInternalUnit(selectedObject.majorRadius, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('majorRadius', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.majorRadius !== undefined ? selectedObject.majorRadius : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('majorRadius', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
-            <TextField
+            <NumericInput
               label="Minor Radius"
-              type="number"
-              value={selectedObject?.minorRadius !== undefined 
-                ? fromInternalUnit(selectedObject.minorRadius, lengthUnit, 'length')
-                : 0
-              }
-              onChange={(e) => handlePropertyChange('minorRadius', e.target.value, lengthUnit)}
+              internalValue={selectedObject?.minorRadius !== undefined ? selectedObject.minorRadius : 0}
+              unit={lengthUnit}
+              type="length"
+              onUpdate={(newValue) => handlePropertyChange('minorRadius', newValue)}
               onFocus={handleInputFocus}
-              size="small"
-              inputProps={{ step: 'any', min: 0 }}
             />
             <FormControl size="small" sx={{ minWidth: '90px' }}>
               <InputLabel>Unit</InputLabel>
