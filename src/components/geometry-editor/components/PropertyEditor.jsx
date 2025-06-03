@@ -284,6 +284,7 @@ const PropertyEditor = ({
             const motherVolume = geometries.volumes.find(vol => vol.name === value);
             return motherVolume ? (motherVolume.displayName || motherVolume.name) : value;
           }}
+          placeholder="Select a mother volume"
           renderTree={({ expandedNodes, toggleNodeExpansion, handleSelect, selectedValue }) => {
             // Create a map of volume name to index for quick lookup
             const volumeNameToIndex = {};

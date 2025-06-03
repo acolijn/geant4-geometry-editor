@@ -86,12 +86,11 @@ const TreeSelect = ({
       <OutlinedInput
         id="tree-select"
         ref={anchorRef}
-        value={value}
+        value={renderValue ? renderValue(value) : value}
         onClick={handleOpen}
         readOnly
         placeholder={placeholder}
         endAdornment={<ArrowDropDownIcon />}
-        renderValue={renderValue}
         inputProps={{
           style: { cursor: 'pointer' }
         }}
