@@ -432,29 +432,17 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             )}
             {/* If no children, add spacing to align with nodes that have the toggle */}
             {!hasChildren && <span style={{ width: '16px', marginRight: '5px' }}></span>}
-            <span style={{ marginRight: '5px' }}>{icon}</span>
+            <span style={{ 
+              marginRight: '5px',
+              color: isActive ? '#4caf50' : (selectedGeometry === key ? '#fff' : 'inherit'),
+              textShadow: isActive ? '0 0 1px #4caf50, 0 0 1px #4caf50, 0 0 2px #4caf50, 0 0 2px #4caf50' : 'none', // Much thicker green outline for active elements
+              fontSize: '16px'
+            }}>{icon}</span>
             <span style={{ display: 'flex', alignItems: 'center' }}>
               {/* Display the Geant4 name (displayName) if available, otherwise fall back to internal name */}
               {volume.displayName || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
               
-              {isActive && (
-                <span 
-                  style={{ 
-                    marginLeft: '8px', 
-                    backgroundColor: '#4caf50', 
-                    color: 'white', 
-                    fontSize: '0.7rem', 
-                    padding: '2px 6px', 
-                    borderRadius: '10px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    height: '16px'
-                  }}
-                  title={`Active: ${volume.hitsCollectionName}`}
-                >
-                  {volume.hitsCollectionName}
-                </span>
-              )}
+              {/* Active elements are now indicated by the green icon outline */}
             </span>
           </div>
           {/* Only render children if node is expanded */}
