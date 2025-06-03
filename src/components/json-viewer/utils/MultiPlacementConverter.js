@@ -184,8 +184,8 @@ export function convertToMultiplePlacements(geometry) {
         // Store the Geant4 name as g4name
         g4name: volume.displayName || volume.name,
         material: volume.material,
-        color: Array.isArray(volume.color) ? volume.color : 
-               (volume.color ? [volume.color.r, volume.color.g, volume.color.b, volume.color.a] : [0.7, 0.7, 0.7, 1.0]),
+        //color: Array.isArray(volume.color) ? volume.color : 
+        //       (volume.color ? [volume.color.r, volume.color.g, volume.color.b, volume.color.a] : [0.7, 0.7, 0.7, 1.0]),
         dimensions: convertDimensions(volume),
         
         // No individual hitCollection tags for components in assemblies
@@ -388,7 +388,7 @@ function convertWorldVolume(world) {
     g4name: world.displayName || world.name || 'World',
     material: world.material || 'G4_AIR',
     visible: world.visible !== undefined ? world.visible : true,
-    color: convertColor(world.color),
+    //color: convertColor(world.color),
     wireframe: true,
     dimensions: convertDimensions(world),
     placements: [
@@ -451,7 +451,7 @@ function convertStandardVolume(volume, originalGeometry) {
     // Store the Geant4 name as g4name
     g4name: geant4Name,
     material: volume.material,
-    color: convertColor(volume.color),
+    //color: convertColor(volume.color),
     visible: volume.visible !== undefined ? volume.visible : true,
     ...(volume.isActive && { 
       hitCollection: volume.hitsCollectionName || "DefaultHitCollection",
