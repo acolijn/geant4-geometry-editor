@@ -51,8 +51,9 @@ export const icons = {
  * @returns {string} The icon character
  */
 export const getGeometryIcon = (type, isActive = false) => {
+  
   const iconType = icons[type] ? type : 'default';
-  return isActive ? icons[iconType].filled : icons[iconType].regular;
+  return icons[iconType].regular;
 };
 
 /**
