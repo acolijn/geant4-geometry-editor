@@ -60,7 +60,7 @@ const JsonViewer = ({ geometries, materials }) => {
   };
   
   // Generate the geometry JSON with hits collections
-  const generateGeometryJson = () => {
+  /* const generateGeometryJson = () => {
     // Debug: Log all volumes to check for _compoundId
     console.log('JsonViewer - All volumes:', geometries.volumes);
     
@@ -110,10 +110,10 @@ const JsonViewer = ({ geometries, materials }) => {
   
     return jsonString;
   };
-  
+   */
   // Helper function to convert position and rotation to placement format in JSON string
   // and dimension properties to a dimensions object, also removing redundant unit fields
-  const convertPositionRotationToPlacement = (jsonString) => {
+  /* const convertPositionRotationToPlacement = (jsonString) => {
     // Create a new JSON object to work with
     const jsonObj = JSON.parse(jsonString);
     
@@ -260,10 +260,10 @@ const JsonViewer = ({ geometries, materials }) => {
 
     const jsonWithMarkers = JSON.stringify(jsonObj, null, 2);
     return jsonWithMarkers;
-  };
+  }; */
   
   // Sort volumes to ensure parents come before children in the output JSON
-  const sortVolumesByHierarchy = (volumes) => {
+  /* const sortVolumesByHierarchy = (volumes) => {
     // Create a map of volume names to their indices
     const volumeMap = {};
     volumes.forEach((volume, index) => {
@@ -335,7 +335,7 @@ const JsonViewer = ({ geometries, materials }) => {
     
     return sortedVolumes;
   };
-  
+   */
   // We no longer use the custom generateGeometryJson function to avoid duplication
   // const geometryJson = generateGeometryJson();
   
@@ -352,8 +352,6 @@ const JsonViewer = ({ geometries, materials }) => {
   const handleAlertClose = () => {
     setAlert({ ...alert, open: false });
   };
-  
-
   
   // Handle download of JSON file
   const handleDownload = (content, filename) => {
