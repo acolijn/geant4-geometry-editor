@@ -716,16 +716,16 @@ function convertDimensions(volume) {
       break;
       
     case 'torus':
-      dimensions.major_radius = volume.major_radius || volume.dimensions?.major_radius || 5;
-      dimensions.minor_radius = volume.minor_radius || volume.dimensions?.minor_radius || 1;
+      dimensions.major_radius = volume.majorRadius || volume.dimensions?.major_radius || 3;
+      dimensions.minor_radius = volume.minorRadius || volume.dimensions?.minor_radius || 1;
       break;
       
     case 'polycone':
     case 'polyhedra':
-      if (volume.dimensions) {
-        dimensions.z = volume.dimensions.z || [];
-        dimensions.rmin = volume.dimensions.rmin || [];
-        dimensions.rmax = volume.dimensions.rmax || [];
+      if (volume.zSections) {
+        dimensions.z = volume.zSections.map(z => z.z);
+        dimensions.rmin = volume.zSections.map(z => z.rMin);
+        dimensions.rmax = volume.zSections.map(z => z.rMax);
       } else {
         // Default values if dimensions are missing
         dimensions.z = [-5, 0, 5];
