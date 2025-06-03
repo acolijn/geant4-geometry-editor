@@ -378,14 +378,14 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Render all children of this parent (now sorted alphabetically)
     return sortedVolumes.map(({ volume, key, index }) => {
-      let icon = '📦'; // Default box icon
-      if (volume.type === 'sphere') icon = '🔴';
-      if (volume.type === 'cylinder') icon = '🧪';
-      if (volume.type === 'ellipsoid') icon = '🥚';
-      if (volume.type === 'torus') icon = '🍩';
-      if (volume.type === 'polycone') icon = '🏆';
-      if (volume.type === 'trapezoid') icon = '🔷';
-      if (volume.type === 'assembly') icon = '📁'; // Folder icon for assemblies
+      let icon = '▢'; // Default box icon - square
+      if (volume.type === 'sphere') icon = '◯'; // Circle
+      if (volume.type === 'cylinder') icon = '⌭'; // Abstract cylinder
+      if (volume.type === 'ellipsoid') icon = '⬭'; // Oval
+      if (volume.type === 'torus') icon = '◎'; // Circle with dot
+      if (volume.type === 'polycone') icon = '⏣'; // Abstract stacked shape
+      if (volume.type === 'trapezoid') icon = '⏢'; // Trapezoid
+      if (volume.type === 'assembly') icon = '📁'; // Folder icon for assemblies (kept as requested)
       
       // Check if this node has children
       const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
