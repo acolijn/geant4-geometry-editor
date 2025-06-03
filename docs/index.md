@@ -8,14 +8,20 @@ The Geant4 Geometry Editor provides a graphical interface for designing detector
 
 ## Contents
 
-- [Getting Started](getting-started.md)
-- [User Interface](user-interface.md)
-- [Geometry Components](geometry-components.md)
-- [Materials](materials.md)
-- [Coordinate System](coordinate-system.md)
-- [JSON Format](json-format.md)
-- [Integration with Geant4](integration-with-geant4.md)
-- [API Reference](api/index.md)
+### Main Components
+
+- [Geometry Editor](geometry-editor.md) - Core component for creating and editing geometry objects
+- [Material Editor](material-editor.md) - Interface for creating and managing materials
+- [JSON Viewer](json-viewer.md) - View and export the JSON representation of geometries
+- [Viewer3D](viewer3D.md) - Interactive 3D visualization of geometries
+
+### Additional Resources
+
+- [Getting Started](getting-started.md) - Quick start guide
+- [User Interface](user-interface.md) - Overview of the user interface
+- [Coordinate System](coordinate-system.md) - Explanation of the coordinate system
+- [Integration with Geant4](integration-with-geant4.md) - Using the editor with Geant4
+- [API Reference](api/index.md) - Detailed API documentation
 
 ## Key Features
 
