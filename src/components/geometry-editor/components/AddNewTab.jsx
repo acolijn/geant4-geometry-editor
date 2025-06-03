@@ -10,6 +10,8 @@ import {
   Divider,
   Alert
 } from '@mui/material';
+import TreeSelect from './TreeSelect';
+import { renderMotherVolumeTree } from './motherVolumeUtils.jsx';
 
 /**
  * AddNewTab Component
@@ -205,21 +207,33 @@ const AddNewTab = ({
         </Box>
       )}
       
-      <FormControl fullWidth margin="normal">
-        <InputLabel>Mother Volume</InputLabel>
-        <Select
-          value={newMotherVolume}
-          label="Mother Volume"
-          onChange={(e) => setNewMotherVolume(e.target.value)}
-        >
-          <MenuItem value="World">World</MenuItem>
-          {geometries.volumes && geometries.volumes.map((volume, index) => (
-            <MenuItem key={`mother-${index}`} value={volume.name}>
-              {volume.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <TreeSelect
+        label="Mother Volume"
+        value={newMotherVolume}
+        onChange={(value) => setNewMotherVolume(value)}
+        placeholder="Select a mother volume"
+        renderValue={(value) => {
+          // For World, just return World
+          if (value === 'World') return 'World';
+          
+          // For other volumes, find the volume with this name and return its display name
+          const motherVolume = geometries.volumes.find(vol => vol.name === value);
+          return motherVolume ? (motherVolume.displayName || motherVolume.name) : value;
+        }}
+        renderTree={({ expandedNodes, toggleNodeExpansion, handleSelect, selectedValue }) => {
+          return renderMotherVolumeTree({
+            geometries,
+            expandedNodes,
+            toggleNodeExpansion,
+            handleSelect,
+            selectedValue,
+            currentVolumeKey: null // No need to exclude any volume when adding new geometry
+          });
+        }}
+        fullWidth
+        margin="normal"
+        size="small"
+      />
       
       <Button 
         variant="contained" 

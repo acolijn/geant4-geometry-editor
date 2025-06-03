@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
+import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
 import { createImportExportHandlers } from '../geometry-editor/utils/importExportHandlers';
 import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryUtils';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
@@ -378,16 +379,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Render all children of this parent (now sorted alphabetically)
     return sortedVolumes.map(({ volume, key, index }) => {
-      let icon = '▢'; // Default box icon - square
-      if (volume.type === 'sphere') icon = '◯'; // Circle
-      if (volume.type === 'cylinder') icon = '⌭'; // Abstract cylinder
-      if (volume.type === 'ellipsoid') icon = '⬭'; // Oval
-      if (volume.type === 'torus') icon = '◎'; // Circle with dot
-      if (volume.type === 'polycone') icon = '⏣'; // Abstract stacked shape
-      if (volume.type === 'trapezoid') icon = '⏢'; // Trapezoid
-      if (volume.type === 'assembly') icon = '📁'; // Folder icon for assemblies (kept as requested)
-      
-      // Check if this node has children
       const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
       
       // Check if volume is active (has isActive flag and hitsCollectionName)
@@ -437,7 +428,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               color: isActive ? '#4caf50' : (selectedGeometry === key ? '#fff' : 'inherit'),
               textShadow: isActive ? '0 0 1px #4caf50, 0 0 1px #4caf50, 0 0 2px #4caf50, 0 0 2px #4caf50' : 'none', // Much thicker green outline for active elements
               fontSize: '16px'
-            }}>{icon}</span>
+            }}>{getVolumeIcon(volume, isActive)}</span>
             <span style={{ display: 'flex', alignItems: 'center' }}>
               {/* Display the Geant4 name (displayName) if available, otherwise fall back to internal name */}
               {volume.displayName || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
