@@ -4,31 +4,66 @@ The GeometryEditor is the main component for editing and managing geometry objec
 
 ## Component Organization
 
-The GeometryEditor has been refactored into a modular structure:
+The GeometryEditor has been refactored into a modular structure with clear separation of concerns:
 
-- **Main Component**: `src/components/GeometryEditor.jsx`
-- **Property Editing**: `src/components/geometry-editor/PropertyEditor.jsx`
-- **Object Creation**: `src/components/geometry-editor/AddNewTab.jsx`
-- **Dialog Components**: Located in `src/components/geometry-editor/`
-  - `SaveObjectDialog.jsx`
-  - `LoadObjectDialog.jsx`
-  - `UpdateObjectsDialog.jsx`
-  - `HitCollectionsDialog.jsx`
-- **3D Objects**: Located in `src/components/viewer3D/`
-  - Various shape objects (Box, Cylinder, Sphere, etc.)
-  - `TransformableObject.jsx` for handling transformations
+### Main Components
+- **GeometryEditor**: `src/components/GeometryEditor.jsx` - Main container component that orchestrates all geometry editing functionality
+- **PropertyEditor**: `src/components/geometry-editor/components/PropertyEditor.jsx` - Handles editing properties of selected geometries
+- **AddNewTab**: `src/components/geometry-editor/components/AddNewTab.jsx` - Interface for creating new geometry objects
+- **GeometryTree**: `src/components/viewer3D/GeometryTree.jsx` - Hierarchical tree view of all geometry objects
+
+### Utility Components
+- **TreeSelect**: `src/components/geometry-editor/components/TreeSelect.jsx` - Reusable hierarchical dropdown component for volume selection
+- **NumericInput**: `src/components/geometry-editor/components/NumericInput.jsx` - Input component with unit conversion support
+
+### Dialog Components
+- **SaveObjectDialog**: `src/components/geometry-editor/components/SaveObjectDialog.jsx` - Dialog for saving objects
+- **LoadObjectDialog**: `src/components/geometry-editor/components/LoadObjectDialog.jsx` - Dialog for loading objects
+- **UpdateObjectsDialog**: `src/components/geometry-editor/components/UpdateObjectsDialog.jsx` - Dialog for updating objects
+- **HitCollectionsDialog**: `src/components/geometry-editor/components/HitCollectionsDialog.jsx` - Dialog for configuring hit collections
+
+### 3D Visualization Components
+- **Viewer3D**: `src/components/viewer3D/Viewer3D.jsx` - Main 3D visualization component
+- **Shape Components**: Located in `src/components/viewer3D/`
+  - `Box.jsx`, `Cylinder.jsx`, `Sphere.jsx`, `Ellipsoid.jsx`, `Torus.jsx`, etc.
+- **TransformableObject**: `src/components/viewer3D/TransformableObject.jsx` - Wrapper for objects that can be transformed
+
+### Utility Modules
+- **geometryIcons.js**: `src/components/geometry-editor/utils/geometryIcons.js` - Centralized icon definitions for geometry types
+- **motherVolumeUtils.jsx**: `src/components/geometry-editor/components/motherVolumeUtils.jsx` - Shared utility for rendering mother volume selection trees
+- **UnitConverter.js**: `src/components/geometry-editor/utils/UnitConverter.js` - Handles unit conversions for measurements
 
 ## Key Features
 
 ### Selection System
-- Objects can be selected by clicking on them in the geometry tree
+- **Object Selection**: Objects can be selected by clicking on them in the geometry tree or directly in the 3D view
 - **Toggle Selection**: Clicking an already selected object will deselect it
-- Proper parent-child relationships are maintained for nested volumes
+- **Hierarchical Selection**: Proper parent-child relationships are maintained for nested volumes
+- **Visual Feedback**: Selected objects are highlighted in both the tree view and 3D view
 
 ### Transform Controls
-- 3D movement arrows for manipulating objects in the scene
-- Objects remain selected after transformation
-- Transform controls stay visible and attached to the object after movement
+- **3D Manipulation**: Interactive arrows for manipulating objects in the scene (translate, rotate, scale)
+- **Persistent Selection**: Objects remain selected after transformation
+- **Transform Gizmo**: Transform controls stay visible and attached to the object after movement
+- **Coordinate System**: Transformations respect the global or local coordinate system as selected
+
+### Mother Volume Selection
+- **Hierarchical Display**: Mother volumes are displayed in a hierarchical tree structure
+- **Collapsible Nodes**: Tree nodes can be expanded or collapsed for better navigation
+- **Visual Icons**: Each volume type has a distinctive icon for easy identification
+- **Circular Reference Prevention**: Current volume and its descendants are excluded from mother volume selection
+
+### Property Editing
+- **Dynamic Properties**: Property fields change based on the selected geometry type
+- **Unit Conversion**: Automatic conversion between different units of measurement
+- **Real-time Updates**: Changes to properties are immediately reflected in the 3D view
+- **Validation**: Input validation for numeric values and required fields
+
+### Object Creation
+- **Multiple Shapes**: Support for creating various geometry types (Box, Sphere, Cylinder, etc.)
+- **Placement Options**: Objects can be placed relative to any existing volume
+- **Default Values**: Sensible defaults for quick creation of new objects
+- **Preview**: Real-time preview of new objects before creation
 - No visual glitches or jumping of controls to the origin
 
 ### Object Management

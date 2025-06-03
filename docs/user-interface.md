@@ -1,6 +1,6 @@
 # User Interface Guide
 
-The Geant4 Geometry Editor interface is divided into several key sections, each serving a specific purpose in the geometry creation process.
+This guide explains the main components of the Geant4 Geometry Editor user interface and how to interact with them effectively. The Geant4 Geometry Editor interface is divided into several key sections, each serving a specific purpose in the geometry creation process.
 
 ## Component Organization
 
@@ -31,6 +31,28 @@ The application has three main tabs:
 
 The Geometry tab is divided into two main sections:
 
+### Geometry Tree
+
+The Geometry Tree panel shows the hierarchy of all geometry objects:
+
+- World volume at the top
+- Child volumes nested underneath their parents
+- Click on any volume to select it
+- Toggle visibility using the eye icon
+- **Hierarchical Display**: Volumes are organized in a tree structure with proper indentation
+- **Collapsible Nodes**: Click the arrow icons to expand or collapse branches
+- **Visual Icons**: Each geometry type has a distinctive icon:
+  - Box: ▢ (square)
+  - Sphere: ◯ (circle)
+  - Cylinder: ⌭ (cylinder symbol)
+  - Ellipsoid: ⬭ (oval)
+  - Torus: ◎ (circle with dot)
+  - Polycone: ⏣ (stacked shape)
+  - Trapezoid: ⏢ (trapezoid)
+  - Assembly: 📁 (folder)
+- **Active Volume Indication**: Volumes with hit collections are highlighted in green
+- **Alphabetical Sorting**: Volumes are sorted alphabetically within each level
+
 ### 3D Viewer (Left Side)
 
 The 3D viewer provides an interactive visualization of your geometry:
@@ -56,21 +78,23 @@ The 3D viewer provides an interactive visualization of your geometry:
 
 The properties panel has two tabs:
 
-#### Properties Tab
+#### Property Editor (Right Side)
 
-When a geometry is selected, this tab shows its properties:
+The Property Editor panel allows you to modify the selected geometry:
 
 - **Basic Properties**:
-  - Name: Identifier for the geometry
+  - Name: Internal identifier for the geometry
+  - Display Name: User-friendly name shown in the interface
   - Material: Material assigned to the geometry
 
-- **Position**:
-  - X, Y, Z coordinates (in cm)
-  - Unit selector
-
-- **Rotation**:
-  - X, Y, Z rotation angles (in degrees)
-  - Unit selector (degrees or radians)
+- **Positioning**:
+  - Position (X, Y, Z): Coordinates in 3D space
+  - Rotation (X, Y, Z): Rotation angles in degrees
+  - Mother Volume: Parent volume that contains this geometry
+    - **Hierarchical Selection**: Mother volumes are displayed in a collapsible tree structure
+    - **Visual Icons**: Each volume type has a distinctive icon for easy identification
+    - **Expandable Branches**: Click the arrow icons to expand/collapse branches
+    - **Circular Reference Prevention**: The current volume and its descendants are excluded
 
 - **Dimensions** (shape-specific):
   - Box: X, Y, Z size
@@ -83,8 +107,25 @@ When a geometry is selected, this tab shows its properties:
 
 This tab allows you to create new geometry objects:
 
-- **Geometry Type** dropdown: Select Box, Cylinder, or Sphere
-- **Add Geometry** button: Creates a new geometry with default properties
+1. Select the geometry type (Box, Sphere, etc.)
+2. Fill in the required properties:
+   - Basic information (name, display name)
+   - Position and rotation
+   - Mother volume (using the hierarchical TreeSelect dropdown)
+   - Shape-specific dimensions
+3. Click "Create" to add it to the scene
+
+### TreeSelect Component
+
+The TreeSelect component is used for hierarchical selection of mother volumes in both the Property Editor and Add New tab:
+
+- **Dropdown Interface**: Click to open a dropdown with a tree structure
+- **Hierarchical Display**: Volumes are shown in their proper hierarchy
+- **Expandable Nodes**: Click arrow icons to expand/collapse branches
+- **Visual Icons**: Each volume type has its distinctive icon
+- **Selection**: Click on any volume to select it as the mother volume
+- **Current Selection**: The currently selected volume is highlighted
+- **Display Names**: Shows user-friendly display names instead of internal names
 
 ## Materials Tab
 
