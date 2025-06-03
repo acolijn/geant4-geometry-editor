@@ -160,7 +160,7 @@ export function convertToMultiplePlacements(geometry) {
     console.log(`Using compound name: ${compoundName} for assembly type with ID: ${assemblyTypeId}`);
     
     const compoundObject = {
-      type: 'compound',
+      type: 'assembly',
       // Use the clean name without trailing numbers
       name: compoundName,
       components: [],
@@ -510,7 +510,7 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
   
   // Create the compound object
   const compoundObject = {
-    type: 'compound',
+    type: 'assembly',
     name: compoundName,
     placements: rootInstances.map((instance, index) => {
       // Use displayName if available, otherwise fall back to compoundName
