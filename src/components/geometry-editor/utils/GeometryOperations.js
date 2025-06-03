@@ -173,9 +173,9 @@ export const updateGeometry = (
  * Generate a unique ID
  * @returns {string} A unique ID
  */
-export const generateId = () => {
+/*export const generateId = () => {
   return `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-};
+}; */
 
 /**
  * Generate a unique internal name for a geometry object

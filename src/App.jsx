@@ -14,7 +14,7 @@ import {
   Tooltip
 } from '@mui/material';
 // Import utility functions from GeometryOperations.js
-import { updateGeometry, addGeometry, removeGeometry, generateId, generateUniqueName } from './components/geometry-editor/utils/GeometryOperations';
+import { updateGeometry, addGeometry, removeGeometry } from './components/geometry-editor/utils/GeometryOperations';
 import Viewer3D from './components/viewer3D/Viewer3D';
 //import GeometryEditor from './components/GeometryEditor';
 import GeometryEditor from './components/geometry-editor/GeometryEditor';
@@ -22,10 +22,11 @@ import MaterialsEditor from './components/material-editor/MaterialsEditor';
 import JsonViewer from './components/json-viewer/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
-import { standardizeProjectData, restoreProjectData } from './utils/ObjectFormatStandardizer';
+import { standardizeProjectData, restoreProjectData } from './components/geometry-editor/utils/ObjectFormatStandardizer';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
 import { importPartialFromAddNew } from './components/geometry-editor/utils/GeometryImport';
 import { extractObjectWithDescendants } from './components/geometry-editor/utils/GeometryUtils';
+
 import './App.css';
 
 // Create a theme

@@ -346,104 +346,8 @@ export const createImportExportHandlers = (props) => {
     return processedData;
   };
 
-  /**
-   * Export the selected geometry object and its descendants
-   * 
-   * This function extracts the selected geometry object along with all its descendants
-   * and prepares them for export. It adds debug information and opens the save dialog
-   * to allow the user to save the exported data to a file.
-   * 
-   * It also ensures that assembly objects maintain their stable IDs.
-   */
-  const handleExportObject = () => {
-    // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObjectLocal();
-    if (!selectedObject) {
-      alert('Please select a geometry object to export');
-      return;
-    }
-    
-    // Extract the object and its descendants
-    const exportData = extractObjectWithDescendants(selectedGeometry);
-    
-    // Ensure assembly objects have stable IDs and consistent naming
-    if (exportData.object && exportData.object.type === 'assembly') {
-      // Generate a timestamp and random suffix only for the ID if needed
-      const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substring(2, 8);
-      
-      // IMPORTANT: Preserve the original assembly name instead of generating a new one
-      // This ensures that parent references to this assembly remain valid
-      const originalName = exportData.object.name;
-      console.log(`Preserving original assembly name: ${originalName}`);
-      
-      // If it's an assembly, ensure it has a stable ID
-      if (!exportData.object._compoundId) {
-        // Generate a stable compound ID based on the display name or name
-        const typeName = exportData.object.displayName || originalName || 'assembly';
-        exportData.object._compoundId = `${typeName}_${timestamp}_${randomSuffix}`;
-      }
-      
-      console.log(`Exporting assembly with name: ${exportData.object.name} and ID: ${exportData.object._compoundId}`);
-      
-      // Fix parent references for top-level objects in the assembly
-      // This ensures that all direct children point to the assembly's name, not its ID
-      if (exportData.descendants && exportData.descendants.length > 0) {
-        const assemblyName = exportData.object.name;
-        const assemblyId = exportData.object._compoundId;
-        
-        console.log(`Fixing parent references for assembly ${assemblyName}`);
-        
-        exportData.descendants.forEach(descendant => {
-          // Check if this is a direct child of the assembly (parent references an assembly ID)
-          if (descendant.parent && 
-              (descendant.parent.startsWith('assembly_') || 
-               descendant.parent === assemblyId)) {
-            
-            // Update the parent reference to use the assembly's name
-            const oldParent = descendant.parent;
-            descendant.parent = assemblyName;
-            console.log(`Updated parent reference for ${descendant.name} from ${oldParent} to ${assemblyName}`);
-            
-            // Also update mother_volume if it exists and references the assembly
-            if (descendant.mother_volume && 
-                (descendant.mother_volume.startsWith('assembly_') ||
-                 descendant.mother_volume === assemblyId)) {
-              descendant.mother_volume = assemblyName;
-              console.log(`Updated mother_volume reference for ${descendant.name} to ${assemblyName}`);
-            }
-          }
-        });
-      }
-    }
-    
-    // Add debug information
-    exportData._debug = {
-      exportedAt: new Date().toISOString(),
-      sourceApplication: 'Geant4 Geometry Editor',
-      version: '1.0.0'
-    };
-    
-    // Store the export data and open the save dialog
-    setObjectToSave(exportData);
-    setSaveObjectDialogOpen(true);
-    
-    // Create a global variable to make the export data accessible in the console for debugging
-    window.lastExportedObject = exportData;
-    console.log('Export data saved to window.lastExportedObject for debugging');
-  };
 
-  /**
-   * Import geometry objects from a JSON file using the FileSystemManager
-   * 
-   * This function allows users to import previously exported geometry objects
-   * from JSON files. It validates the imported content, adds the objects to the
-   * scene with the selected mother volume, and displays appropriate notifications.
-   * 
-   * @async
-   * @returns {Promise<void>}
-   */
-  const handleImportFromFileSystem = async () => {
+/*   const handleImportFromFileSystemXXX = async () => {
     try {
       // Import the FileSystemManager
       const { FileSystemManager } = await import('../../../utils/FileSystemManager');
@@ -493,7 +397,7 @@ export const createImportExportHandlers = (props) => {
         severity: 'error'
       });
     }
-  };
+  }; */
   
   /**
    * Handle importing an object JSON file using the standard file input or direct object data
@@ -589,8 +493,8 @@ export const createImportExportHandlers = (props) => {
 
   return {
     applyStructuredNaming,
-    handleExportObject,
-    handleImportFromFileSystem,
+    //handleExportObject,
+    //handleImportFromFileSystem,
     handleImportObjectFile,
     processStandardizedFormat,
     handleLoadObject,

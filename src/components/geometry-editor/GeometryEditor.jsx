@@ -137,7 +137,7 @@ const RefactoredGeometryEditor = ({
   const {
     applyStructuredNaming,
     handleExportObject,
-    handleImportFromFileSystem,
+    //handleImportFromFileSystem,
     handleImportObjectFile
   } = createImportExportHandlers({
     handleImportPartialFromAddNew,
@@ -270,7 +270,7 @@ const RefactoredGeometryEditor = ({
         handleRemoveComponent={handleRemoveComponent}
         handleAdditionalComponentChange={handleAdditionalComponentChange}
         handleAddGeometry={handleAddGeometry}
-        handleImportFromFileSystem={handleImportFromFileSystem}
+        //handleImportFromFileSystem={handleImportFromFileSystem}
         fileInputRef={fileInputRef}
         handleImportObjectFile={handleImportObjectFile}
         importAlert={importAlert}
