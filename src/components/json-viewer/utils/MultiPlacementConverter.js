@@ -349,28 +349,6 @@ export function convertToMultiplePlacements(geometry) {
     });
   });
   
-  // Add hits collections if they exist
-  const activeVolumes = geometry.volumes.filter(vol => vol.isActive || vol.hitsCollectionName);
-  if (activeVolumes.length > 0) {
-    // Get unique hits collection names
-    const collectionNames = new Set();
-    activeVolumes.forEach(vol => {
-      if (vol.hitsCollectionName) {
-        collectionNames.add(vol.hitsCollectionName);
-      }
-    });
-    
-    // Create hits collections entries
-    if (collectionNames.size > 0) {
-      convertedGeometry.hitsCollections = Array.from(collectionNames).map(name => {
-        return {
-          name,
-          description: name === "MyHitsCollection" ? "Default hits collection for energy deposits" : ""
-        };
-      });
-    }
-  }
-  
   return convertedGeometry;
 }
 
@@ -453,10 +431,8 @@ function convertStandardVolume(volume, originalGeometry) {
     material: volume.material,
     //color: convertColor(volume.color),
     visible: volume.visible !== undefined ? volume.visible : true,
-    ...(volume.isActive && { 
-      hitCollection: volume.hitsCollectionName || "DefaultHitCollection",
-      hitsCollectionName: volume.hitsCollectionName || "DefaultHitCollection"
-    }),
+    // if hitsColectionName is not empty, add it to the object
+    // 
     dimensions: convertDimensions(volume),
     placements: [
       {
@@ -565,10 +541,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
     material: rootVolume.material,
     color: convertColor(rootVolume.color),
     visible: rootVolume.visible !== undefined ? rootVolume.visible : true,
-    ...(rootVolume.isActive && { 
-      hitCollection: rootVolume.hitsCollectionName || "DefaultHitCollection",
-      hitsCollectionName: rootVolume.hitsCollectionName || "DefaultHitCollection"
-    }),
+// if hitsColectionName is not empty, add it to the object
+    ...(rootVolume.hitsCollectionName && { hitsCollectionName: rootVolume.hitsCollectionName }),
     dimensions: convertDimensions(rootVolume),
     placements: [{
       x: 0,
@@ -611,10 +585,8 @@ function createCompoundObject(rootVolume, rootInstances, components, nameToBaseN
       material: component.material,
       color: convertColor(component.color),
       visible: component.visible !== undefined ? component.visible : true,
-      ...(component.isActive && { 
-        hitCollection: component.hitsCollectionName || "DefaultHitCollection",
-        hitsCollectionName: component.hitsCollectionName || "DefaultHitCollection"
-      }),
+      // if hitsColectionName is not empty, add it to the object
+      ...(component.hitsCollectionName && { hitsCollectionName: component.hitsCollectionName }),
       dimensions: convertDimensions(component),
       placements: [{
         x: component.position?.x || 0,
