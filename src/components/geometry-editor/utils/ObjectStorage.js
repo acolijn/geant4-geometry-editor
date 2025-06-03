@@ -34,6 +34,10 @@ export const saveObject = async (name, description, objectData, preserveComponen
     
     // Standardize the object format to be consistent with the main output JSON file
     const standardizedObjectData = standardizeObjectFormat(objectData);
+    // Remove 'placement' ONLY from the top-level object before saving
+    if (standardizedObjectData.object && standardizedObjectData.object.placement) {
+      delete standardizedObjectData.object.placement;
+    }
     
     // If preserveComponentIds is true, check if the object already exists and preserve component IDs
     let dataToSave;
