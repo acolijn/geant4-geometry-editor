@@ -12,7 +12,7 @@
 import FileSystemManager from '../../../utils/FileSystemManager';
 
 // Import the ObjectFormatStandardizer
-import { standardizeObjectFormat, restoreOriginalFormat } from '../../../utils/ObjectFormatStandardizer';
+import { standardizeObjectFormat, restoreOriginalFormat } from './ObjectFormatStandardizer';
 
 /**
  * Save a compound object to the objects directory
