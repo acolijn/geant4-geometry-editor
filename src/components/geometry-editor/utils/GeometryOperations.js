@@ -123,29 +123,30 @@ export const updateGeometry = (
           const newParent = newParentIndex !== -1 ? updatedVolumes[newParentIndex] : 
                            (newMotherVolume === prevGeometries.world.name ? prevGeometries.world : null);
           
-          // If the new parent is an assembly and has a _compoundId, propagate it
+          // If the new parent is an assembly and has a _compoundId, propagate it to non-assembly children only
           if (newParent && newParent.type === 'assembly' && newParent._compoundId) {
             console.log(`Parent changed to assembly ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
             
-            // Add _compoundId to the updated object
-            updatedVolumes[index]._compoundId = newParent._compoundId;
-            
-            // Store the original type information before it gets overridden
-            // This will be used in MultiPlacementConverter to preserve the object's true type
-            if (updatedVolumes[index].type === 'assembly') {
-              // Only store _originalType for assemblies since that's where the issue occurs
-              updatedVolumes[index]._originalType = updatedVolumes[index].displayName || updatedVolumes[index].name;
-              console.log(`Preserved original type ${updatedVolumes[index]._originalType} for assembly ${updatedObject.name}`);
+            // IMPORTANT: Only add _compoundId to non-assembly objects
+            // Assemblies should keep their own _compoundId
+            let updatedWithDescendants;
+            if (updatedVolumes[index].type !== 'assembly') {
+              // Add _compoundId to the updated object only if it's not an assembly
+              updatedVolumes[index]._compoundId = newParent._compoundId;
+              console.log(`Added _compoundId ${newParent._compoundId} to non-assembly object ${updatedObject.name}`);
+              
+              // Propagate _compoundId to all descendants
+              updatedWithDescendants = propagateCompoundIdToDescendants(
+                updatedObject.name, 
+                newParent._compoundId, 
+                updatedVolumes
+              );
+            } else {
+              console.log(`Preserved original _compoundId for assembly ${updatedObject.name}: ${updatedVolumes[index]._compoundId}`);
+              
+              // No need to propagate _compoundId since we're preserving the assembly's own _compoundId
+              updatedWithDescendants = updatedVolumes;
             }
-            
-            console.log(`Added _compoundId ${newParent._compoundId} to object ${updatedObject.name}`);
-            
-            // Propagate _compoundId to all descendants
-            const updatedWithDescendants = propagateCompoundIdToDescendants(
-              updatedObject.name, 
-              newParent._compoundId, 
-              updatedVolumes
-            );
             
             // Update the volumes with the propagated _compoundId
             return {
