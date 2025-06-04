@@ -44,28 +44,34 @@ export function convertToMultiplePlacements(geometry) {
                       (volume.displayName ? volume.displayName.replace(/_\d+$/, '') : 
                       volume.name.replace(/_\d+$/, ''));
       
-      // Use the base type as the assembly type ID
+      // Use the base type as the assembly type ID - this is the key to avoid duplicates
       const assemblyTypeId = baseType;
       
       console.log(`Processing assembly ${volume.name} with base type ${baseType}`);
       console.log(`  _originalType: ${volume._originalType || 'none'}`);
       console.log(`  _compoundId: ${volume._compoundId || 'none'}`);
       
+      // Store the assembly in the assemblies map for child lookup
       if (!assemblies[volume.name]) {
         assemblies[volume.name] = {
           template: volume,
-          children: []
+          children: [],
+          baseType: baseType  // Store the base type for reference
         };
       }
       
-      // Group assemblies by type for creating compound objects
+      // Group assemblies by base type for creating compound objects
+      // This ensures PMTs inside SiDet are grouped with other PMTs
       if (!assemblyTypes[assemblyTypeId]) {
         assemblyTypes[assemblyTypeId] = {
           template: volume,
-          instances: []
+          instances: [],
+          processed: false  // Flag to track if this type has been processed
         };
         console.log(`Created new assembly type group for ${assemblyTypeId}`);
       }
+      
+      // Add this instance to the appropriate type group
       assemblyTypes[assemblyTypeId].instances.push(volume);
       console.log(`Added ${volume.name} to assembly type group ${assemblyTypeId}`);
     } else if (volume._compoundId) {
@@ -185,15 +191,22 @@ export function convertToMultiplePlacements(geometry) {
   // Keep track of processed assembly types to avoid duplicates
   const processedAssemblyTypes = new Set();
   
+  // Track which nested assemblies we've already processed to avoid duplicates
+  const processedNestedAssemblies = new Set();
+  
+  // Create a map to track which base types we've already processed
+  const processedBaseTypes = new Map();
+  
   // Process all assembly types and create compound objects for them
   Object.keys(assemblyTypes).forEach(assemblyTypeId => {
-    // Skip if we've already processed this assembly type
-    if (processedAssemblyTypes.has(assemblyTypeId)) {
-      console.log(`Skipping duplicate assembly type with ID: ${assemblyTypeId} - already processed`);
+    // Skip if this assembly type has already been processed
+    if (assemblyTypes[assemblyTypeId].processed) {
+      console.log(`Skipping assembly type with ID: ${assemblyTypeId} - already processed`);
       return;
     }
     
     // Mark this assembly type as processed
+    assemblyTypes[assemblyTypeId].processed = true;
     processedAssemblyTypes.add(assemblyTypeId);
     
     const typeData = assemblyTypes[assemblyTypeId];
@@ -352,8 +365,14 @@ export function convertToMultiplePlacements(geometry) {
     });
     
     // Now handle nested assembly references
-    // Find all nested assemblies that are of this type
+    // Find all nested assemblies that are of this type and haven't been processed yet
     const nestedInstancesOfThisType = nestedAssemblyRelationships.filter(rel => {
+      // Skip if we've already processed this nested assembly
+      if (processedNestedAssemblies.has(rel.childAssembly)) {
+        console.log(`Skipping already processed nested assembly: ${rel.childAssembly}`);
+        return false;
+      }
+      
       // For PMTs inside SiDet, we need to match by the base type name
       // The assemblyTypeId is now the base type name directly (e.g., "PMT")
       // And the childType is also the base type name (e.g., "PMT")
@@ -408,16 +427,23 @@ export function convertToMultiplePlacements(geometry) {
       };
       
       compoundObject.placements.push(placement);
+      
+      // Mark this nested assembly as processed to avoid duplicates
+      processedNestedAssemblies.add(nestedRel.childAssembly);
+      
       console.log(`  Added nested placement for ${nestedRel.childAssembly} inside ${nestedRel.parentAssembly} to compound object ${compoundObject.name}`);
+      console.log(`  Marked ${nestedRel.childAssembly} as processed to prevent duplicate definitions`);
     });
     
     console.log(`Total placements added for ${compoundObject.name}: ${compoundObject.placements.length}`);
-    if (compoundObject.placements.length === 0) {
-      console.warn(`WARNING: No placements were added for assembly type: ${compoundObject.name}`);
-    }
     
-    // Add the compound object to the converted geometry
-    convertedGeometry.volumes.push(compoundObject);
+    // Only add the compound object to the output if it has components or placements
+    if (compoundObject.components.length > 0 || compoundObject.placements.length > 0) {
+      console.log(`Adding compound object ${compoundObject.name} to output with ${compoundObject.components.length} components and ${compoundObject.placements.length} placements`);
+      convertedGeometry.volumes.push(compoundObject);
+    } else {
+      console.warn(`Skipping empty compound object ${compoundObject.name} - no components or placements`);
+    }
   });
   
   // Process compound objects (but skip those that are part of assemblies)
