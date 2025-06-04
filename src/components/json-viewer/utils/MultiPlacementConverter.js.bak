@@ -43,27 +43,29 @@ export function convertToMultiplePlacements(geometry) {
         children: []
       };
       
-      // Group assemblies by their _compoundId - this is the unique identifier for assembly types
-      const assemblyTypeId = volume._compoundId;
+      // Extract the base name (without numbers) to use as the assembly's type identifier
+      // This will be used as the key for grouping assemblies of the same type
+      const baseName = volume.displayName || volume.name;
+      const baseType = baseName.replace(/_\d+$/, '');
       
-      if (!assemblyTypeId) {
-        console.warn(`Assembly ${volume.name} has no _compoundId - this will cause issues with identification`);
-        return;
-      }
+      // Use ONLY the baseType as the assemblyTypeId
+      // This ensures all PMTs are grouped together, regardless of their _compoundId
+      const assemblyTypeId = baseType;
       
-      console.log(`Processing assembly ${volume.name} with _compoundId: ${assemblyTypeId}`);
+      console.log(`Processing assembly ${volume.name} with type: ${baseType}`);
       
-      // Add to the appropriate type group based on _compoundId only
+      // Add to the appropriate type group based on the baseType only
       if (!assemblyTypes[assemblyTypeId]) {
         assemblyTypes[assemblyTypeId] = {
           template: volume,
-          instances: []
+          instances: [],
+          baseType: baseType // Store the actual type explicitly
         };
-        console.log(`Created new assembly type with _compoundId: ${assemblyTypeId}`);
+        console.log(`Created new assembly type with type: ${baseType}`);
       }
       
       assemblyTypes[assemblyTypeId].instances.push(volume);
-      console.log(`Added assembly ${volume.name} to type group with _compoundId: ${assemblyTypeId}`);
+      console.log(`Added assembly ${volume.name} to type group with type: ${baseType}`);
     } else if (volume._compoundId) {
       // This is part of a compound object
       if (!compoundGroups[volume._compoundId]) {
@@ -82,7 +84,6 @@ export function convertToMultiplePlacements(geometry) {
   // Second pass: identify children of assemblies
   // Keep track of assemblies that are children of other assemblies
   const nestedAssemblies = new Set();
-  const nestedAssemblyRelationships = [];
   
   geometry.volumes.forEach(volume => {
     if (volume.mother_volume && assemblies[volume.mother_volume]) {
@@ -92,26 +93,31 @@ export function convertToMultiplePlacements(geometry) {
       if (volume.type === 'assembly') {
         nestedAssemblies.add(volume.name);
         console.log(`Marked ${volume.name} as a nested assembly inside ${volume.mother_volume}`);
-        
-        // Store the relationship between this nested assembly and its parent
-        // Use _originalType if available (from GeometryOperations.js) or derive from name/displayName
-        const childType = volume._originalType || 
-                          (volume.displayName ? volume.displayName.replace(/_\d+$/, '') : 
-                          volume.name.replace(/_\d+$/, ''));
-        
-        nestedAssemblyRelationships.push({
-          childAssembly: volume.name,
-          parentAssembly: volume.mother_volume,
-          position: volume.position || { x: 0, y: 0, z: 0 },
-          rotation: volume.rotation || { x: 0, y: 0, z: 0 },
-          childType: childType
-        });
-        
-        console.log(`Stored nested assembly relationship: ${volume.name} (${childType}) inside ${volume.mother_volume}`);
       } else {
         // Only add non-assembly children to the parent assembly's children array
         assemblies[volume.mother_volume].children.push(volume);
       }
+    }
+  });
+  
+  // Store the nested assembly relationships for later use
+  const nestedAssemblyRelationships = [];
+  
+  // Find all nested assembly relationships
+  geometry.volumes.forEach(volume => {
+    if (volume.type === 'assembly' && nestedAssemblies.has(volume.name)) {
+      // This is a nested assembly, store its relationship to its parent
+      const childType = volume.displayName ? volume.displayName.replace(/_\d+$/, '') : volume.name.replace(/_\d+$/, '');
+      
+      nestedAssemblyRelationships.push({
+        childAssembly: volume.name,
+        parentAssembly: volume.mother_volume,
+        position: volume.position || { x: 0, y: 0, z: 0 },
+        rotation: volume.rotation || { x: 0, y: 0, z: 0 },
+        childType: childType
+      });
+      
+      console.log(`Stored nested assembly relationship: ${volume.name} (${childType}) inside ${volume.mother_volume}`);
     }
   });
   
@@ -166,14 +172,18 @@ export function convertToMultiplePlacements(geometry) {
       return;
     }
     
+    // Filter out instances that are nested inside other assemblies
+    // We'll handle these separately as references to the main assembly type
+    const standaloneInstances = typeData.instances.filter(instance => 
+      !nestedAssemblies.has(instance.name)
+    );
+    
+    console.log(`Filtered to ${standaloneInstances.length} standalone instances (excluding nested assemblies)`);
+    
     // Log all instances in this type group to verify they're correctly grouped
-    typeData.instances.forEach((instance, index) => {
+    standaloneInstances.forEach((instance, index) => {
       console.log(`  Instance ${index}: ${instance.name}, _compoundId: ${instance._compoundId}`);
     });
-    
-    // Filter out nested assemblies from the instances list
-    const standaloneInstances = typeData.instances.filter(instance => !nestedAssemblies.has(instance.name));
-    console.log(`Filtered ${typeData.instances.length - standaloneInstances.length} nested assemblies, leaving ${standaloneInstances.length} standalone instances`);
     
     if (!templateAssembly || templateAssembly.children.length === 0) {
       // Skip empty assemblies
@@ -184,12 +194,24 @@ export function convertToMultiplePlacements(geometry) {
     // Create a compound object for this assembly type
     // Assembly is just a container - no material, color, or dimensions
     
-    // Extract the assembly type name from the _compoundId or use the name
-    // Remove any trailing numbers (e.g., "PMT_1" -> "PMT")
-    let compoundName = templateVolume.displayName || templateVolume.name;
-    compoundName = compoundName.replace(/_\d+$/, '');
+    // Use the baseType that was stored when grouping assemblies
+    // This ensures we use the correct type name regardless of inherited _compoundId
+    let compoundName;
     
-    console.log(`Using compound name: ${compoundName} for assembly type with ID: ${assemblyTypeId}`);
+    // Use the explicitly stored baseType if available
+    if (typeData.baseType) {
+      compoundName = typeData.baseType;
+      console.log(`Using stored baseType: ${compoundName}`);
+    }
+    // Fall back to the template volume's name if baseType is not available
+    else {
+      compoundName = templateVolume.displayName || templateVolume.name;
+      compoundName = compoundName.replace(/_\d+$/, '');
+      console.log(`Using displayName/name: ${compoundName}`);
+    }
+    
+    console.log(`Final compound name: ${compoundName} for assembly type with ID: ${assemblyTypeId}`);
+    console.log(`Original template volume name: ${templateVolume.name}, type: ${templateVolume.type}`);
     
     const compoundObject = {
       type: 'assembly',
@@ -275,75 +297,161 @@ export function convertToMultiplePlacements(geometry) {
     
     // Add placements for all instances of this assembly type
     console.log(`Adding placements for assembly type: ${compoundObject.name}, ID: ${assemblyTypeId}`);
-    console.log(`Number of instances to process: ${standaloneInstances.length} standalone + ${nestedAssemblyRelationships.length} nested`);
+    console.log(`Number of instances to process: ${typeData.instances.length}`);
     
-    // Add placements for standalone instances (not nested inside other assemblies)
-    standaloneInstances.forEach((instance, index) => {
+    typeData.instances.forEach((instance, index) => {
       // Log detailed information about each instance
-      console.log(`Processing standalone instance ${index}: ${instance.name}`);
+      console.log(`Processing instance ${index}: ${instance.name}, _compoundId: ${instance._compoundId}`);
       console.log(`  Position: x=${instance.position?.x || 0}, y=${instance.position?.y || 0}, z=${instance.position?.z || 0}`);
-      console.log(`  Rotation: x=${instance.rotation?.x || 0}, y=${instance.rotation?.y || 0}, z=${instance.rotation?.z || 0}`);
-      console.log(`  Parent: ${instance.mother_volume || 'World'}`);
-      
-      // Add a placement for each instance - no units (all in mm and rad)
-      const placement = {
-        // Use the Geant4 name (displayName) as g4name for identification in placements
-        g4name: instance.displayName || instance.name,
-        x: instance.position?.x || 0,
-        y: instance.position?.y || 0,
-        z: instance.position?.z || 0,
-        rotation: {
-          x: instance.rotation?.x || 0,
-          y: instance.rotation?.y || 0,
-          z: instance.rotation?.z || 0
-        },
-        // The parent is where this instance will be placed - use internal name for parent reference
-        // For top-level assemblies, this is typically 'World'
-        parent: instance.mother_volume || 'World'
-      };
-      
-      compoundObject.placements.push(placement);
-      console.log(`  Added placement for instance ${instance.name} to compound object ${compoundObject.name}`);
     });
-    
-    // Now handle nested assembly references
-    // Find all nested assemblies that are of this type
-    const nestedInstancesOfThisType = nestedAssemblyRelationships.filter(rel => {
-      // Check if the child assembly type matches this assembly type
-      return rel.childType === assemblyTypeId;
-    });
-    
-    console.log(`Found ${nestedInstancesOfThisType.length} nested instances of type ${assemblyTypeId}`);
-    
-    // Add placements for nested instances
-    nestedInstancesOfThisType.forEach(nestedRel => {
-      // Create a placement for this nested instance
-      const placement = {
-        // Use the child assembly name as g4name
-        g4name: nestedRel.childAssembly,
-        x: nestedRel.position.x,
-        y: nestedRel.position.y,
-        z: nestedRel.position.z,
-        rotation: {
-          x: nestedRel.rotation.x,
-          y: nestedRel.rotation.y,
-          z: nestedRel.rotation.z
-        },
-        // The parent is the parent assembly
-        parent: nestedRel.parentAssembly,
-        // Flag this as a nested assembly reference
-        isNestedAssembly: true
-      };
-      
-      compoundObject.placements.push(placement);
-      console.log(`  Added nested placement for ${nestedRel.childAssembly} inside ${nestedRel.parentAssembly}`);
-    });
-    
-    console.log(`Total placements added for ${compoundObject.name}: ${compoundObject.placements.length}`);
-    if (compoundObject.placements.length === 0) {
-      console.warn(`WARNING: No placements were added for assembly type: ${compoundObject.name}`);
+  };
+
+  // Process all direct children of the assembly
+  templateAssembly.children.forEach(child => {
+    // Process this child and all its descendants
+    processComponentWithDescendants(child, child.mother_volume === templateVolume.name ? "" : child.mother_volume);
+  });
+
+  // Add placements for all instances of this assembly type
+  console.log(`Adding placements for assembly type: ${compoundObject.name}, ID: ${assemblyTypeId}`);
+  console.log(`Number of instances to process: ${typeData.instances.length}`);
+
+  typeData.instances.forEach((instance, index) => {
+    // Log detailed information about each instance
+    console.log(`Processing instance ${index}: ${instance.name}, _compoundId: ${instance._compoundId}`);
+    console.log(`  Position: x=${instance.position?.x || 0}, y=${instance.position?.y || 0}, z=${instance.position?.z || 0}`);
+    console.log(`  Rotation: x=${instance.rotation?.x || 0}, y=${instance.rotation?.y || 0}, z=${instance.rotation?.z || 0}`);
+    console.log(`  Parent: ${instance.mother_volume || 'World'}`);
+
+    // Add a placement for each instance - no units (all in mm and rad)
+    const placement = {
+      // Use the Geant4 name (displayName) as g4name for identification in placements
+      g4name: instance.displayName || instance.name,
+      x: instance.position?.x || 0,
+      y: instance.position?.y || 0,
+      z: instance.position?.z || 0,
+      rotation: {
+        x: instance.rotation?.x || 0,
+        y: instance.rotation?.y || 0,
+        z: instance.rotation?.z || 0
+      },
+      // The parent is where this instance will be placed - use internal name for parent reference
+      // For top-level assemblies, this is typically 'World'
+      parent: instance.mother_volume || 'World'
+    };
+
+    compoundObject.placements.push(placement);
+    console.log(`  Added placement for instance ${instance.name} to compound object ${compoundObject.name}`);
+  });
+
+  // Now handle nested assembly references
+  // Find all nested assemblies that are of this type
+  const nestedInstancesOfThisType = nestedAssemblyRelationships.filter(rel => {
+    // Check if the child assembly type matches this assembly type
+    return rel.childType === assemblyTypeId;
+  });
+
+  console.log(`Found ${nestedInstancesOfThisType.length} nested instances of type ${assemblyTypeId}`);
+
+  // Add placements for nested instances
+  nestedInstancesOfThisType.forEach(nestedRel => {
+    // Create a placement for this nested instance
+    const placement = {
+      x: nestedRel.position.x,
+      y: nestedRel.position.y,
+      z: nestedRel.position.z,
+      rotation: {
+        x: nestedRel.rotation.x,
+        y: nestedRel.rotation.y,
+        z: nestedRel.rotation.z
+      },
+      // The parent is the parent assembly
+      parent: nestedRel.parentAssembly,
+      // Flag this as a nested assembly reference
+      isNestedAssembly: true
+    };
+
+    compoundObject.placements.push(placement);
+    console.log(`  Added nested placement for ${nestedRel.childAssembly} inside ${nestedRel.parentAssembly}`);
+  });
+
+  console.log(`Total placements added for ${compoundObject.name}: ${compoundObject.placements.length}`);
+  if (compoundObject.placements.length === 0) {
+    console.warn(`WARNING: No placements were added for assembly type: ${compoundObject.name}`);
+  }
+
+  // Add the compound object to the converted geometry
+  convertedGeometry.volumes.push(compoundObject);
+});
+
+// Process compound objects (but skip those that are part of assemblies)
+Object.entries(compoundGroups).forEach(([compoundId, group]) => {
+  // Check if any volume in this group is part of an assembly
+  const isPartOfAssembly = group.volumes.some(volume => 
+    volume.mother_volume && Object.keys(assemblies).includes(volume.mother_volume)
+  );
+
+  // Skip this compound group if it's part of an assembly (already processed)
+  if (isPartOfAssembly) {
+    console.log(`Skipping compound group ${compoundId} as it's part of an assembly`);
+    return;
+  }
+
+  // Find the root volumes of this compound (those that are either top-level or have a parent from a different compound)
+  const rootVolumes = group.volumes.filter(volume => {
+    if (!volume.mother_volume) return true;
+    if (volume.mother_volume === 'World') return true;
+
+    // Check if the mother volume is part of the same compound
+    const motherVolume = geometry.volumes.find(v => v.name === volume.mother_volume);
+    return !motherVolume || motherVolume._compoundId !== compoundId;
+  });
+
+  // If no root volumes found, use the first volume as the root
+  // This handles the case where all volumes in the compound are daughters of other objects
+  if (rootVolumes.length === 0 && group.volumes.length > 0) {
+    rootVolumes.push(group.volumes[0]);
+  }
+
+  // Group root volumes by their base name (without indices)
+  const rootGroups = {};
+  rootVolumes.forEach(volume => {
+    const baseName = volume.name.replace(/_\d+$/, '');
+    if (!rootGroups[baseName]) {
+      rootGroups[baseName] = [];
     }
-    
+    rootGroups[baseName].push(volume);
+  });
+
+  // Process each root group
+  Object.entries(rootGroups).forEach(([baseName, instances]) => {
+    // Create a compound object for this group
+    const compoundObject = createCompoundObject(
+      instances[0],  // Use the first instance as the template
+      instances,      // All instances of this root
+      group.volumes,   // All volumes in this compound
+      nameToBaseNameMap,  // Pass the name mapping
+      geometry  // Pass the original geometry for parent name lookup
+    );
+
+    // Set the parent for the compound object based on the mother_volume of the first instance
+    // This ensures that compound objects that are daughters of other objects are placed correctly
+    const firstInstance = instances[0];
+    if (firstInstance.mother_volume && firstInstance.mother_volume !== 'World') {
+      // Get the base name of the parent from our map
+      const parentBaseName = nameToBaseNameMap.get(firstInstance.mother_volume) || 
+                            firstInstance.mother_volume.replace(/_\d+$/, '');
+
+      // Update all placements to have the correct parent
+      compoundObject.placements.forEach(placement => {
+        placement.parent = parentBaseName;
+      });
+
+      // Log that we're setting a non-World parent for this compound object
+      console.log(`Setting parent '${parentBaseName}' for compound object '${compoundObject.name}'`);
+    }
+
+    // Add the compound object to the result
     // Add the compound object to the converted geometry
     convertedGeometry.volumes.push(compoundObject);
   });

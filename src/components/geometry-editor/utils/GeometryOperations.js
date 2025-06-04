@@ -129,6 +129,15 @@ export const updateGeometry = (
             
             // Add _compoundId to the updated object
             updatedVolumes[index]._compoundId = newParent._compoundId;
+            
+            // Store the original type information before it gets overridden
+            // This will be used in MultiPlacementConverter to preserve the object's true type
+            if (updatedVolumes[index].type === 'assembly') {
+              // Only store _originalType for assemblies since that's where the issue occurs
+              updatedVolumes[index]._originalType = updatedVolumes[index].displayName || updatedVolumes[index].name;
+              console.log(`Preserved original type ${updatedVolumes[index]._originalType} for assembly ${updatedObject.name}`);
+            }
+            
             console.log(`Added _compoundId ${newParent._compoundId} to object ${updatedObject.name}`);
             
             // Propagate _compoundId to all descendants
@@ -225,6 +234,15 @@ export const addGeometry = (
     if (parentVolume && parentVolume.type === 'assembly' && parentVolume._compoundId) {
       console.log(`New object's parent is assembly ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
       newGeometry._compoundId = parentVolume._compoundId;
+      
+      // Store the original type information before it gets overridden
+      // This will be used in MultiPlacementConverter to preserve the object's true type
+      if (newGeometry.type === 'assembly') {
+        // Only store _originalType for assemblies since that's where the issue occurs
+        newGeometry._originalType = newGeometry.displayName || newGeometry.name;
+        console.log(`Preserved original type ${newGeometry._originalType} for new assembly ${newGeometry.name}`);
+      }
+      
       console.log(`Added _compoundId ${parentVolume._compoundId} to new object ${newGeometry.name}`);
     }
   }
