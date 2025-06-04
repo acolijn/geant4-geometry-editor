@@ -63,7 +63,7 @@ function processVolume(volume) {
 
   return {
     name: volume.name,
-    g4name: volume.displayName || volume.name,
+    g4name: volume.displayName,
     type: volume.type,
     material: volume.material,
     dimensions: convertDimensions(volume),
@@ -88,9 +88,11 @@ function processVolume(volume) {
 }
 
 function initializeAssemblies(assemblies, geometry) {
+  console.log('initializeAssemblies:: geometry', geometry);
 
+  // loop over the volumes
   geometry.volumes.forEach(volume => {
-    // new assembly......
+    // new assembly...... add it to the assemblies object
     if (!assemblies[volume._compoundId] && volume.type === 'assembly') {
       console.log('processAssembly:: new assembly', volume);
       assemblies[volume._compoundId] = {
@@ -104,7 +106,6 @@ function initializeAssemblies(assemblies, geometry) {
 
   // add components: 
   // 1. loop over the assemblies...
-
   Object.keys(assemblies).forEach(_compoundId => {
     // 2. get a list of volumes with this _compoundId
     let selectedVolumes = geometry.volumes.filter(volume => volume._compoundId === _compoundId);
@@ -156,6 +157,11 @@ function initializeAssemblies(assemblies, geometry) {
   return assemblies;
 }
 
+/**
+ * Generates the JSON for the geometry
+ * @param {Object} geometry - The geometry object
+ * @returns {Object} - The generated JSON
+ */
 export function generateJson(geometry){
   console.log('generateJson:: geometry', geometry);
   // generate the world volume
@@ -203,13 +209,13 @@ export function generateJson(geometry){
  */
 export function convertToMultiplePlacements(geometry) {
   // generate the output
-  console.log('XXX convertToMultiplePlacements:: geometry', geometry);
+  console.log('convertToMultiplePlacements:: geometry', geometry);
 
   const json = generateJson(geometry);
 
   return json;
 }
-  
+
 /**
  * Converts dimensions to the standard format
  * @param {Object} volume - The volume with dimensions

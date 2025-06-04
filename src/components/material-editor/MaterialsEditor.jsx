@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Paper, 
@@ -46,6 +46,8 @@ const MaterialsEditor = ({ materials, onUpdateMaterials }) => {
   });
   const [elementName, setElementName] = useState('');
   const [elementCount, setElementCount] = useState(1);
+  const [editElementName, setEditElementName] = useState('');
+  const [editElementCount, setEditElementCount] = useState(1);
 
   // Create material handlers
   const {
@@ -65,6 +67,12 @@ const MaterialsEditor = ({ materials, onUpdateMaterials }) => {
     setElementCount,
     setDialogOpen
   });
+  
+  // Reset edit element fields when selected material changes
+  useEffect(() => {
+    setEditElementName('');
+    setEditElementCount(1);
+  }, [selectedMaterial]);
 
   const renderMaterialList = () => {
     return (
@@ -194,10 +202,58 @@ const MaterialsEditor = ({ materials, onUpdateMaterials }) => {
             </Box>
             
             <Typography variant="subtitle1" sx={{ mt: 2 }}>Composition</Typography>
+            {(material.type === 'compound' || material.type === 'element_based') && (
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
+                <TextField
+                  label="Element"
+                  value={editElementName}
+                  onChange={(e) => setEditElementName(e.target.value)}
+                  size="small"
+                />
+                <TextField
+                  label="Count"
+                  type="number"
+                  value={editElementCount}
+                  onChange={(e) => setEditElementCount(parseFloat(e.target.value))}
+                  size="small"
+                />
+                <Button 
+                  size="small" 
+                  variant="outlined" 
+                  color="primary" 
+                  onClick={() => {
+                    if (editElementName) {
+                      handleUpdateMaterial(
+                        'composition', 
+                        { ...material.composition, [editElementName]: editElementCount },
+                        selectedMaterial
+                      );
+                      setEditElementName('');
+                      setEditElementCount(1);
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </Box>
+            )}
             <List dense>
               {material.composition && Object.entries(material.composition).map(([element, count]) => (
                 <ListItem key={element}>
                   <ListItemText primary={`${element}: ${count}`} />
+                  <ListItemSecondaryAction>
+                    <Button 
+                      size="small" 
+                      color="error" 
+                      onClick={() => {
+                        const updatedComposition = { ...material.composition };
+                        delete updatedComposition[element];
+                        handleUpdateMaterial('composition', updatedComposition, selectedMaterial);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </ListItemSecondaryAction>
                 </ListItem>
               ))}
             </List>
