@@ -120,6 +120,12 @@ export const extractObjectWithDescendants = (objectIdentifier, geometries) => {
   // Find all descendants recursively using the helper function
   const descendants = findAllDescendants(mainObject.name, geometries.volumes);
   
+  console.log('extractObjectWithDescendants:: volumes', geometries);
+  console.log('extractObjectWithDescendants:: objectIdentifier', objectIdentifier);
+  console.log('extractObjectWithDescendants:: mainObject', mainObject);
+  console.log('extractObjectWithDescendants:: descendants', descendants);
+  console.log('extractObjectWithDescendants:: isWorld', isWorld);
+
   // Return the object and its descendants
   return {
     object: mainObject,

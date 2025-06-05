@@ -51,7 +51,7 @@ export const createImportExportHandlers = (props) => {
    * @param {Object} objectData - The object data to process
    * @returns {Object} The processed object data in internal format
    */
-  const processStandardizedFormat = (objectData) => {
+  const processStandardizedFormat = (objectData) => {    
     if (!objectData) return objectData;
     
     // Create a deep copy to avoid modifying the original
@@ -270,6 +270,8 @@ export const createImportExportHandlers = (props) => {
    * @returns {Object} The processed object data with structured naming applied
    */
   const applyStructuredNaming = (objectData) => {
+    console.log('importExportHandlers::applyStructuredNaming:: objectData:::', objectData);
+    
     // Create a copy of the object data to avoid mutating the original
     const processedData = JSON.parse(JSON.stringify(objectData));
     
@@ -347,58 +349,6 @@ export const createImportExportHandlers = (props) => {
   };
 
 
-/*   const handleImportFromFileSystemXXX = async () => {
-    try {
-      // Import the FileSystemManager
-      const { FileSystemManager } = await import('../../../utils/FileSystemManager');
-      
-      // Open the file picker dialog
-      const result = await FileSystemManager.openFilePicker({
-        multiple: false,
-        accept: {
-          'application/json': ['.json']
-        }
-      });
-      
-      if (!result || !result.files || result.files.length === 0) {
-        console.log('No file selected');
-        return;
-      }
-      
-      // Get the selected file
-      const file = result.files[0];
-      
-      // Read the file content
-      const content = await FileSystemManager.readTextFile(file);
-      
-      // Parse the JSON content
-      const objectData = JSON.parse(content);
-      
-      // Apply structured naming to the imported objects
-      const structuredObjectData = applyStructuredNaming(objectData);
-      
-      // Import the object into the scene
-      const importResult = handleImportPartialFromAddNew(structuredObjectData, 'World');
-      
-      if (importResult && importResult.success) {
-        setImportAlert({
-          show: true,
-          message: `Imported ${objectData.object.name} successfully`,
-          severity: 'success'
-        });
-      } else {
-        throw new Error(importResult?.message || 'Failed to import object');
-      }
-    } catch (error) {
-      console.error('Error importing from file system:', error);
-      setImportAlert({
-        show: true,
-        message: `Error importing object: ${error.message}`,
-        severity: 'error'
-      });
-    }
-  }; */
-  
   /**
    * Handle importing an object JSON file using the standard file input or direct object data
    * 
@@ -493,8 +443,6 @@ export const createImportExportHandlers = (props) => {
 
   return {
     applyStructuredNaming,
-    //handleExportObject,
-    //handleImportFromFileSystem,
     handleImportObjectFile,
     processStandardizedFormat,
     handleLoadObject,

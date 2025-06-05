@@ -311,47 +311,7 @@ const RefactoredGeometryEditor = ({
         </Alert>
       </Snackbar>
       
-      {/* SaveObjectDialog for saving objects with a nicer interface */}
-      <SaveObjectDialog
-        open={saveObjectDialogOpen}
-        onClose={() => setSaveObjectDialogOpen(false)}
-        onSave={async (name, description, preserveComponentIds) => {
-          if (!objectToSave) return;
-          
-          try {
-            // Import the ObjectStorage utility
-            const { saveObject } = await import('./utils/ObjectStorage');
-            
-            // Generate a default file name if none is provided
-            const fileName = name || objectToSave.object.name || 'geometry';
-            
-            // Apply structured naming if needed
-            const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
-            
-            // Save the object to the library
-            await saveObject(fileName, description, dataToSave);
-            
-            // Close the dialog
-            setSaveObjectDialogOpen(false);
-            
-            // Show success message
-            setImportAlert({
-              show: true,
-              message: `Object saved as ${fileName}`,
-              severity: 'success'
-            });
-          } catch (error) {
-            console.error('Error saving object:', error);
-            setImportAlert({
-              show: true,
-              message: `Error saving object: ${error.message}`,
-              severity: 'error'
-            });
-          }
-        }}
-        objectData={objectToSave}
-        defaultName={objectToSave?.object?.name || ''}
-      />
+
       
       {/* Update Objects Dialog */}
       <UpdateObjectsDialog

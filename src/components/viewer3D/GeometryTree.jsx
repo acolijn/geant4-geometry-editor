@@ -44,8 +44,12 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   
   // Create a wrapper for handleExportObject that ensures geometries is passed correctly
   const handleExportObject = () => {
+    console.log('handleExportObject:: geometries');
+    
     // Get the currently selected geometry object
     const selectedObject = importExportHandlers.getSelectedGeometryObjectLocal();
+    console.log('handleExportObject:: selectedObject', selectedObject);
+    
     if (!selectedObject) {
       alert('Please select a geometry object to export');
       return;
@@ -70,6 +74,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       console.error('Failed to extract object data');
       return;
     }
+    
+    console.log('exportData::', exportData);
     
     // Set the object to save and open the dialog
     setObjectToSave(exportData);
@@ -443,43 +449,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     });
   };
   
-  // Function to apply structured naming to objects (similar to GeometryEditor)
-  const applyStructuredNaming = (data) => {
-    if (!data || !data.object) return data;
-    
-    // Create a deep copy to avoid modifying the original
-    const result = JSON.parse(JSON.stringify(data));
-    
-    // Generate a unique prefix for all components
-    const prefix = `${result.object.type}_${Date.now()}`;
-    let counter = 0;
-    
-    // Update the main object ID if it's an assembly
-    if (result.object.type === 'assembly') {
-      const originalName = result.object.name;
-      result.object.name = `${prefix}_main`;
-      
-      // Update all descendants that reference the original name
-      result.descendants.forEach(desc => {
-        if (desc.mother_volume === originalName) {
-          desc.mother_volume = result.object.name;
-        }
-        // Also update the descendant's name
-        const oldName = desc.name;
-        desc.name = `${prefix}_part_${counter++}`;
-        
-        // Update any references to this descendant in other descendants
-        result.descendants.forEach(otherDesc => {
-          if (otherDesc.mother_volume === oldName) {
-            otherDesc.mother_volume = desc.name;
-          }
-        });
-      });
-    }
-    
-    return result;
-  };
-  
   // State for import alert
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
 
@@ -491,7 +460,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       <SaveObjectDialog
         open={saveObjectDialogOpen}
         onClose={() => setSaveObjectDialogOpen(false)}
-        onSave={async (name, description, preserveComponentIds) => {
+        onSave={async (name, description, objectToSave, preserveComponentIds) => {
           if (!objectToSave) {
             return { success: false, message: 'No object selected' };
           }
@@ -504,9 +473,12 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             const fileName = name || objectToSave.object.name || 'geometry';
             
             // Apply structured naming if needed
-            const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
-            
+            console.log('GeometryTree::applyStructuredNaming:: objectToSave', objectToSave);
+            console.log('GeometryTree::applyStructuredNaming:: preserveComponentIds', preserveComponentIds);
+            // const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
+            const dataToSave = objectToSave;
             // Save the object to the library
+            
             await saveObject(fileName, description, dataToSave);
             
             // Show success message in our component
