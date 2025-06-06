@@ -24,15 +24,6 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
   
   // Get the selected volume
   const selectedVolume = geometries.volumes[volumeIndex];
-
-  //console.log(`Selected volume:`, selectedVolume);
-  //return;
-  
-  // Only proceed if the selected volume is an assembly
-  //if (selectedVolume.type !== 'assembly') {
-  //  alert('Only assemblies can be updated. Please select an assembly.');
-  //  return;
-  //}
   
   // Count of updated assemblies
   let updatedCount = 0;
@@ -54,24 +45,46 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
   console.log(`Found ${sourceDescendants.length} descendants in source assembly ${sourceAssemblyName}:`, sourceDescendants);
   
   // Update all assemblies except the selected one
+  console.log(`Updating assemblies except the selected one:`, geometries);
   for (let i = 0; i < geometries.volumes.length; i++) {
     const volume = geometries.volumes[i];
     
     // Skip the source assembly itself
     if (i === volumeIndex) continue;
+
+    // Skip World
+    if (volume.name === 'World') continue;
+    // only update objects with the same _compoundId as the source assembly
+    if (volume._compoundId !== selectedVolume._compoundId) continue;
+    // only update objects with the same _componentId as the source assembly
+    if (volume._componentId !== selectedVolume._componentId) continue;
     
     // Only update assemblies
-    if (volume.type !== 'assembly') continue;
-    
+    //if (volume.type !== 'assembly') continue;
+
+    console.log(`Updating assembly at index ${i}:`, volume);
     const targetAssemblyName = volume.name;
     
     // Create a new object with properties from the selected assembly
     // but preserve position, rotation, name, and identifiers of the target assembly
+    // position of selected object
+
+    let selectedPosition = selectedVolume.position;
+    // rotation of selected object
+    let selectedRotation = selectedVolume.rotation;
+    // get the mother volume of the selected volume
+    const motherVolume = geometries.volumes.find(vol => vol.name === volume.mother_volume);
+    // if the mother volume has a different _compoundId this is the top level object. in that case teh position and rotations should not change. or if no mother volume is found
+    if (!motherVolume || selectedVolume._compoundId !== motherVolume._compoundId) {
+      selectedPosition = volume.position;
+      selectedRotation = volume.rotation;
+    }
+
     const updatedAssembly = {
       ...selectedVolume,
       // CRITICAL: Preserve these properties
-      position: { ...volume.position },
-      rotation: { ...volume.rotation },
+      position: { ...selectedPosition },
+      rotation: { ...selectedRotation },
       name: targetAssemblyName, // Preserve assembly name
       mother_volume: volume.mother_volume,
       // CRITICAL: Preserve the _compoundId which is essential for grouping assemblies
@@ -102,6 +115,7 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
     // Use the volume ID format: 'volume-index'
     onUpdateGeometry(`volume-${i}`, updatedAssembly, true, false);
     
+    //continue;
     // Find all descendants of the target assembly recursively
     const targetDescendants = findAllDescendants(targetAssemblyName, geometries.volumes);
     
