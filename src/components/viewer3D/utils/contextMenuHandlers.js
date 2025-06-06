@@ -24,12 +24,15 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
   
   // Get the selected volume
   const selectedVolume = geometries.volumes[volumeIndex];
+
+  //console.log(`Selected volume:`, selectedVolume);
+  //return;
   
   // Only proceed if the selected volume is an assembly
-  if (selectedVolume.type !== 'assembly') {
-    alert('Only assemblies can be updated. Please select an assembly.');
-    return;
-  }
+  //if (selectedVolume.type !== 'assembly') {
+  //  alert('Only assemblies can be updated. Please select an assembly.');
+  //  return;
+  //}
   
   // Count of updated assemblies
   let updatedCount = 0;

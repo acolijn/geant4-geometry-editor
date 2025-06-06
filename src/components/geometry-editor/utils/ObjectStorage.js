@@ -23,6 +23,10 @@ import { standardizeObjectFormat, restoreOriginalFormat } from './ObjectFormatSt
  * @returns {Promise<Object>} - Result of the save operation
  */
 export const saveObject = async (name, description, objectData, preserveComponentIds = false) => {
+  console.log('ObjectStorage::saveObject:: name', name);
+  console.log('ObjectStorage::saveObject:: description', description);
+  console.log('ObjectStorage::saveObject:: objectData', objectData);
+  console.log('ObjectStorage::saveObject:: preserveComponentIds', preserveComponentIds);
   try {
     // Check if FileSystemManager is initialized
     if (!FileSystemManager.initialized) {
@@ -43,6 +47,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
     let dataToSave;
     
     if (preserveComponentIds) {
+      console.log(`ObjectStorage::saveObject:: Preserving component IDs for "${name}"`);
       try {
         // Try to load the existing object
         const existingObject = await FileSystemManager.loadObject(sanitizedName);
@@ -194,6 +199,7 @@ export const loadObject = async (fileName) => {
     
     // We assume all objects are in the standardized format
     console.log(`Object "${fileName}" loaded successfully in standardized format`);
+    console.log('Object data:', data);
     
     return {
       success: true,

@@ -415,6 +415,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
             descendantCount: descendants.length
           }
         };
+        console.log('ProjectManager::saveObject:: objectData', objectData);
       }
 
       // Save object to storage
@@ -552,28 +553,6 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
         console.warn('Main object missing rotation, adding default');
         mainObject.rotation = { x: 0, y: 0, z: 0, unit: 'deg' };
       }
-      
-      // Add type-specific properties if missing
-/*       if (mainObject.type === 'box' && !mainObject.size) {
-        console.warn('Box missing size property, adding default');
-        mainObject.size = { x: 10, y: 10, z: 10, unit: 'cm' };
-      } else if (mainObject.type === 'cylinder') {
-        if (!mainObject.radius) {
-          console.warn('Cylinder missing radius, adding default');
-          mainObject.radius = 5;
-        }
-        if (!mainObject.height) {
-          console.warn('Cylinder missing height, adding default');
-          mainObject.height = 10;
-        }
-        if (!mainObject.inner_radius && !mainObject.innerRadius) {
-          console.warn('Cylinder missing inner_radius, adding default');
-          mainObject.inner_radius = 0;
-        }
-      } else if (mainObject.type === 'sphere' && !mainObject.radius) {
-        console.warn('Sphere missing radius, adding default');
-        mainObject.radius = 5;
-      } */
       
       // Now use the existing import function with the validated data
       if (typeof handleImportPartialFromAddNew === 'function') {

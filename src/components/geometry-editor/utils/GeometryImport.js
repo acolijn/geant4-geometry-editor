@@ -5,7 +5,7 @@
  * Contains functions for importing partial geometries and full geometries
  */
 
-import { generateUniqueName } from './GeometryOperations';
+import { generateUniqueName } from './geometryHandlers';
 
 /**
  * Import a partial geometry from the Add New tab

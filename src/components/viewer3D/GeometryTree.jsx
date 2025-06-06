@@ -595,8 +595,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             zIndex: 1000
           }}
         >
-          {/* Only show update options for assemblies */}
-          {geometries.volumes[contextMenu.volumeIndex]?.type === 'assembly' && (
+          {/* Show update possibility for assemblies and objects with parent World */}
+          {(geometries.volumes[contextMenu.volumeIndex]?.type === 'assembly' || geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'World') && (
             <>
               <div
                 onClick={() => handleUpdateAllAssemblies(contextMenu.volumeIndex, geometries, onUpdateGeometry, setContextMenu)}

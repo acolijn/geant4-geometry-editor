@@ -38,6 +38,7 @@ export const propagateCompoundId = (object, compoundId, allVolumes) => {
 export const propagateCompoundIdToDescendants = (parentName, compoundId, allVolumes) => {
   if (!parentName || !compoundId || !allVolumes) return allVolumes;
   
+  console.log(`Propagating _compoundId ${compoundId} to descendants of ${parentName}`);
   // Create a copy of all volumes to avoid mutating the original
   const updatedVolumes = [...allVolumes];
   

@@ -30,10 +30,10 @@ export const createUpdateHandlers = (props) => {
     const selectedVolume = geometries.volumes[updateData.sourceIndex];
     
     // Only proceed if the selected volume is an assembly
-    if (selectedVolume.type !== 'assembly') {
-      console.log('Only assemblies can be updated. Please select an assembly.');
-      return { success: false, message: 'Only assemblies can be updated' };
-    }
+    //if (selectedVolume.type !== 'assembly') {
+    //  console.log('Only assemblies can be updated. Please select an assembly.');
+    //  return { success: false, message: 'Only assemblies can be updated' };
+    //}
     
     // First, find all components in the source assembly
     const sourceComponents = [];

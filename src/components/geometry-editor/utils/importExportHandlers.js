@@ -7,6 +7,7 @@
 // Import utilities
 import { ensureStableAssemblyId } from './assemblyManager';
 import { getSelectedGeometryObject } from './GeometryUtils';
+import { generateUniqueName } from './geometryHandlers';
 
 /**
  * Creates import/export handler functions with access to state and setState
@@ -52,6 +53,7 @@ export const createImportExportHandlers = (props) => {
    * @returns {Object} The processed object data in internal format
    */
   const processStandardizedFormat = (objectData) => {    
+    console.log('Processing standardized format to internal format');
     if (!objectData) return objectData;
     
     // Create a deep copy to avoid modifying the original
@@ -230,6 +232,7 @@ export const createImportExportHandlers = (props) => {
       
       // Apply structured naming convention to the object and its descendants
       const structuredObjectData = applyStructuredNaming(processedData);
+      console.log('Processed object with structured naming:', structuredObjectData);
       
       // Add the object to the scene
       handleImportPartialFromAddNew(structuredObjectData);
@@ -276,40 +279,40 @@ export const createImportExportHandlers = (props) => {
     const processedData = JSON.parse(JSON.stringify(objectData));
     
     // Generate a unique ID for this import operation
-    const importId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+    //const importId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
     
     // Get the base name from the main object
-    const baseName = processedData.object.name || 'ImportedObject';
+    //const baseName = processedData.object.name || 'ImportedObject';
     
     // Create a map to store the original name to new name mapping
     const nameMap = new Map();
     
     // Process the main object
     // If it's an assembly, ensure it has a stable ID and consistent naming
-    if (processedData.object.type === 'assembly') {
+    //if (processedData.object.type === 'assembly') {
       // Generate a timestamp and random suffix for consistent naming
-      const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      //const timestamp = Date.now();
+      //const randomSuffix = Math.random().toString(36).substring(2, 8);
       
       // Generate a unique name directly using the same format as in GeometryOperations.js
       // This avoids import issues between modules
-      const generateUniqueNameInline = (type) => {
-        return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-      };
+      //const generateUniqueNameInline = (type) => {
+      //  return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      //};
       
       // Use the standard name generation format: type_timestamp_random
-      processedData.object.name = generateUniqueNameInline('assembly');
+    processedData.object.name = generateUniqueName(processedData.object.type);
       
       // Preserve the existing _compoundId if it exists, otherwise use the same name
-      if (!processedData.object._compoundId) {
-        processedData.object._compoundId = processedData.object.name;
-      }
-      
-      console.log(`Imported assembly with name: ${processedData.object.name} and ID: ${processedData.object._compoundId}`);
-    } else {
-      // For non-assembly objects, use the standard naming convention
-      processedData.object.name = `${baseName}_${importId}`;
+    if (!processedData.object._compoundId) {
+      processedData.object._compoundId = processedData.object.name;
     }
+      
+    console.log(`Imported assembly with name: ${processedData.object.name} and ID: ${processedData.object._compoundId}`);
+    //} else {
+    //  // For non-assembly objects, use the standard naming convention
+    //  processedData.object.name = `${baseName}_${importId}`;
+    //}
     
     // Store the name mapping
     nameMap.set(objectData.object.name, processedData.object.name);

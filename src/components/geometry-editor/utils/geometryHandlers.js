@@ -7,6 +7,10 @@
 // Import the assemblyManager utility
 import { generateAssemblyId } from './assemblyManager';
 
+export const generateUniqueName = (type) => {
+  return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+};
+
 /**
  * Creates geometry handler functions with access to state and setState
  * 
@@ -83,7 +87,7 @@ export const createGeometryHandlers = (props, state) => {
     // Default material (use the first available material or a placeholder)
     const defaultMaterial = materials.length > 0 ? materials[0].name : 'G4_AIR';
     
-    // For union solids, we need to combine existing solids
+ /*    // For union solids, we need to combine existing solids
     if (newGeometryType === 'union') {
       // Validate that both solids are selected
       if (!firstSolid || !secondSolid) {
@@ -169,23 +173,30 @@ export const createGeometryHandlers = (props, state) => {
       // Add the union object to the scene
       onAddGeometry(unionObject);
       return;
-    }
+    } */
     
+    // Generate a unique name directly using the same format as in GeometryOperations.js
+    // This avoids import issues between modules
+
+
     // For basic geometries, create a new object with default properties
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 10);
     
     // Generate a unique component ID that will persist throughout the object's lifecycle
     const componentId = `component_${timestamp}_${randomSuffix}`;
-    
+    const uniqueName = generateUniqueName(newGeometryType);
+
     const newObject = {
-      name: generateInternalName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
+      //name: generateInternalName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
+      name: uniqueName,
       type: newGeometryType,
       material: defaultMaterial,
       mother_volume: newMotherVolume,
       position: { x: 0, y: 0, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },
       visible: true,
+      _compoundId: uniqueName,
       _componentId: componentId  // Add a stable component ID at creation time
     };
     console.log('newObject:', newObject.name);
@@ -257,15 +268,8 @@ export const createGeometryHandlers = (props, state) => {
       case 'assembly':
         // Use the standard name generation format for consistency
         const typeName = newObject.displayName || 'assembly';
-        
-        // Generate a unique name directly using the same format as in GeometryOperations.js
-        // This avoids import issues between modules
-        const generateUniqueNameInline = (type) => {
-          return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        };
-        
         // Use the standard name generation format: type_timestamp_random
-        newObject.name = generateUniqueNameInline('assembly');
+        //newObject.name = generateUniqueNameInline('assembly');
         console.log('newObject.name:', newObject.name);
         
         // Store the typeName in the _compoundId for type identification

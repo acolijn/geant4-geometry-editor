@@ -844,7 +844,7 @@ const PropertyEditor = ({
         <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
           {/* Save to Library button - exports the selected geometry to the object library */}
           {/* Only enabled for top-level assemblies */}
-          {(() => {
+{/*           {(() => {
             // Get the selected object
             const selectedObj = getSelectedGeometryObjectLocal();
             
@@ -873,7 +873,7 @@ const PropertyEditor = ({
                 Save to Library
               </Button>
             );
-          })()} 
+          })()}  */}
 
           {/* Remove Geometry button - deletes the selected geometry from the scene */}
           <Button 

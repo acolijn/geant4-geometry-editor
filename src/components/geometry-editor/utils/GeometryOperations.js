@@ -59,6 +59,8 @@ export const updateGeometry = (
     let oldMotherVolume = null;
     let newMotherVolume = updatedObject.mother_volume;
     let isParentChanged = false;
+
+    console.log(`updatState:: id: ${id}`);
     
     if (id === 'world') {
       oldName = geometries.world.name;
@@ -117,6 +119,9 @@ export const updateGeometry = (
         }
         
         // If parent changed and new parent is an assembly, propagate the _compoundId
+        console.log(`isParentChanged: ${isParentChanged}`);
+        console.log(`newMotherVolume: ${newMotherVolume}`);
+        console.log(`oldMotherVolume: ${oldMotherVolume}`);
         if (isParentChanged && newMotherVolume) {
           // Find the new parent object
           const newParentIndex = updatedVolumes.findIndex(vol => vol.name === newMotherVolume);
@@ -124,8 +129,8 @@ export const updateGeometry = (
                            (newMotherVolume === prevGeometries.world.name ? prevGeometries.world : null);
           
           // If the new parent is an assembly and has a _compoundId, propagate it to non-assembly children only
-          if (newParent && newParent.type === 'assembly' && newParent._compoundId) {
-            console.log(`Parent changed to assembly ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
+          if (newParent && newParent._compoundId) {
+            console.log(`Parent changed to compound ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
             
             // IMPORTANT: Only add _compoundId to non-assembly objects
             // Assemblies should keep their own _compoundId
@@ -188,17 +193,6 @@ export const updateGeometry = (
 }; */
 
 /**
- * Generate a unique internal name for a geometry object
- * @param {string} type - The type of geometry
- * @returns {string} A unique name
- */
-export const generateUniqueName = (type) => {
-  // Create a timestamp-based unique name that's guaranteed to be unique
-  // Format: type_timestamp_random
-  return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-};
-
-/**
  * Add a new geometry
  * @param {Object} newGeometry - The new geometry to add
  * @param {Object} geometries - The current geometries state
@@ -214,9 +208,6 @@ export const addGeometry = (
   setSelectedGeometry,
   propagateCompoundIdToDescendants
 ) => {
-  // Always generate a unique internal name for references
-  // This ensures we don't need string parsing for references
-  newGeometry.name = generateUniqueName(newGeometry.type);
   
   // Set a user-friendly displayName if not already provided
   if (!newGeometry.displayName || newGeometry.displayName === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
@@ -232,8 +223,10 @@ export const addGeometry = (
     const parentVolume = geometries.volumes.find(vol => vol.name === newGeometry.mother_volume);
     
     // If the parent is an assembly and has a _compoundId, propagate it to the new object
-    if (parentVolume && parentVolume.type === 'assembly' && parentVolume._compoundId) {
-      console.log(`New object's parent is assembly ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
+    //if (parentVolume && parentVolume.type === 'assembly' && parentVolume._compoundId) {
+    if (parentVolume && parentVolume._compoundId) {
+
+      console.log(`New object's parent is compound ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
       newGeometry._compoundId = parentVolume._compoundId;
       
       // Store the original type information before it gets overridden
