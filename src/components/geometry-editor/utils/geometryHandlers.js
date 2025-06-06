@@ -277,7 +277,19 @@ export const createGeometryHandlers = (props, state) => {
         newObject._compoundId = newObject.name;
         
         console.log(`Created new assembly with name: ${newObject.name} and ID: ${newObject._compoundId}`);
-        newObject.components = [];
+        break;
+      case 'union':
+        // Use the standard name generation format for consistency
+        const unionName = newObject.displayName || 'union';
+        // Use the standard name generation format: type_timestamp_random
+        //newObject.name = generateUniqueNameInline('union');
+        console.log('newObject.name:', newObject.name);
+        
+        // Store the typeName in the _compoundId for type identification
+        // Use the same format but with the display name for type identification
+        newObject._compoundId = unionName;
+        
+        console.log(`Created new union with name: ${newObject.name} and ID: ${newObject._compoundId}`);
         break;
         
       default:

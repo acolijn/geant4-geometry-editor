@@ -1,6 +1,7 @@
 // UnionObject.jsx - Component for rendering union solids with multiple components
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
+import { CSG } from 'three-csg-ts';
 
 // Helper function to create a basic geometry based on solid type
 const createGeometry = (solid) => {
@@ -75,10 +76,13 @@ const extractDimensions = (component) => {
   return component;
 };
 
-// UnionObject component that visualizes all constituent components
+// UnionObject component that visualizes a true boolean union of constituent components
 const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   const groupRef = useRef();
+  const [unionMesh, setUnionMesh] = useState(null);
+  const [showComponents, setShowComponents] = useState(false); // Toggle to show individual components
   
+  console.log('XXXXX UnionObject:: object', object);
   // Pass the ref to the group
   React.useImperativeHandle(ref, () => groupRef.current);
   
@@ -94,23 +98,111 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   const rotY = THREE.MathUtils.degToRad(object.rotation?.y || 0);
   const rotZ = THREE.MathUtils.degToRad(object.rotation?.z || 0);
   
+  // Generate material for the union result
+  const unionMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: isSelected ? '#ff9900' : '#3399ff',
+      opacity: 0.8,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+  }, [isSelected]);
+  
   // Generate a base material with a random color for each component
-  const createMaterial = (index) => {
+  const createComponentMaterial = (index) => {
     // Generate a color based on the index
     const hue = (index * 137.5) % 360; // Golden angle approximation for good distribution
     const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.6);
     
     return new THREE.MeshStandardMaterial({
-      color: isSelected ? '#ff9900' : color,
-      opacity: 0.7,
-      transparent: true
+      color: color,
+      opacity: 0.4,
+      transparent: true,
+      wireframe: true
     });
   };
   
-  // Check if we have the new multi-component format
-  //const hasComponents = Array.isArray(object.components) && object.components.length >= 2;
+  // Create meshes for all components
+  const componentMeshes = useMemo(() => {
+    if (!object.components || object.components.length === 0) return [];
+    
+    return object.components.map((component, index) => {
+      // Extract the shape type and dimensions
+      const shapeType = component.shape || 'box';
+      const dimensions = extractDimensions(component);
+      
+      // Create geometry for this component
+      const geometry = createGeometry({
+        type: shapeType,
+        ...dimensions
+      });
+      
+      // Create material
+      const material = createComponentMaterial(index);
+      
+      // Create mesh
+      const mesh = new THREE.Mesh(geometry, material);
+      
+      // Get the placement information for this component
+      const placement = component.placement && component.placement[0] ? component.placement[0] : { x: 0, y: 0, z: index * 5 };
+      
+      // Apply position
+      mesh.position.set(
+        placement.x || 0,
+        placement.y || 0,
+        placement.z || 0
+      );
+      
+      // Apply rotation
+      const rotation = placement.rotation || { x: 0, y: 0, z: 0 };
+      mesh.rotation.x = THREE.MathUtils.degToRad(rotation.x || 0);
+      mesh.rotation.y = THREE.MathUtils.degToRad(rotation.y || 0);
+      mesh.rotation.z = THREE.MathUtils.degToRad(rotation.z || 0);
+      
+      return mesh;
+    });
+  }, [object.components]);
   
-  // Handle the new multi-component format
+  // Perform CSG union operation
+  useEffect(() => {
+    if (!componentMeshes || componentMeshes.length === 0) return;
+    
+    try {
+      // Start with the first mesh
+      let resultMesh = componentMeshes[0].clone();
+      
+      // Union with each subsequent mesh
+      for (let i = 1; i < componentMeshes.length; i++) {
+        try {
+          const nextMesh = componentMeshes[i].clone();
+          resultMesh = CSG.union(resultMesh, nextMesh);
+        } catch (err) {
+          console.error(`Error performing union with component ${i}:`, err);
+        }
+      }
+      
+      // Apply the union material
+      resultMesh.material = unionMaterial;
+      
+      // Set the result mesh
+      setUnionMesh(resultMesh);
+    } catch (err) {
+      console.error('Error performing CSG union:', err);
+    }
+  }, [componentMeshes, unionMaterial]);
+  
+  // Toggle component visibility with 'C' key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'c' || e.key === 'C') {
+        setShowComponents(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
   return (
     <group
       ref={groupRef}
@@ -121,8 +213,13 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
         onClick && onClick();
       }}
     >
-      {/* Render all components */}
-      {object.components.map((component, index) => {
+      {/* Render the union result */}
+      {unionMesh && (
+        <primitive object={unionMesh} />
+      )}
+      
+      {/* Optionally render individual components for debugging */}
+      {showComponents && object.components.map((component, index) => {
         // Extract the shape type and dimensions
         const shapeType = component.shape || 'box';
         const dimensions = extractDimensions(component);
@@ -136,7 +233,7 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
         }, [shapeType, dimensions]);
         
         // Create material with a unique color
-        const material = useMemo(() => createMaterial(index), [index, isSelected]);
+        const material = useMemo(() => createComponentMaterial(index), [index]);
         
         // Get the placement information for this component
         const placement = component.placement && component.placement[0] ? component.placement[0] : { x: 0, y: 0, z: index * 5 };

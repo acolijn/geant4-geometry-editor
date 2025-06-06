@@ -93,7 +93,8 @@ function initializeAssemblies(assemblies, geometry) {
   // loop over the volumes
   geometry.volumes.forEach(volume => {
     // new assembly...... add it to the assemblies object
-    if (!assemblies[volume._compoundId] && volume.type === 'assembly') {
+    if (!assemblies[volume._compoundId] && 
+        (volume.type === 'assembly' || volume.type === 'union')) {
       console.log('processAssembly:: new assembly', volume);
       assemblies[volume._compoundId] = {
         name: volume.displayName.split('_')[0],
@@ -109,8 +110,8 @@ function initializeAssemblies(assemblies, geometry) {
   Object.keys(assemblies).forEach(_compoundId => {
     // 2. get a list of volumes with this _compoundId
     let selectedVolumes = geometry.volumes.filter(volume => volume._compoundId === _compoundId);
-    // 3. exclude the type==assembly
-    selectedVolumes = selectedVolumes.filter(volume => volume.type !== 'assembly');
+    // 3. exclude the type==assembly and type==union
+    selectedVolumes = selectedVolumes.filter(volume => volume.type !== 'assembly' && volume.type !== 'union');
     // 4. from the list of volumes select the first one with each _componentId
     const seen = new Set();
     selectedVolumes = selectedVolumes.filter(volume => {
@@ -124,7 +125,7 @@ function initializeAssemblies(assemblies, geometry) {
     // 5. loop over selected Volumes and add the selected volumes to the assembly
     selectedVolumes.forEach(volume => {
       // skip assemblies
-      if (volume.type === 'assembly') {
+      if (volume.type === 'assembly' || volume.type === 'union') {
         return;
       }
       assemblies[_compoundId].components.push({
@@ -175,7 +176,7 @@ export function generateJson(geometry){
 
   // loop over the volumes
   geometry.volumes.forEach(volume => {
-    if (volume.type === 'assembly') {
+    if (volume.type === 'assembly' || volume.type === 'union') {
       processAssembly(assemblies, volume); 
     } else {
       // standard volume

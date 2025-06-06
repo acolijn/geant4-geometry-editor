@@ -37,6 +37,10 @@ export const icons = {
     regular: '📁', // Folder
     filled: '📂'    // Open folder
   },
+  union: {
+    regular: '∪', // Mathematical union symbol
+    filled: '∪'    // Mathematical union symbol
+  },
   // Default fallback
   default: {
     regular: '▢', // Square
