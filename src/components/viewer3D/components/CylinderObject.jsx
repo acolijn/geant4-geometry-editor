@@ -28,14 +28,9 @@ const CylinderObject = React.forwardRef(({ object, isSelected, onClick, material
   const radius = object.radius || 5;
   const height = object.height || 10;
   
-  // For cylinders with height along z-axis, we need to handle rotations correctly
-  // but we should NOT remap axes as that causes confusion in compound objects
-  
-  // Use rotation values directly (they should already be in radians)
-  // This ensures consistent behavior with other object types
-  const rotX = object.rotation?.x || 0;
-  const rotY = object.rotation?.y || 0;
-  const rotZ = object.rotation?.z || 0;
+  // The rotation is already handled by the parent TransformableObject component
+  // We don't need to apply any rotation here as the mesh is already properly oriented
+  // Note: No need to convert from degrees to radians as the values are already in radians
   
   // Create a cylinder geometry that aligns with Geant4 convention (height along z-axis)
   const createCylinderGeometry = () => {
@@ -53,8 +48,7 @@ const CylinderObject = React.forwardRef(({ object, isSelected, onClick, material
     <mesh 
       ref={ref}
       position={position}
-      // Apply rotations in the correct order for Geant4 compatibility
-      rotation={[rotX, rotY, rotZ]}
+      // No rotation needed here - handled by parent TransformableObject
       onClick={(e) => {
         e.stopPropagation();
         onClick();

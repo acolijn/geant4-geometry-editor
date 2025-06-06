@@ -22,27 +22,24 @@ const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick, materia
     object.position.z
   ] : [0, 0, 0];
   
+  console.log('XXXXX EllipsoidObject:: object', object);
+  
   // Extract dimensions from the object
   const xRadius = object.xRadius || 5;
   const yRadius = object.yRadius || 3;
   const zRadius = object.zRadius || 4;
   
-  // Apply rotation (convert from degrees to radians)
-  // For Geant4 compatibility, we need to apply rotations in the correct sequence:
-  // First X, then Y (around new Y axis), then Z (around new Z axis)
-  const rotX = THREE.MathUtils.degToRad(object.rotation?.x || 0);
-  const rotY = THREE.MathUtils.degToRad(object.rotation?.y || 0);
-  const rotZ = THREE.MathUtils.degToRad(object.rotation?.z || 0);
-
-  // Create a rotation matrix that applies rotations in the correct sequence
-  const rotationMatrix = new THREE.Matrix4();
-  rotationMatrix.makeRotationX(rotX);
-  rotationMatrix.multiply(new THREE.Matrix4().makeRotationY(rotY));
-  rotationMatrix.multiply(new THREE.Matrix4().makeRotationZ(rotZ));
-
-  // Extract Euler angles from the matrix (this will be in the THREE.js default order)
-  const euler = new THREE.Euler();
-  euler.setFromRotationMatrix(rotationMatrix);
+  // The rotation is already handled by the parent TransformableObject component
+  // We don't need to apply any rotation here as the mesh is already properly oriented
+  // The parent TransformableObject applies the rotation from object.rotation
+  // 
+  // Note: No need to convert from degrees to radians as the values are already in radians
+  // 
+  // We're removing the unnecessary rotation code here since:
+  // 1. The rotation is already applied by the parent component
+  // 2. Setting rotation here would override the parent's rotation
+  //
+  console.log('EllipsoidObject:: object.rotation', object.rotation);
 
   // Create an ellipsoid geometry (scaled sphere)
   const geometry = useMemo(() => {
@@ -55,7 +52,6 @@ const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick, materia
     <mesh
       ref={ref}
       position={position}
-      rotation={[euler.x, euler.y, euler.z]}
       onClick={(e) => {
         e.stopPropagation();
         if (onClick) onClick();

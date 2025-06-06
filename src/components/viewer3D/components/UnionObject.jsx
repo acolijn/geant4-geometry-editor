@@ -93,10 +93,9 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
     object.position.z || 0
   ] : [0, 0, 0];
   
-  // Apply rotation (convert from degrees to radians)
-  const rotX = THREE.MathUtils.degToRad(object.rotation?.x || 0);
-  const rotY = THREE.MathUtils.degToRad(object.rotation?.y || 0);
-  const rotZ = THREE.MathUtils.degToRad(object.rotation?.z || 0);
+  // The rotation is already handled by the parent TransformableObject component
+  // We don't need to apply any rotation here as the group is already properly oriented
+  // Note: No need to convert from degrees to radians as the values are already in radians
   
   // Generate material for the union result
   const unionMaterial = useMemo(() => {
@@ -165,6 +164,7 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   
   // Perform CSG union operation
   useEffect(() => {
+    console.log('XXXXX UnionObject:: componentMeshes', componentMeshes);
     if (!componentMeshes || componentMeshes.length === 0) return;
     
     try {
@@ -207,7 +207,7 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
     <group
       ref={groupRef}
       position={position}
-      rotation={[rotX, rotY, rotZ]}
+
       onClick={(e) => {
         e.stopPropagation();
         onClick && onClick();
