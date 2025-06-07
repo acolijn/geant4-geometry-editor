@@ -459,29 +459,8 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         />
       )}
       
-      {/* Optionally render individual components for debugging */}
-      {showComponents && componentVolumes.map((component, index) => {
-        // For debugging components, we create static geometries that won't be affected by other operations
-        // Each component gets its own isolated geometry and material
-        return (
-          <group key={`component-${component.name || index}`}>
-            <mesh 
-              position={[
-                component.position?.x || 0,
-                component.position?.y || 0,
-                component.position?.z || 0
-              ]}
-              rotation={[
-                component.rotation?.x || 0,
-                component.rotation?.y || 0,
-                component.rotation?.z || 0
-              ]}
-              geometry={createGeometry(component)}
-              material={createComponentMaterial(index)}
-            />
-          </group>
-        );
-      })}
+      {/* We're completely disabling the rendering of component wireframes */}
+      {/* No wireframes will be shown for any boolean components */}
     </group>
   );
 });
