@@ -86,99 +86,6 @@ export const createGeometryHandlers = (props, state) => {
   const handleAddGeometry = () => {
     // Default material (use the first available material or a placeholder)
     const defaultMaterial = materials.length > 0 ? materials[0].name : 'G4_AIR';
-    
- /*    // For union solids, we need to combine existing solids
-    if (newGeometryType === 'union') {
-      // Validate that both solids are selected
-      if (!firstSolid || !secondSolid) {
-        setImportAlert({
-          show: true,
-          message: 'Please select both solids for the union',
-          severity: 'error'
-        });
-        return;
-      }
-      
-      // Find the selected solids in the geometries
-      let firstSolidObj = null;
-      let secondSolidObj = null;
-      
-      if (firstSolid === 'world') {
-        firstSolidObj = geometries.world;
-      } else if (firstSolid.startsWith('volume-')) {
-        const index = parseInt(firstSolid.split('-')[1]);
-        firstSolidObj = geometries.volumes[index];
-      }
-      
-      if (secondSolid === 'world') {
-        secondSolidObj = geometries.world;
-      } else if (secondSolid.startsWith('volume-')) {
-        const index = parseInt(secondSolid.split('-')[1]);
-        secondSolidObj = geometries.volumes[index];
-      }
-      
-      // Validate that both solids exist
-      if (!firstSolidObj || !secondSolidObj) {
-        setImportAlert({
-          show: true,
-          message: 'One or both selected solids do not exist',
-          severity: 'error'
-        });
-        return;
-      }
-      
-      // Create the union object
-      const unionObject = {
-        name: generateInternalName('Union', 'solid'),
-        type: 'union',
-        material: defaultMaterial,
-        mother_volume: newMotherVolume,
-        position: { x: 0, y: 0, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-        visible: true,
-        first_solid: firstSolidObj.name,
-        second_solid: secondSolidObj.name,
-        relative_position: { x: 0, y: 0, z: 0 },
-        relative_rotation: { x: 0, y: 0, z: 0 }
-      };
-      
-      // Add additional components if specified
-      if (additionalComponents > 0) {
-        unionObject.additional_components = [];
-        
-        for (let i = 0; i < additionalComponents; i++) {
-          const componentName = additionalComponentsValues[i];
-          if (!componentName) continue;
-          
-          // Find the component in the geometries
-          let componentObj = null;
-          
-          if (componentName === 'world') {
-            componentObj = geometries.world;
-          } else if (componentName.startsWith('volume-')) {
-            const index = parseInt(componentName.split('-')[1]);
-            componentObj = geometries.volumes[index];
-          }
-          
-          if (componentObj) {
-            unionObject.additional_components.push({
-              solid: componentObj.name,
-              position: { x: 0, y: 0, z: 0 },
-              rotation: { x: 0, y: 0, z: 0 }
-            });
-          }
-        }
-      }
-      
-      // Add the union object to the scene
-      onAddGeometry(unionObject);
-      return;
-    } */
-    
-    // Generate a unique name directly using the same format as in GeometryOperations.js
-    // This avoids import issues between modules
-
-
     // For basic geometries, create a new object with default properties
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 10);
@@ -287,7 +194,7 @@ export const createGeometryHandlers = (props, state) => {
         
         // Store the typeName in the _compoundId for type identification
         // Use the same format but with the display name for type identification
-        newObject._compoundId = unionName;
+        newObject._compoundId = newObject.name;
         
         console.log(`Created new union with name: ${newObject.name} and ID: ${newObject._compoundId}`);
         break;

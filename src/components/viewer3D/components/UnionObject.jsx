@@ -126,6 +126,7 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
     if (!object.components || object.components.length === 0) return [];
     
     return object.components.map((component, index) => {
+      console.log('XXXXX UnionObject:: component', component);
       // Extract the shape type and dimensions
       const shapeType = component.shape || 'box';
       const dimensions = extractDimensions(component);
@@ -151,12 +152,12 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
         placement.y || 0,
         placement.z || 0
       );
-      
+
       // Apply rotation
       const rotation = placement.rotation || { x: 0, y: 0, z: 0 };
-      mesh.rotation.x = THREE.MathUtils.degToRad(rotation.x || 0);
-      mesh.rotation.y = THREE.MathUtils.degToRad(rotation.y || 0);
-      mesh.rotation.z = THREE.MathUtils.degToRad(rotation.z || 0);
+      mesh.rotation.x = rotation.x || 0;
+      mesh.rotation.y = rotation.y || 0;
+      mesh.rotation.z = rotation.z || 0;
       
       return mesh;
     });
@@ -247,9 +248,9 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
         
         // Extract rotation if available
         const rotation = placement.rotation || { x: 0, y: 0, z: 0 };
-        const compRotX = THREE.MathUtils.degToRad(rotation.x || 0);
-        const compRotY = THREE.MathUtils.degToRad(rotation.y || 0);
-        const compRotZ = THREE.MathUtils.degToRad(rotation.z || 0);
+        const compRotX = rotation.x || 0;
+        const compRotY = rotation.y || 0;
+        const compRotZ = rotation.z || 0;
         
         return (
           <group key={`component-${index}`} position={compPosition} rotation={[compRotX, compRotY, compRotZ]}>
