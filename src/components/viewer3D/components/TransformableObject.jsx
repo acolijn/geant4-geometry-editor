@@ -339,7 +339,19 @@ export default function TransformableObject({
       case 'polycone':
         return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'union':
-        return <UnionObject ref={groupRef} object={clonedObject} volumes={volumes} isSelected={isSelected} onClick={onSelect} materials={materials} />;
+        // For union objects, we need to be careful about how we pass props to avoid reference issues
+        return (
+          <UnionObject 
+            ref={groupRef} 
+            object={clonedObject} 
+            volumes={volumes} 
+            isSelected={isSelected} 
+            onClick={onSelect} 
+            materials={materials} 
+            // Add a key based on the object name to ensure proper re-rendering
+            key={`union-${clonedObject.name}`}
+          />
+        );
       case 'assembly':
         return <AssemblyObject ref={groupRef} object={clonedObject} volumes={volumes} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       default:

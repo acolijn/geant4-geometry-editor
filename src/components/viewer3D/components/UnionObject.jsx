@@ -78,20 +78,34 @@ const extractDimensions = (component) => {
 };
 
 // UnionObject component that visualizes a true boolean union of constituent components
-const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick }, ref) => {
+const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, materials }, ref) => {
   const groupRef = useRef();
   const [unionMesh, setUnionMesh] = useState(null);
   const [showComponents, setShowComponents] = useState(false); // Toggle to show individual components
   
   // Pass the ref to the group
+  // This is critical for the transform controls to work
   React.useImperativeHandle(ref, () => groupRef.current);
   
+  // Debug when component is mounted or updated
+  useEffect(() => {
+    console.log(`UnionObject mounted/updated: ${object.name}`, { 
+      isSelected, 
+      ref: groupRef.current 
+    });
+    return () => {
+      console.log(`UnionObject unmounted: ${object.name}`);
+    };
+  }, [object.name, isSelected]);
+  
   // Find all volumes that have this union as their mother
-  console.log('XXXXX UnionObject:: volumes', volumes);
-  console.log('XXXXX UnionObject:: object', object);
+  // This should only change if volumes or object.name changes
   const componentVolumes = useMemo(() => {
     if (!volumes || !object.name) return [];
-    return volumes.filter(vol => vol.mother_volume === object.name);
+    console.log(`UnionObject ${object.name}: Finding component volumes`);
+    const components = volumes.filter(vol => vol.mother_volume === object.name);
+    console.log(`UnionObject ${object.name}: Found ${components.length} components`);
+    return components;
   }, [volumes, object.name]);
   
   // Get position and rotation from the object
@@ -105,48 +119,79 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick }, 
   // We don't need to apply any rotation here as the group is already properly oriented
   // Note: No need to convert from degrees to radians as the values are already in radians
   
-  // Generate material for the union result
+  // Use the material from the union object itself, or fall back to a default
   const unionMaterial = useMemo(() => {
+    // Check if we have a material for this object
+    const materialName = object.material || 'default';
+    
+    // Create a new material based on the material name or default
+    let color = '#3399ff';
+    
+    // If materials are provided and the material name exists, use its color
+    if (materials && typeof materials === 'object') {
+      if (materials[materialName] && materials[materialName].color) {
+        color = materials[materialName].color;
+      }
+    }
+    
+    // If selected, override with selection color
+    if (isSelected) {
+      color = '#ff9900';
+    }
+    
+    console.log(`UnionObject material for ${object.name}:`, {
+      materialName,
+      color,
+      isSelected
+    });
+    
+    // Create a new material with the appropriate color
     return new THREE.MeshStandardMaterial({
-      color: isSelected ? '#ff9900' : '#3399ff',
+      color: color,
       opacity: 0.8,
       transparent: true,
       side: THREE.DoubleSide
     });
-  }, [isSelected]);
+  }, [isSelected, object.material, materials, object.name]);
   
-  // Generate a base material with a random color for each component
+  // For individual components when debugging, create wireframe materials with distinct colors
   const createComponentMaterial = (index) => {
-    // Generate a color based on the index
+    // Generate a color based on the index for debugging visibility
     const hue = (index * 137.5) % 360; // Golden angle approximation for good distribution
     const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.6);
     
+    // Create a new wireframe material with this color
     return new THREE.MeshStandardMaterial({
       color: color,
       opacity: 0.4,
       transparent: true,
-      wireframe: true
+      wireframe: true,
+      side: THREE.DoubleSide
     });
   };
   
-  // Create meshes for all components
+  // Create meshes for all components - this should only run when componentVolumes changes
+  // Using a stable reference to avoid recreating meshes unnecessarily
   const componentMeshes = useMemo(() => {
-    if (!componentVolumes || componentVolumes.length === 0) return [];
+    if (!componentVolumes.length) return [];
     
-    console.log('XXXXX UnionObject:: componentVolumes', componentVolumes);
+    console.log(`UnionObject ${object.name}: Creating ${componentVolumes.length} component meshes`);
+    
+    // Create a deep copy of the component volumes to avoid reference issues
+    // We'll create completely isolated meshes for each component
     return componentVolumes.map((component, index) => {
-      // Extract the shape type and dimensions
-      const shapeType = component.type;
-      console.log(`XXXXX UnionObject:: Component ${index} type:`, shapeType);
+      // Create a deep clone of the component to avoid reference issues
+      const componentClone = JSON.parse(JSON.stringify(component));
+      const shapeType = componentClone.type;
+      console.log(`UnionObject ${object.name}: Component ${index} type:`, shapeType);
       
       // Create geometry for this component based on its type and dimensions
-      const geometry = createGeometry(component);
-      console.log(`XXXXX UnionObject:: Component ${index} geometry:`, geometry);
+      const geometry = createGeometry(componentClone);
       
-      // Create material
+      // Create material - each component gets its own isolated material
       const material = createComponentMaterial(index);
       
-      // Create mesh
+      // Create mesh with the geometry and material
       const mesh = new THREE.Mesh(geometry, material);
       
       // Important: For CSG operations, we need to apply the matrix to the geometry
@@ -156,15 +201,15 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick }, 
       // Create a matrix for the component's position and rotation
       const matrix = new THREE.Matrix4();
       
-      // Apply position from the component
+      // Apply position from the component - these are LOCAL positions relative to the union
       const position = new THREE.Vector3(
-        component.position?.x || 0,
-        component.position?.y || 0,
-        component.position?.z || 0
+        componentClone.position?.x || 0,
+        componentClone.position?.y || 0,
+        componentClone.position?.z || 0
       );
       
-      // Apply rotation from the component
-      const rotation = component.rotation || { x: 0, y: 0, z: 0 };
+      // Apply rotation from the component - these are LOCAL rotations relative to the union
+      const rotation = componentClone.rotation || { x: 0, y: 0, z: 0 };
       const euler = new THREE.Euler(
         rotation.x || 0,
         rotation.y || 0,
@@ -191,119 +236,148 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick }, 
     });
   }, [componentVolumes]);
   
-  // Perform CSG union operation
+  // Perform CSG union operation - only when componentMeshes changes
+  // This ensures we don't recreate the union mesh unnecessarily
   useEffect(() => {
-    console.log('XXXXX UnionObject:: componentMeshes', componentMeshes);
     if (!componentMeshes || componentMeshes.length === 0) {
-      console.log('XXXXX UnionObject:: No component meshes, skipping union');
+      console.log(`UnionObject ${object.name}: No component meshes, skipping union`);
       return;
     }
-    console.log('XXXXX UnionObject:: componentMeshes.length', componentMeshes.length);
+    
+    console.log(`UnionObject ${object.name}: Creating union from ${componentMeshes.length} components`);
+    
+    // Create a unique ID for this union operation to help with debugging
+    const unionId = `union-${object.name}-${Date.now()}`;
+    console.log(`UnionObject: Starting union operation ${unionId}`);
     
     try {
       // If there's only one component, just use it directly
       if (componentMeshes.length === 1) {
-        console.log('XXXXX UnionObject:: Only one component, using it directly');
+        console.log(`UnionObject ${object.name}: Only one component, using it directly`);
+        
+        // Clone the mesh to avoid reference issues
         const singleMesh = componentMeshes[0].clone();
+        
+        // Apply the union material
         singleMesh.material = unionMaterial;
+        
+        // Important: Reset the position and rotation of the mesh
+        // The parent TransformableObject will handle positioning
+        singleMesh.position.set(0, 0, 0);
+        singleMesh.rotation.set(0, 0, 0);
+        singleMesh.updateMatrix();
+        
+        console.log(`UnionObject ${object.name}: Single component mesh created`);
         setUnionMesh(singleMesh);
         return;
       }
       
-      // Start with the first mesh
+      // Start with the first mesh - clone it to avoid reference issues
       let resultMesh = componentMeshes[0].clone();
-      console.log('XXXXX UnionObject:: First mesh cloned', resultMesh);
+      console.log(`UnionObject ${object.name}: First mesh cloned`);
       
       // Union with each subsequent mesh
       for (let i = 1; i < componentMeshes.length; i++) {
         try {
-          console.log(`XXXXX UnionObject:: Processing component ${i}`);
+          console.log(`UnionObject ${object.name}: Processing component ${i}`);
+          
+          // Clone the next mesh to avoid reference issues
           const nextMesh = componentMeshes[i].clone();
-          console.log(`XXXXX UnionObject:: Component ${i} cloned`, nextMesh);
           
           // Verify both meshes have valid geometries
           if (!resultMesh.geometry || !nextMesh.geometry) {
-            console.error(`XXXXX UnionObject:: Missing geometry for union operation at component ${i}`);
+            console.error(`UnionObject ${object.name}: Missing geometry for union operation at component ${i}`);
             continue;
           }
           
           // Check if geometries have vertices
           if (!resultMesh.geometry.attributes.position || !nextMesh.geometry.attributes.position) {
-            console.error(`XXXXX UnionObject:: Missing position attributes for union operation at component ${i}`);
+            console.error(`UnionObject ${object.name}: Missing position attributes for union operation at component ${i}`);
             continue;
           }
           
-          console.log(`XXXXX UnionObject:: Performing union with component ${i}`);
+          // Perform the CSG union operation
+          console.log(`UnionObject ${object.name}: Performing union with component ${i}`);
           resultMesh = CSG.union(resultMesh, nextMesh);
-          console.log(`XXXXX UnionObject:: Union with component ${i} successful`, resultMesh);
+          console.log(`UnionObject ${object.name}: Union with component ${i} successful`);
         } catch (err) {
-          console.error(`Error performing union with component ${i}:`, err);
+          console.error(`UnionObject ${object.name}: Error performing union with component ${i}:`, err);
         }
       }
       
       // Apply the union material
       resultMesh.material = unionMaterial;
       
-      // Set the result mesh
+      // Important: Reset the position and rotation of the result mesh
+      // The parent TransformableObject will handle positioning
+      resultMesh.position.set(0, 0, 0);
+      resultMesh.rotation.set(0, 0, 0);
+      resultMesh.updateMatrix();
+      
+      // Set the union mesh
+      console.log(`UnionObject ${object.name}: Final union mesh created`);
+      console.log(`UnionObject: Completed union operation ${unionId}`);
       setUnionMesh(resultMesh);
     } catch (err) {
-      console.error('Error performing CSG union:', err);
+      console.error('Error creating union mesh:', err);
     }
   }, [componentMeshes, unionMaterial]);
   
-  // Toggle component visibility with 'C' key
+  // Toggle component visibility with keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'c' || e.key === 'C') {
         setShowComponents(prev => !prev);
+        console.log(`UnionObject ${object.name}: Components visibility toggled: ${!showComponents}`);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [object.name]);
   
+  // The TransformableObject component expects to control the position of this group
+  // So we need to make sure the group is positioned at the origin and let TransformableObject handle positioning
   return (
     <group
       ref={groupRef}
-      position={position}
-
+      // Important: Position must be [0,0,0] so TransformableObject can control it
+      position={[0, 0, 0]}
+      rotation={[0, 0, 0]}
       onClick={(e) => {
+        console.log('Union object clicked', object.name);
         e.stopPropagation();
         onClick && onClick();
       }}
     >
       {/* Render the union result */}
       {unionMesh && (
-        <primitive object={unionMesh} />
+        <mesh
+          geometry={unionMesh.geometry}
+          material={unionMaterial}
+        />
       )}
       
       {/* Optionally render individual components for debugging */}
       {showComponents && componentVolumes.map((component, index) => {
-        // Create geometry for this component
-        const geometry = useMemo(() => {
-          return createGeometry(component);
-        }, [component]);
-        
-        // Create material with a unique color
-        const material = useMemo(() => createComponentMaterial(index), [index]);
-        
-        // Extract position
-        const compPosition = [
-          component.position?.x || 0,
-          component.position?.y || 0,
-          component.position?.z || 0
-        ];
-        
-        // Extract rotation if available
-        const rotation = component.rotation || { x: 0, y: 0, z: 0 };
-        const compRotX = rotation.x || 0;
-        const compRotY = rotation.y || 0;
-        const compRotZ = rotation.z || 0;
-        
+        // For debugging components, we create static geometries that won't be affected by other operations
+        // Each component gets its own isolated geometry and material
         return (
-          <group key={`component-${index}`} position={compPosition} rotation={[compRotX, compRotY, compRotZ]}>
-            <mesh geometry={geometry} material={material} />
+          <group key={`component-${component.name || index}`}>
+            <mesh 
+              position={[
+                component.position?.x || 0,
+                component.position?.y || 0,
+                component.position?.z || 0
+              ]}
+              rotation={[
+                component.rotation?.x || 0,
+                component.rotation?.y || 0,
+                component.rotation?.z || 0
+              ]}
+              geometry={createGeometry(component)}
+              material={createComponentMaterial(index)}
+            />
           </group>
         );
       })}

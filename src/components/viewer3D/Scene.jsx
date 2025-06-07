@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
 import { OrbitControls } from '@react-three/drei';
@@ -266,15 +266,23 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     }
   };
   
+  // Find union volumes for reference
+  const unionVolumeNames = useMemo(() => {
+    if (!geometries.volumes) return [];
+    return geometries.volumes.filter(vol => vol.type === 'union').map(vol => vol.name);
+  }, [geometries.volumes]);
+  
   // Render all volumes in a flat structure
   const renderVolumes = () => {
     if (!geometries.volumes) return null;
     
-    // Filter out volumes that are components of a union (have a mother_volume that is a union)
-    const unionVolumes = geometries.volumes.filter(vol => vol.type === 'union').map(vol => vol.name);
-    const visibleVolumes = geometries.volumes.filter(vol => !unionVolumes.includes(vol.mother_volume));
-    
-    return visibleVolumes.map((volume, index) => {
+    return geometries.volumes.map((volume, index) => {
+      // Skip rendering components of unions (they'll be rendered by their parent union)
+      const isUnionComponent = unionVolumeNames.includes(volume.mother_volume);
+      if (isUnionComponent) {
+        // Return null for union components to maintain indices but not render them
+        return null;
+      }
       const key = `volume-${index}`;
       const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
       
