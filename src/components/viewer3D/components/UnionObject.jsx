@@ -120,50 +120,86 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
   // Note: No need to convert from degrees to radians as the values are already in radians
   
   // Use the material from the union object itself, or fall back to a default
-  const unionMaterial = useMemo(() => {
+  const getUnionColor = () => {
     // Check if we have a material for this object
     const materialName = object.material || 'default';
+    let color = '#3399ff'; // Default blue
     
-    // Create a new material based on the material name or default
-    let color = '#3399ff';
+    // Debug materials object
+    console.log(`UnionObject ${object.name} materials:`, materials);
+    console.log(`UnionObject ${object.name} material name:`, materialName);
     
     // If materials are provided and the material name exists, use its color
     if (materials && typeof materials === 'object') {
-      if (materials[materialName] && materials[materialName].color) {
-        color = materials[materialName].color;
+      // Check if the material exists in the materials object
+      if (materials[materialName]) {
+        // Material exists, now check if it has a color property
+        if (typeof materials[materialName].color === 'string') {
+          // Use the color string directly
+          color = materials[materialName].color;
+          console.log(`UnionObject ${object.name} using material color string:`, color);
+        } else if (Array.isArray(materials[materialName].color)) {
+          // Convert color array [r,g,b,a] to hex string
+          const [r, g, b] = materials[materialName].color;
+          color = new THREE.Color(r, g, b).getHexString();
+          color = '#' + color;
+          console.log(`UnionObject ${object.name} converted color array to hex:`, color);
+        } else {
+          console.log(`UnionObject ${object.name} material has invalid color format, using default blue`);
+        }
+      } else {
+        console.log(`UnionObject ${object.name} material '${materialName}' not found, using default blue`);
       }
+    } else {
+      console.log(`UnionObject ${object.name} no materials provided, using default blue`);
     }
     
     // If selected, override with selection color
     if (isSelected) {
       color = '#ff9900';
+      console.log(`UnionObject ${object.name} is selected, using selection color:`, color);
     }
     
-    console.log(`UnionObject material for ${object.name}:`, {
+    console.log(`UnionObject FINAL color for ${object.name}:`, {
       materialName,
       color,
       isSelected
     });
     
+    return color;
+  };
+  
+  // Create the union material with the appropriate color
+  const unionMaterial = useMemo(() => {
+    const color = getUnionColor();
+    
     // Create a new material with the appropriate color
-    return new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshStandardMaterial({
       color: color,
       opacity: 0.8,
       transparent: true,
       side: THREE.DoubleSide
     });
+    
+    console.log(`UnionObject ${object.name} created material with color:`, {
+      colorValue: color,
+      materialColor: material.color
+    });
+    
+    return material;
   }, [isSelected, object.material, materials, object.name]);
   
-  // For individual components when debugging, create wireframe materials with distinct colors
-  const createComponentMaterial = (index) => {
-    // Generate a color based on the index for debugging visibility
-    const hue = (index * 137.5) % 360; // Golden angle approximation for good distribution
-    const color = new THREE.Color().setHSL(hue / 360, 0.7, 0.6);
+  // For individual components when debugging, create wireframe materials
+  // When showComponents is true, we show wireframe versions of the components
+  // These should use the union's material color but in wireframe mode for clarity
+  const createComponentMaterial = () => {
+    // Use the same color as the union
+    const color = getUnionColor();
     
-    // Create a new wireframe material with this color
+    // Create a new wireframe material with the union's color
     return new THREE.MeshStandardMaterial({
       color: color,
-      opacity: 0.4,
+      opacity: 0.5,
       transparent: true,
       wireframe: true,
       side: THREE.DoubleSide
@@ -188,11 +224,12 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       // Create geometry for this component based on its type and dimensions
       const geometry = createGeometry(componentClone);
       
-      // Create material - each component gets its own isolated material
-      const material = createComponentMaterial(index);
+      // For CSG operations, all components should use the union's material
+      // This ensures consistent material properties across the entire union
+      // We'll use the unionMaterial directly for all component meshes
       
-      // Create mesh with the geometry and material
-      const mesh = new THREE.Mesh(geometry, material);
+      // Create mesh with the geometry and the union's material
+      const mesh = new THREE.Mesh(geometry, unionMaterial);
       
       // Important: For CSG operations, we need to apply the matrix to the geometry
       // rather than setting position/rotation on the mesh
@@ -355,6 +392,12 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         <mesh
           geometry={unionMesh.geometry}
           material={unionMaterial}
+          onClick={(e) => {
+            console.log('Union mesh clicked', object.name);
+            console.log('Union material:', unionMaterial);
+            e.stopPropagation();
+            onClick && onClick();
+          }}
         />
       )}
       
