@@ -302,6 +302,93 @@ const PropertyEditor = ({
         />
       )}
       
+      {/* Boolean Component section - only show for non-world, non-union volumes */}
+      {selectedGeometry !== 'world' && selectedObject?.type !== 'union' && (
+        <Box sx={{ mt: 2, mb: 1, borderTop: '1px solid rgba(0, 0, 0, 0.12)', pt: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Boolean Operations
+          </Typography>
+          
+          {/* Find potential parent unions (any union volume except self) */}
+          {(() => {
+            // Find all union volumes that could be boolean parents
+            const potentialParentUnions = geometries.volumes
+              ? geometries.volumes.filter(vol => 
+                  vol.type === 'union' && 
+                  vol.name !== selectedObject?.name
+                )
+              : [];
+            
+            // If there are no potential parent unions, show a message
+            if (potentialParentUnions.length === 0) {
+              return (
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  No union volumes available for boolean operations.
+                </Typography>
+              );
+            }
+            
+            // Get the current boolean parent if any
+            const currentBooleanParent = selectedObject?.boolean_parent || null;
+            const isBooleanComponent = selectedObject?.is_boolean_component === true;
+            
+            return (
+              <FormControl fullWidth margin="normal" size="small">
+                <InputLabel>Part of Union</InputLabel>
+                <Select
+                  value={currentBooleanParent || 'none'}
+                  label="Part of Union"
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const value = e.target.value;
+                    const currentObject = getSelectedGeometryObjectLocal();
+                    if (!currentObject) return;
+                    
+                    const updatedObject = { ...currentObject };
+                    
+                    if (value === 'none') {
+                      // Remove boolean component properties
+                      updatedObject.is_boolean_component = false;
+                      delete updatedObject.boolean_parent;
+                      // Note: We don't change the mother_volume when removing from a union
+                      // This allows the volume to stay where it was placed
+                    } else {
+                      // Set as boolean component of the selected union
+                      updatedObject.is_boolean_component = true;
+                      updatedObject.boolean_parent = value;
+                      
+                      // Also set the mother_volume to the union for proper placement
+                      // This ensures the component is properly positioned relative to the union
+                      updatedObject.mother_volume = value;
+                    }
+                    
+                    onUpdateGeometry(selectedGeometry, updatedObject);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  MenuProps={{
+                    onClick: (e) => e.stopPropagation(),
+                    PaperProps: { onClick: (e) => e.stopPropagation() }
+                  }}
+                >
+                  <MenuItem value="none">Not a boolean component</MenuItem>
+                  {potentialParentUnions.map((union) => (
+                    <MenuItem key={union.name} value={union.name}>
+                      {union.displayName || union.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                
+                {isBooleanComponent && (
+                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', color: 'info.main' }}>
+                    This volume is a component of the union {currentBooleanParent}.
+                  </Typography>
+                )}
+              </FormControl>
+            );
+          })()}
+        </Box>
+      )}
+      
       <Typography variant="subtitle1" sx={{ mt: 2 }}>Position</Typography>
       <Box sx={{ display: 'flex', gap: 1 }}>
         <NumericInput

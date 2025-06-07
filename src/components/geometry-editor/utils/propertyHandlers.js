@@ -70,39 +70,7 @@ export const createPropertyHandlers = (props) => {
       // If the value is already a number (from NumericInput), use it directly
       // The NumericInput component has already done the unit conversion
       finalValue = value;
-    }; /* else {
-      // For string values (from regular TextField inputs)
-      // Determine if this is a numeric field that needs unit conversion
-      const isNumberField = !isStringProperty && typeof value === 'string' && /^-?\d*\.?\d*$/.test(value);
-      
-      if (isNumberField) {
-        // For empty string or just a minus sign, don't process yet
-        if (value === '' || value === '-') {
-          finalValue = value;
-        } else {
-          const parsed = parseFloat(value);
-          if (!isNaN(parsed)) {
-            // Determine if this is a length or angle property
-            const isAngle = property.includes('rotation');
-            const unitType = isAngle ? 'angle' : 'length';
-            
-            // Convert from the current display unit to internal units (mm or rad)
-            finalValue = toInternalUnit(parsed, unit, unitType);
-            console.log(`Converting ${parsed} ${unit} to ${finalValue} internal units (${unitType})`);
-          } else {
-            // If parsing fails, keep the original value
-            finalValue = isStringProperty ? value : 0;
-          }
-        }
-      } else if (!isStringProperty && typeof value !== 'object') {
-        const parsed = parseFloat(value);
-        if (!isNaN(parsed)) {
-          finalValue = parsed;
-        } else {
-          finalValue = 0;
-        }
-      }
-    } */
+    }; 
     
     // Handle nested properties like 'position.x'
     if (property.includes('.')) {

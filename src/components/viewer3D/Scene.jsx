@@ -278,9 +278,10 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     
     return geometries.volumes.map((volume, index) => {
       // Skip rendering components of unions (they'll be rendered by their parent union)
-      const isUnionComponent = unionVolumeNames.includes(volume.mother_volume);
-      if (isUnionComponent) {
-        // Return null for union components to maintain indices but not render them
+      // Only use the explicit is_boolean_component flag - no backward compatibility
+      if (volume.is_boolean_component === true) {
+        // Return null for boolean components to maintain indices but not render them
+        console.log(`Scene: Skipping render of boolean component ${volume.name}`);
         return null;
       }
       const key = `volume-${index}`;

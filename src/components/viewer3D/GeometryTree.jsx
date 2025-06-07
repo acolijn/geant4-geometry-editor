@@ -358,13 +358,61 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     const key = `volume-${index}`;
     const parentKey = getParentKeyWrapper(volume);
     
-    // Add this volume to its parent's children list
-    if (volumesByParent[parentKey]) {
-      volumesByParent[parentKey].push({
-        volume,
-        key,
-        index
-      });
+    // Check if this is a boolean component
+    if (volume.is_boolean_component === true && volume.boolean_parent) {
+      // Find the parent union's index
+      const parentUnionIndex = geometries.volumes.findIndex(v => v.name === volume.boolean_parent);
+      
+      if (parentUnionIndex !== -1) {
+        // Create a special key for the "Parts" folder of this union
+        const unionPartsKey = `union-parts-${parentUnionIndex}`;
+        
+        // Make sure the parts folder exists for this union
+        if (!volumesByParent[unionPartsKey]) {
+          volumesByParent[unionPartsKey] = [];
+          
+          // Add the parts folder to the union's children
+          const unionKey = `volume-${parentUnionIndex}`;
+          if (!volumesByParent[unionKey]) {
+            volumesByParent[unionKey] = [];
+          }
+          
+          // Add a special entry for the parts folder
+          volumesByParent[unionKey].push({
+            isPartsFolder: true,
+            key: unionPartsKey,
+            parentUnionName: geometries.volumes[parentUnionIndex].name,
+            parentUnionDisplayName: geometries.volumes[parentUnionIndex].displayName || geometries.volumes[parentUnionIndex].name
+          });
+        }
+        
+        // Add this volume to the parts folder
+        volumesByParent[unionPartsKey].push({
+          volume,
+          key,
+          index,
+          isBooleanComponent: true
+        });
+      } else {
+        // If parent union not found, add to regular parent
+        if (volumesByParent[parentKey]) {
+          volumesByParent[parentKey].push({
+            volume,
+            key,
+            index,
+            isBooleanComponent: true
+          });
+        }
+      }
+    } else {
+      // Regular volume - add to its parent's children list
+      if (volumesByParent[parentKey]) {
+        volumesByParent[parentKey].push({
+          volume,
+          key,
+          index
+        });
+      }
     }
   });
   
@@ -377,14 +425,75 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Sort volumes alphabetically by displayName (if available) or name
     const sortedVolumes = [...volumesByParent[parentKey]].sort((a, b) => {
+      // Special case: Parts folder should always come first
+      if (a.isPartsFolder) return -1;
+      if (b.isPartsFolder) return 1;
+      
       // Use displayName if available, otherwise fall back to name or generate a default name
-      const nameA = a.volume.displayName || a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`;
-      const nameB = b.volume.displayName || b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`;
+      const nameA = a.volume ? (a.volume.displayName || a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`) : a.parentUnionDisplayName;
+      const nameB = b.volume ? (b.volume.displayName || b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`) : b.parentUnionDisplayName;
       return nameA.localeCompare(nameB);
     });
     
     // Render all children of this parent (now sorted alphabetically)
-    return sortedVolumes.map(({ volume, key, index }) => {
+    return sortedVolumes.map((item) => {
+      // Special handling for Parts folder
+      if (item.isPartsFolder) {
+        const partsKey = item.key;
+        const hasChildren = volumesByParent[partsKey] && volumesByParent[partsKey].length > 0;
+        
+        return (
+          <React.Fragment key={partsKey}>
+            <div 
+              onClick={(e) => {
+                // For parts folder, just toggle expansion
+                e.stopPropagation();
+                toggleNodeExpansion(partsKey, e);
+              }}
+              style={{
+                padding: '8px',
+                backgroundColor: '#f0f0f0',
+                color: '#333',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginBottom: '5px',
+                marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
+                display: 'flex',
+                alignItems: 'center',
+                fontWeight: 'bold',
+                borderLeft: '3px solid #1976d2' // Blue border to indicate special folder
+              }}
+            >
+              {/* Expand/collapse icon */}
+              <span 
+                onClick={(e) => toggleNodeExpansion(partsKey, e)} 
+                style={{ 
+                  marginRight: '5px', 
+                  cursor: 'pointer',
+                  color: '#555',
+                  fontSize: '14px',
+                  width: '16px',
+                  textAlign: 'center'
+                }}
+              >
+                {expandedNodes[partsKey] ? '▼' : '►'}
+              </span>
+              
+              {/* Parts folder icon */}
+              <span style={{ marginRight: '5px', color: '#1976d2' }}>📁</span>
+              
+              {/* Parts folder name */}
+              <span>parts</span>
+            </div>
+            
+            {/* Render parts if expanded */}
+            {expandedNodes[partsKey] && renderVolumeTree(partsKey, level + 1)}
+          </React.Fragment>
+        );
+      }
+      
+      // Regular volume handling
+      const { volume, key, index, isBooleanComponent } = item;
       const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
       
       // Check if volume is active (has isActive flag and hitsCollectionName)
@@ -408,7 +517,12 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               marginBottom: '5px',
               marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              // Special styling for boolean components
+              ...(isBooleanComponent && {
+                borderLeft: '2px solid #1976d2',
+                backgroundColor: selectedGeometry === key ? '#1976d2' : '#f0f8ff'
+              })
             }}
           >
             {/* Expand/collapse icon - only show if node has children */}

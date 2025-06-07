@@ -98,12 +98,17 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
     };
   }, [object.name, isSelected]);
   
-  // Find all volumes that have this union as their mother
+  // Find all volumes that are boolean components of this union
   // This should only change if volumes or object.name changes
   const componentVolumes = useMemo(() => {
     if (!volumes || !object.name) return [];
     console.log(`UnionObject ${object.name}: Finding component volumes`);
-    const components = volumes.filter(vol => vol.mother_volume === object.name);
+    
+    // Only use the explicit is_boolean_component flag - no backward compatibility
+    const components = volumes.filter(vol => 
+      vol.is_boolean_component === true && vol.boolean_parent === object.name
+    );
+    
     console.log(`UnionObject ${object.name}: Found ${components.length} components`);
     return components;
   }, [volumes, object.name]);

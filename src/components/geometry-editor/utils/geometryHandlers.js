@@ -106,6 +106,10 @@ export const createGeometryHandlers = (props, state) => {
       _compoundId: uniqueName,
       _componentId: componentId  // Add a stable component ID at creation time
     };
+    
+    // We no longer automatically make volumes boolean components when their mother is a union
+    // This will be done explicitly through the PropertyEditor
+    
     console.log('newObject:', newObject.name);
     
     // Add type-specific properties
