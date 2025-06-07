@@ -55,6 +55,7 @@ const debugObject = (prefix, object) => {
  * @param {Array} props.worldPosition World position coordinates [x, y, z] if applicable
  * @param {Array} props.worldRotation World rotation values [x, y, z] in radians if applicable
  * @param {boolean} props.isSourceObject Whether this is a source object that should trigger updates to other instances
+ * @param {Array} props.volumes All volumes in the scene, needed for union and assembly objects
  * @returns {JSX.Element} The rendered 3D object with transform controls when selected
  */
 export default function TransformableObject({ 
@@ -68,7 +69,8 @@ export default function TransformableObject({
   worldRotation,
   isSourceObject = false,
   isMotherVolume = false,
-  materials = {}
+  materials = {},
+  volumes = []
 }) {
   // Create a ref for the object
   const groupRef = useRef();
@@ -337,9 +339,9 @@ export default function TransformableObject({
       case 'polycone':
         return <PolyconeObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'union':
-        return <UnionObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
+        return <UnionObject ref={groupRef} object={clonedObject} volumes={volumes} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       case 'assembly':
-        return <AssemblyObject ref={groupRef} object={clonedObject} isSelected={isSelected} onClick={onSelect} materials={materials} />;
+        return <AssemblyObject ref={groupRef} object={clonedObject} volumes={volumes} isSelected={isSelected} onClick={onSelect} materials={materials} />;
       default:
         console.error(`Unknown object type: ${object.type}`);
         return null;

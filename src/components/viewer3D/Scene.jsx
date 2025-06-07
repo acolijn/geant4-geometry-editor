@@ -270,7 +270,11 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
   const renderVolumes = () => {
     if (!geometries.volumes) return null;
     
-    return geometries.volumes.map((volume, index) => {
+    // Filter out volumes that are components of a union (have a mother_volume that is a union)
+    const unionVolumes = geometries.volumes.filter(vol => vol.type === 'union').map(vol => vol.name);
+    const visibleVolumes = geometries.volumes.filter(vol => !unionVolumes.includes(vol.mother_volume));
+    
+    return visibleVolumes.map((volume, index) => {
       const key = `volume-${index}`;
       const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
       
@@ -317,6 +321,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           isSourceObject={sourceObjects[key] === true}
           onTransformEnd={(objKey, updatedProps, keepSelected, isLiveUpdate) => handleVolumeTransform(objKey, updatedProps, keepSelected, isLiveUpdate)}
           materials={materials}
+          volumes={geometries.volumes}
         />
       );
     });
@@ -349,6 +354,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           onSelect={() => {/* No-op */}}
           onTransformEnd={onTransformEnd}
           isSourceObject={sourceObjects['world'] === true}
+          volumes={geometries.volumes}
           visible={false}
           materials={materials}
         />

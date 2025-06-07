@@ -5,6 +5,7 @@ import { CSG } from 'three-csg-ts';
 
 // Helper function to create a basic geometry based on solid type
 const createGeometry = (solid) => {
+  console.log('XXXXX UnionObject:: solid', solid);
   if (!solid || !solid.type) return new THREE.BoxGeometry(1, 1, 1);
   
   switch (solid.type) {
@@ -77,14 +78,21 @@ const extractDimensions = (component) => {
 };
 
 // UnionObject component that visualizes a true boolean union of constituent components
-const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
+const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick }, ref) => {
   const groupRef = useRef();
   const [unionMesh, setUnionMesh] = useState(null);
   const [showComponents, setShowComponents] = useState(false); // Toggle to show individual components
   
-  console.log('XXXXX UnionObject:: object', object);
   // Pass the ref to the group
   React.useImperativeHandle(ref, () => groupRef.current);
+  
+  // Find all volumes that have this union as their mother
+  console.log('XXXXX UnionObject:: volumes', volumes);
+  console.log('XXXXX UnionObject:: object', object);
+  const componentVolumes = useMemo(() => {
+    if (!volumes || !object.name) return [];
+    return volumes.filter(vol => vol.mother_volume === object.name);
+  }, [volumes, object.name]);
   
   // Get position and rotation from the object
   const position = object.position ? [
@@ -123,19 +131,17 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
   
   // Create meshes for all components
   const componentMeshes = useMemo(() => {
-    if (!object.components || object.components.length === 0) return [];
+    if (!componentVolumes || componentVolumes.length === 0) return [];
     
-    return object.components.map((component, index) => {
-      console.log('XXXXX UnionObject:: component', component);
+    console.log('XXXXX UnionObject:: componentVolumes', componentVolumes);
+    return componentVolumes.map((component, index) => {
       // Extract the shape type and dimensions
-      const shapeType = component.shape || 'box';
-      const dimensions = extractDimensions(component);
+      const shapeType = component.type;
+      console.log(`XXXXX UnionObject:: Component ${index} type:`, shapeType);
       
-      // Create geometry for this component
-      const geometry = createGeometry({
-        type: shapeType,
-        ...dimensions
-      });
+      // Create geometry for this component based on its type and dimensions
+      const geometry = createGeometry(component);
+      console.log(`XXXXX UnionObject:: Component ${index} geometry:`, geometry);
       
       // Create material
       const material = createComponentMaterial(index);
@@ -143,40 +149,93 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
       // Create mesh
       const mesh = new THREE.Mesh(geometry, material);
       
-      // Get the placement information for this component
-      const placement = component.placement && component.placement[0] ? component.placement[0] : { x: 0, y: 0, z: index * 5 };
+      // Important: For CSG operations, we need to apply the matrix to the geometry
+      // rather than setting position/rotation on the mesh
+      // This ensures the geometry itself is transformed correctly for CSG
       
-      // Apply position
-      mesh.position.set(
-        placement.x || 0,
-        placement.y || 0,
-        placement.z || 0
+      // Create a matrix for the component's position and rotation
+      const matrix = new THREE.Matrix4();
+      
+      // Apply position from the component
+      const position = new THREE.Vector3(
+        component.position?.x || 0,
+        component.position?.y || 0,
+        component.position?.z || 0
       );
-
-      // Apply rotation
-      const rotation = placement.rotation || { x: 0, y: 0, z: 0 };
-      mesh.rotation.x = rotation.x || 0;
-      mesh.rotation.y = rotation.y || 0;
-      mesh.rotation.z = rotation.z || 0;
       
+      // Apply rotation from the component
+      const rotation = component.rotation || { x: 0, y: 0, z: 0 };
+      const euler = new THREE.Euler(
+        rotation.x || 0,
+        rotation.y || 0,
+        rotation.z || 0,
+        'XYZ'
+      );
+      
+      // Set the matrix from position and rotation
+      matrix.compose(
+        position,
+        new THREE.Quaternion().setFromEuler(euler),
+        new THREE.Vector3(1, 1, 1) // scale
+      );
+      
+      // Apply the matrix to the geometry
+      geometry.applyMatrix4(matrix);
+      
+      // Reset mesh position and rotation since it's now in the geometry
+      mesh.position.set(0, 0, 0);
+      mesh.rotation.set(0, 0, 0);
+      
+      console.log(`XXXXX UnionObject:: Component ${index} mesh:`, mesh);
       return mesh;
     });
-  }, [object.components]);
+  }, [componentVolumes]);
   
   // Perform CSG union operation
   useEffect(() => {
     console.log('XXXXX UnionObject:: componentMeshes', componentMeshes);
-    if (!componentMeshes || componentMeshes.length === 0) return;
+    if (!componentMeshes || componentMeshes.length === 0) {
+      console.log('XXXXX UnionObject:: No component meshes, skipping union');
+      return;
+    }
+    console.log('XXXXX UnionObject:: componentMeshes.length', componentMeshes.length);
     
     try {
+      // If there's only one component, just use it directly
+      if (componentMeshes.length === 1) {
+        console.log('XXXXX UnionObject:: Only one component, using it directly');
+        const singleMesh = componentMeshes[0].clone();
+        singleMesh.material = unionMaterial;
+        setUnionMesh(singleMesh);
+        return;
+      }
+      
       // Start with the first mesh
       let resultMesh = componentMeshes[0].clone();
+      console.log('XXXXX UnionObject:: First mesh cloned', resultMesh);
       
       // Union with each subsequent mesh
       for (let i = 1; i < componentMeshes.length; i++) {
         try {
+          console.log(`XXXXX UnionObject:: Processing component ${i}`);
           const nextMesh = componentMeshes[i].clone();
+          console.log(`XXXXX UnionObject:: Component ${i} cloned`, nextMesh);
+          
+          // Verify both meshes have valid geometries
+          if (!resultMesh.geometry || !nextMesh.geometry) {
+            console.error(`XXXXX UnionObject:: Missing geometry for union operation at component ${i}`);
+            continue;
+          }
+          
+          // Check if geometries have vertices
+          if (!resultMesh.geometry.attributes.position || !nextMesh.geometry.attributes.position) {
+            console.error(`XXXXX UnionObject:: Missing position attributes for union operation at component ${i}`);
+            continue;
+          }
+          
+          console.log(`XXXXX UnionObject:: Performing union with component ${i}`);
           resultMesh = CSG.union(resultMesh, nextMesh);
+          console.log(`XXXXX UnionObject:: Union with component ${i} successful`, resultMesh);
         } catch (err) {
           console.error(`Error performing union with component ${i}:`, err);
         }
@@ -220,34 +279,24 @@ const UnionObject = React.forwardRef(({ object, isSelected, onClick }, ref) => {
       )}
       
       {/* Optionally render individual components for debugging */}
-      {showComponents && object.components.map((component, index) => {
-        // Extract the shape type and dimensions
-        const shapeType = component.shape || 'box';
-        const dimensions = extractDimensions(component);
-        
+      {showComponents && componentVolumes.map((component, index) => {
         // Create geometry for this component
         const geometry = useMemo(() => {
-          return createGeometry({
-            type: shapeType,
-            ...dimensions
-          });
-        }, [shapeType, dimensions]);
+          return createGeometry(component);
+        }, [component]);
         
         // Create material with a unique color
         const material = useMemo(() => createComponentMaterial(index), [index]);
         
-        // Get the placement information for this component
-        const placement = component.placement && component.placement[0] ? component.placement[0] : { x: 0, y: 0, z: index * 5 };
-        
         // Extract position
         const compPosition = [
-          placement.x || 0,
-          placement.y || 0,
-          placement.z || 0
+          component.position?.x || 0,
+          component.position?.y || 0,
+          component.position?.z || 0
         ];
         
         // Extract rotation if available
-        const rotation = placement.rotation || { x: 0, y: 0, z: 0 };
+        const rotation = component.rotation || { x: 0, y: 0, z: 0 };
         const compRotX = rotation.x || 0;
         const compRotY = rotation.y || 0;
         const compRotZ = rotation.z || 0;
