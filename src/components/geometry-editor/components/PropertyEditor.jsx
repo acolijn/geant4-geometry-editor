@@ -379,9 +379,38 @@ const PropertyEditor = ({
                 </Select>
                 
                 {isBooleanComponent && (
-                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', color: 'info.main' }}>
-                    This volume is a component of the union {currentBooleanParent}.
-                  </Typography>
+                  <>
+                    <Typography variant="caption" sx={{ mt: 0.5, display: 'block', color: 'info.main' }}>
+                      This volume is a component of the union {currentBooleanParent}.
+                    </Typography>
+                    
+                    {/* Boolean operation type selector */}
+                    <FormControl fullWidth margin="normal" size="small">
+                      <InputLabel>Operation Type</InputLabel>
+                      <Select
+                        value={selectedObject?.boolean_operation || 'union'}
+                        label="Operation Type"
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const value = e.target.value;
+                          const currentObj = getSelectedGeometryObjectLocal();
+                          if (!currentObj) return;
+                          
+                          const updatedObject = { ...currentObj };
+                          updatedObject.boolean_operation = value;
+                          onUpdateGeometry(selectedGeometry, updatedObject);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        MenuProps={{
+                          onClick: (e) => e.stopPropagation(),
+                          PaperProps: { onClick: (e) => e.stopPropagation() }
+                        }}
+                      >
+                        <MenuItem value="union">Add (Union)</MenuItem>
+                        <MenuItem value="subtract">Subtract</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </>
                 )}
               </FormControl>
             );

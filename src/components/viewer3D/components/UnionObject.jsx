@@ -314,17 +314,41 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         return;
       }
       
-      // Start with the first mesh - clone it to avoid reference issues
-      let resultMesh = componentMeshes[0].clone();
-      console.log(`UnionObject ${object.name}: First mesh cloned`);
+      // Group components by operation type
+      const unionComponents = [];
+      const subtractComponents = [];
       
-      // Union with each subsequent mesh
-      for (let i = 1; i < componentMeshes.length; i++) {
+      // Sort components by operation type
+      componentMeshes.forEach((mesh, index) => {
+        const component = componentVolumes[index];
+        const operationType = component.boolean_operation || 'union';
+        
+        if (operationType === 'subtract') {
+          subtractComponents.push(mesh);
+        } else {
+          unionComponents.push(mesh);
+        }
+      });
+      
+      console.log(`UnionObject ${object.name}: Found ${unionComponents.length} union components and ${subtractComponents.length} subtract components`);
+      
+      // We need at least one union component to start with
+      if (unionComponents.length === 0) {
+        console.error(`UnionObject ${object.name}: No union components found, need at least one`);
+        return;
+      }
+      
+      // Start with the first union mesh - clone it to avoid reference issues
+      let resultMesh = unionComponents[0].clone();
+      console.log(`UnionObject ${object.name}: First union mesh cloned`);
+      
+      // Union with each subsequent union mesh
+      for (let i = 1; i < unionComponents.length; i++) {
         try {
-          console.log(`UnionObject ${object.name}: Processing component ${i}`);
+          console.log(`UnionObject ${object.name}: Processing union component ${i}`);
           
           // Clone the next mesh to avoid reference issues
-          const nextMesh = componentMeshes[i].clone();
+          const nextMesh = unionComponents[i].clone();
           
           // Verify both meshes have valid geometries
           if (!resultMesh.geometry || !nextMesh.geometry) {
@@ -344,6 +368,35 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
           console.log(`UnionObject ${object.name}: Union with component ${i} successful`);
         } catch (err) {
           console.error(`UnionObject ${object.name}: Error performing union with component ${i}:`, err);
+        }
+      }
+      
+      // Now subtract each subtract component
+      for (let i = 0; i < subtractComponents.length; i++) {
+        try {
+          console.log(`UnionObject ${object.name}: Processing subtract component ${i}`);
+          
+          // Clone the next mesh to avoid reference issues
+          const nextMesh = subtractComponents[i].clone();
+          
+          // Verify both meshes have valid geometries
+          if (!resultMesh.geometry || !nextMesh.geometry) {
+            console.error(`UnionObject ${object.name}: Missing geometry for subtract operation at component ${i}`);
+            continue;
+          }
+          
+          // Check if geometries have vertices
+          if (!resultMesh.geometry.attributes.position || !nextMesh.geometry.attributes.position) {
+            console.error(`UnionObject ${object.name}: Missing position attributes for subtract operation at component ${i}`);
+            continue;
+          }
+          
+          // Perform the CSG subtract operation
+          console.log(`UnionObject ${object.name}: Performing subtraction with component ${i}`);
+          resultMesh = CSG.subtract(resultMesh, nextMesh);
+          console.log(`UnionObject ${object.name}: Subtraction with component ${i} successful`);
+        } catch (err) {
+          console.error(`UnionObject ${object.name}: Error performing subtraction with component ${i}:`, err);
         }
       }
       
