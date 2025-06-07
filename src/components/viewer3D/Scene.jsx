@@ -280,9 +280,18 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
       // Skip rendering components of unions (they'll be rendered by their parent union)
       // Only use the explicit is_boolean_component flag - no backward compatibility
       if (volume.is_boolean_component === true) {
-        // Return null for boolean components to maintain indices but not render them
-        console.log(`Scene: Skipping render of boolean component ${volume.name}`);
-        return null;
+        // Exception: If this boolean component is currently selected, render it anyway
+        // This allows users to see and interact with the component when selected in the tree
+        const isSelected = selectedGeometry === `volume-${index}`;
+        
+        if (!isSelected) {
+          // Return null for boolean components to maintain indices but not render them
+          console.log(`Scene: Skipping render of boolean component ${volume.name}`);
+          return null;
+        } else {
+          console.log(`Scene: Rendering selected boolean component ${volume.name}`);
+          // Continue rendering this component since it's selected
+        }
       }
       const key = `volume-${index}`;
       const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
