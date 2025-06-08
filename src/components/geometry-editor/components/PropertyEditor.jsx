@@ -204,31 +204,39 @@ const PropertyEditor = ({
         Name used in Geant4 export
       </Typography>
       
-      <FormControl fullWidth margin="normal" size="small">
-        <InputLabel>Material</InputLabel>
-        <Select
-          value={selectedObject?.material || ''}
-          label="Material"
-          onChange={(e) => {
-            e.stopPropagation();
-            handlePropertyChange('material', e.target.value, true, true);
-          }}
-          onClick={(e) => e.stopPropagation()}
-          MenuProps={{
-            onClick: (e) => e.stopPropagation(),
-            PaperProps: { onClick: (e) => e.stopPropagation() }
-          }}
-        >
-          {Object.keys(materials).map((material) => (
-            <MenuItem key={material} value={material}>
-              {material}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      {/* Material selector - only show for objects that are not part of a union */}
+      {!selectedObject?.is_boolean_component && (
+        <FormControl fullWidth margin="normal" size="small">
+          <InputLabel>Material</InputLabel>
+          <Select
+            value={selectedObject?.material || ''}
+            label="Material"
+            onChange={(e) => {
+              e.stopPropagation();
+              handlePropertyChange('material', e.target.value, true, true);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            MenuProps={{
+              onClick: (e) => e.stopPropagation(),
+              PaperProps: { onClick: (e) => e.stopPropagation() }
+            }}
+          >
+            {Object.keys(materials).map((material) => (
+              <MenuItem key={material} value={material}>
+                {material}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
+      {selectedObject?.is_boolean_component && (
+        <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+          Material is determined by the parent union volume.
+        </Typography>
+      )}
       
       {/* Hits Collection selector - simple dropdown with inactive option */}
-      {selectedGeometry !== 'world' && (
+      {selectedGeometry !== 'world' && !selectedObject?.is_boolean_component && (
         <FormControl fullWidth margin="normal" size="small">
           <InputLabel>Hits Collection</InputLabel>
           <Select
@@ -268,9 +276,14 @@ const PropertyEditor = ({
           </Select>
         </FormControl>
       )}
+      {selectedGeometry !== 'world' && selectedObject?.is_boolean_component && (
+        <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+          Hits Collection is determined by the parent union volume.
+        </Typography>
+      )}
       
-      {/* Mother Volume selector - only show for non-world volumes */}
-      {selectedGeometry !== 'world' && (
+      {/* Mother Volume selector - only show for non-world volumes that are not part of a union */}
+      {selectedGeometry !== 'world' && !selectedObject?.is_boolean_component && (
         <TreeSelect
           label="Mother Volume"
           value={selectedObject?.mother_volume || 'World'}
@@ -300,6 +313,11 @@ const PropertyEditor = ({
           margin="normal"
           size="small"
         />
+      )}
+      {selectedGeometry !== 'world' && selectedObject?.is_boolean_component && (
+        <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+          Mother Volume is determined by the parent union volume.
+        </Typography>
       )}
       
       {/* Boolean Component section - only show for non-world, non-union volumes */}

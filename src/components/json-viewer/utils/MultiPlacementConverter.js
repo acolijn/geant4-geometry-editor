@@ -99,9 +99,14 @@ function initializeAssemblies(assemblies, geometry) {
       assemblies[volume._compoundId] = {
         name: volume.displayName.split('_')[0],
         type: volume.type,
+        material: volume.material,
         placements: [],
         components: []
-      };  
+      };
+
+      if (volume.hitsCollectionName !== undefined) {
+        assemblies[volume._compoundId].hitsCollectionName = volume.hitsCollectionName;
+      }
     }
   });
 
@@ -131,11 +136,11 @@ function initializeAssemblies(assemblies, geometry) {
         return;
       }
       
-      componentsToAdd.push({
+      // Create the component object
+      const componentObj = {
         name: volume.name,
         g4name: volume.displayName || volume.name,
         type: volume.type,
-        material: volume.material,
         dimensions: convertDimensions(volume),
         placements: [
           {
@@ -152,12 +157,22 @@ function initializeAssemblies(assemblies, geometry) {
         visible: volume.visible !== undefined ? volume.visible : true,
         // Include boolean_operation in the JSON output
         boolean_operation: volume.boolean_operation || 'union',
-        // if hitsColectionName is not empty, add it to the object
-        ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
         // For union components, the parent should be empty since they're part of the union
         // For assembly components, preserve the parent-child relationships
         parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
-      });
+      };
+      
+      // Only add material for non-union components or for assembly components
+      if (assemblies[_compoundId].type !== 'union') {
+        componentObj.material = volume.material;
+      }
+      
+      // Only add hits collection for non-union components or for assembly components
+      if (assemblies[_compoundId].type !== 'union' && volume.hitsCollectionName) {
+        componentObj.hitsCollectionName = volume.hitsCollectionName;
+      }
+      
+      componentsToAdd.push(componentObj);
     });
     
     // Sort components by boolean_operation: 'union' first, then 'subtract'
