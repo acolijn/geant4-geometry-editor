@@ -122,13 +122,16 @@ function initializeAssemblies(assemblies, geometry) {
         return true;
       }
     });
-    // 5. loop over selected Volumes and add the selected volumes to the assembly
+    // 5. First collect all volumes to be added to the assembly
+    const componentsToAdd = [];
+    
     selectedVolumes.forEach(volume => {
       // skip assemblies
       if (volume.type === 'assembly' || volume.type === 'union') {
         return;
       }
-      assemblies[_compoundId].components.push({
+      
+      componentsToAdd.push({
         name: volume.name,
         g4name: volume.displayName || volume.name,
         type: volume.type,
@@ -147,12 +150,28 @@ function initializeAssemblies(assemblies, geometry) {
           }
         ],
         visible: volume.visible !== undefined ? volume.visible : true,
+        // Include boolean_operation in the JSON output
+        boolean_operation: volume.boolean_operation || 'union',
         // if hitsColectionName is not empty, add it to the object
         ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
-        // if mother_volume starts with assembly the parent: ""
-        parent: volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
+        // For union components, the parent should be empty since they're part of the union
+        // For assembly components, preserve the parent-child relationships
+        parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
       });
     });
+    
+    // Sort components by boolean_operation: 'union' first, then 'subtract'
+    componentsToAdd.sort((a, b) => {
+      if (a.boolean_operation === 'union' && b.boolean_operation === 'subtract') {
+        return -1; // a comes before b
+      } else if (a.boolean_operation === 'subtract' && b.boolean_operation === 'union') {
+        return 1; // b comes before a
+      }
+      return 0; // keep original order
+    });
+    
+    // Add sorted components to the assembly
+    assemblies[_compoundId].components = componentsToAdd;
   });
 
   return assemblies;

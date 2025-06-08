@@ -357,6 +357,9 @@ const PropertyEditor = ({
                       updatedObject.is_boolean_component = true;
                       updatedObject.boolean_parent = value;
                       
+                      // Explicitly set the boolean operation to "union" (add) by default
+                      updatedObject.boolean_operation = "union";
+                      
                       // Also set the mother_volume to the union for proper placement
                       // This ensures the component is properly positioned relative to the union
                       updatedObject.mother_volume = value;
