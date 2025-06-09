@@ -76,14 +76,15 @@ function processVolume(volume) {
           x: volume.rotation?.x || 0,
           y: volume.rotation?.y || 0,
           z: volume.rotation?.z || 0
-        }
+        },
+        parent: volume.mother_volume
       }
     ],
 
     visible: volume.visible !== undefined ? volume.visible : true,
     // if hitsColectionName is not empty, add it to the object
     ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
-    parent: volume.mother_volume
+    //parent: volume.mother_volume
   };
 }
 
@@ -151,7 +152,8 @@ function initializeAssemblies(assemblies, geometry) {
               x: volume.rotation?.x || 0,
               y: volume.rotation?.y || 0,
               z: volume.rotation?.z || 0
-            }
+            },
+            parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
           }
         ],
         visible: volume.visible !== undefined ? volume.visible : true,
@@ -159,7 +161,7 @@ function initializeAssemblies(assemblies, geometry) {
         boolean_operation: volume.boolean_operation || 'union',
         // For union components, the parent should be empty since they're part of the union
         // For assembly components, preserve the parent-child relationships
-        parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
+        //parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
       };
       
       // Only add material for non-union components or for assembly components

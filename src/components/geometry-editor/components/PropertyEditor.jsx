@@ -205,7 +205,7 @@ const PropertyEditor = ({
       </Typography>
       
       {/* Material selector - only show for objects that are not part of a union */}
-      {!selectedObject?.is_boolean_component && (
+      {!selectedObject?._is_boolean_component && (
         <FormControl fullWidth margin="normal" size="small">
           <InputLabel>Material</InputLabel>
           <Select
@@ -229,14 +229,14 @@ const PropertyEditor = ({
           </Select>
         </FormControl>
       )}
-      {selectedObject?.is_boolean_component && (
+      {selectedObject?._is_boolean_component && (
         <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
           Material is determined by the parent union volume.
         </Typography>
       )}
       
       {/* Hits Collection selector - simple dropdown with inactive option */}
-      {selectedGeometry !== 'world' && !selectedObject?.is_boolean_component && (
+      {selectedGeometry !== 'world' && !selectedObject?._is_boolean_component && (
         <FormControl fullWidth margin="normal" size="small">
           <InputLabel>Hits Collection</InputLabel>
           <Select
@@ -276,14 +276,14 @@ const PropertyEditor = ({
           </Select>
         </FormControl>
       )}
-      {selectedGeometry !== 'world' && selectedObject?.is_boolean_component && (
+      {selectedGeometry !== 'world' && selectedObject?._is_boolean_component && (
         <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
           Hits Collection is determined by the parent union volume.
         </Typography>
       )}
       
       {/* Mother Volume selector - only show for non-world volumes that are not part of a union */}
-      {selectedGeometry !== 'world' && !selectedObject?.is_boolean_component && (
+      {selectedGeometry !== 'world' && !selectedObject?._is_boolean_component && (
         <TreeSelect
           label="Mother Volume"
           value={selectedObject?.mother_volume || 'World'}
@@ -314,7 +314,7 @@ const PropertyEditor = ({
           size="small"
         />
       )}
-      {selectedGeometry !== 'world' && selectedObject?.is_boolean_component && (
+      {selectedGeometry !== 'world' && selectedObject?._is_boolean_component && (
         <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
           Mother Volume is determined by the parent union volume.
         </Typography>
@@ -347,8 +347,8 @@ const PropertyEditor = ({
             }
             
             // Get the current boolean parent if any
-            const currentBooleanParent = selectedObject?.boolean_parent || null;
-            const isBooleanComponent = selectedObject?.is_boolean_component === true;
+            const currentBooleanParent = selectedObject?._boolean_parent || null;
+            const isBooleanComponent = selectedObject?._is_boolean_component === true;
             
             return (
               <FormControl fullWidth margin="normal" size="small">
@@ -366,14 +366,14 @@ const PropertyEditor = ({
                     
                     if (value === 'none') {
                       // Remove boolean component properties
-                      updatedObject.is_boolean_component = false;
-                      delete updatedObject.boolean_parent;
+                      updatedObject._is_boolean_component = false;
+                      delete updatedObject._boolean_parent;
                       // Note: We don't change the mother_volume when removing from a union
                       // This allows the volume to stay where it was placed
                     } else {
                       // Set as boolean component of the selected union
-                      updatedObject.is_boolean_component = true;
-                      updatedObject.boolean_parent = value;
+                      updatedObject._is_boolean_component = true;
+                      updatedObject._boolean_parent = value;
                       
                       // Explicitly set the boolean operation to "union" (add) by default
                       updatedObject.boolean_operation = "union";

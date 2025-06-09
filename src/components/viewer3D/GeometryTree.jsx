@@ -359,9 +359,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     const parentKey = getParentKeyWrapper(volume);
     
     // Check if this is a boolean component
-    if (volume.is_boolean_component === true && volume.boolean_parent) {
+    if (volume._is_boolean_component === true && volume._boolean_parent) {
       // Find the parent union's index
-      const parentUnionIndex = geometries.volumes.findIndex(v => v.name === volume.boolean_parent);
+      const parentUnionIndex = geometries.volumes.findIndex(v => v.name === volume._boolean_parent);
       
       if (parentUnionIndex !== -1) {
         // Create a special key for the "Parts" folder of this union

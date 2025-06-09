@@ -106,7 +106,7 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
     
     // Only use the explicit is_boolean_component flag - no backward compatibility
     const components = volumes.filter(vol => 
-      vol.is_boolean_component === true && vol.boolean_parent === object.name
+      vol._is_boolean_component === true && vol._boolean_parent === object.name
     );
     
     console.log(`UnionObject ${object.name}: Found ${components.length} components`);

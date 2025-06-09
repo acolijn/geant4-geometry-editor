@@ -279,7 +279,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     return geometries.volumes.map((volume, index) => {
       // Skip rendering components of unions (they'll be rendered by their parent union)
       // Only use the explicit is_boolean_component flag - no backward compatibility
-      if (volume.is_boolean_component === true) {
+      if (volume._is_boolean_component === true) {
         // Exception: If this boolean component is currently selected, render it anyway
         // This allows users to see and interact with the component when selected in the tree
         const isSelected = selectedGeometry === `volume-${index}`;
