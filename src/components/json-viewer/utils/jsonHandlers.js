@@ -74,13 +74,21 @@ export const generateMaterialsJson = (materials) => {
  * Generate geometry JSON with multiple placements
  * 
  * @param {Object} geometries - Geometry data with world and volumes
- * @returns {string} Formatted geometry JSON
+ * @param {Object} materials - Materials data
+ * @returns {string} Formatted geometry JSON with materials included
  */
-export const generateGeometryJson = (geometries) => {
-  return formatJson(convertToMultiplePlacements({
+export const generateGeometryJson = (geometries, materials) => {
+  const geometryData = convertToMultiplePlacements({
     world: geometries.world,
     volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))
-  }));
+  });
+  
+  // Add materials to the geometry JSON if provided
+  if (materials && Object.keys(materials).length > 0) {
+    geometryData.materials = materials;
+  }
+  
+  return formatJson(geometryData);
 };
 
 /**

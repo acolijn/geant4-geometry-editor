@@ -463,6 +463,8 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
     try {
       const projectData = await storageManager.loadProject(projectName);
       
+      console.log('ProjectManager::loadProject:: projectData', projectData);
+      
       // Check if the project data is in the new standardized format
       if (projectData && projectData.geometry && 
           (projectData.geometry.geometries?.world?.dimensions || 

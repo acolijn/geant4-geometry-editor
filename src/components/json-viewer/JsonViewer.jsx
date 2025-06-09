@@ -21,11 +21,8 @@ const JsonViewer = ({ geometries, materials }) => {
   const [tabValue, setTabValue] = useState(0);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
   
-  // Generate the materials JSON
-  const materialsJson = generateMaterialsJson(materials);
-  
-  // Generate the geometry JSON with multiple placements
-  const multiplePlacementsJson = generateGeometryJson(geometries);
+  // Generate the geometry JSON with multiple placements and include materials
+  const combinedJson = generateGeometryJson(geometries, materials);
   
   // Alert handling functions
   const handleAlertClose = () => {
@@ -48,22 +45,14 @@ const JsonViewer = ({ geometries, materials }) => {
     <>
       {/* Main component JSX */}
       <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={(e, newValue) => setTabValue(newValue)}
-          variant="fullWidth"
-        >
-          <Tab label="Geometry JSON" />
-          <Tab label="Materials JSON" />
-        </Tabs>
+        <Typography variant="h6" sx={{ p: 2, pb: 0 }}>
+          Geometry JSON (with Materials)
+        </Typography>
         
         <Box sx={{ p: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           <Button 
             variant="contained" 
-            onClick={() => handleDownload(
-              tabValue === 0 ? multiplePlacementsJson : materialsJson,
-              tabValue === 0 ? 'geometry_multiple_placements.json' : 'materials.json'
-            )}
+            onClick={() => handleDownload(combinedJson, 'geometry.json')}
             size="small"
           >
             Download JSON
@@ -108,7 +97,7 @@ const JsonViewer = ({ geometries, materials }) => {
             },
           }}
         >
-          {tabValue === 0 ? multiplePlacementsJson : materialsJson}
+          {combinedJson}
         </Box>
       </Paper>
       
