@@ -128,35 +128,31 @@ export const updateGeometry = (
           const newParent = newParentIndex !== -1 ? updatedVolumes[newParentIndex] : 
                            (newMotherVolume === prevGeometries.world.name ? prevGeometries.world : null);
           
-          // If the new parent is an assembly and has a _compoundId, propagate it to non-assembly children only
-          if (newParent && newParent._compoundId) {
-            console.log(`Parent changed to compound ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
+          // IMPORTANT CHANGE: Only propagate _compoundId for union components, not for regular parent-child relationships
+          if (newParent && newParent._compoundId && newParent.type === 'union' && updatedObject._is_boolean_component === true) {
+            console.log(`Parent changed to union ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
+            console.log(`This is a boolean component of the union, propagating _compoundId`);
             
-            // IMPORTANT: Only add _compoundId to non-assembly objects
-            // Assemblies should keep their own _compoundId
-            let updatedWithDescendants;
-            if (updatedVolumes[index].type !== 'assembly') {
-              // Add _compoundId to the updated object only if it's not an assembly
-              updatedVolumes[index]._compoundId = newParent._compoundId;
-              console.log(`Added _compoundId ${newParent._compoundId} to non-assembly object ${updatedObject.name}`);
-              
-              // Propagate _compoundId to all descendants
-              updatedWithDescendants = propagateCompoundIdToDescendants(
-                updatedObject.name, 
-                newParent._compoundId, 
-                updatedVolumes
-              );
-            } else {
-              console.log(`Preserved original _compoundId for assembly ${updatedObject.name}: ${updatedVolumes[index]._compoundId}`);
-              
-              // No need to propagate _compoundId since we're preserving the assembly's own _compoundId
-              updatedWithDescendants = updatedVolumes;
-            }
+            // Add _compoundId to the updated object since it's a boolean component of a union
+            updatedVolumes[index]._compoundId = newParent._compoundId;
+            console.log(`Added _compoundId ${newParent._compoundId} to boolean component ${updatedObject.name}`);
             
-            // Update the volumes with the propagated _compoundId
+            // No need to propagate _compoundId to descendants for boolean components
             return {
               ...prevGeometries,
-              volumes: updatedWithDescendants
+              volumes: updatedVolumes
+            };
+          } else {
+            // For regular parent-child relationships or non-boolean components of unions,
+            // DO NOT propagate the _compoundId
+            console.log(`Parent changed to ${newMotherVolume}, but not propagating _compoundId because it's not a boolean component of a union`);
+            
+            // Keep the original _compoundId or leave it undefined
+            console.log(`Preserved original _compoundId for ${updatedObject.name}: ${updatedVolumes[index]._compoundId || 'undefined'}`);
+            
+            return {
+              ...prevGeometries,
+              volumes: updatedVolumes
             };
           }
         }
