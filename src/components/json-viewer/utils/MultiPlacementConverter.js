@@ -167,9 +167,9 @@ function initializeAssemblies(assemblies, geometry) {
         visible: volume.visible !== undefined ? volume.visible : true,
         // Include boolean_operation in the JSON output
         ...(volume.boolean_operation !== undefined && { boolean_operation: volume.boolean_operation }),
-    ...(volume._is_boolean_component!== undefined && { _is_boolean_component: volume._is_boolean_component }),
-    ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent })
-
+        ...(volume._is_boolean_component!== undefined && { _is_boolean_component: volume._is_boolean_component }),
+        ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent })
+        //_boolean_parent: "",
         // For union components, the parent should be empty since they're part of the union
         // For assembly components, preserve the parent-child relationships
         //parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume

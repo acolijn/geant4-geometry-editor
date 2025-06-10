@@ -33,6 +33,15 @@ export const importPartialFromAddNew = (
   // DETAILED DEBUG: Log the entire content being imported
   console.log('IMPORT - Full content being imported:', content);
   
+  // Debug: Log any boolean components and their parents
+  if (content.descendants) {
+    const booleanComponents = content.descendants.filter(desc => desc._is_boolean_component === true);
+    console.log('IMPORT - Boolean components before processing:', booleanComponents.map(comp => ({
+      name: comp.name,
+      _boolean_parent: comp._boolean_parent
+    })));
+  }
+  
   // Create a new copy of the current geometries to work with
   const updatedGeometries = { 
     world: { ...geometries.world },
@@ -233,6 +242,28 @@ export const importPartialFromAddNew = (
         console.log(`IMPORT - Updated mother_volume reference to main object: ${updatedDesc.mother_volume}`);
       }
       
+      // Update _boolean_parent reference if it's in the name mapping or points to the original main object
+      if (updatedDesc._is_boolean_component === true) {
+        console.log(`IMPORT - Processing boolean component: ${updatedDesc.name}`);
+        console.log(`IMPORT - Current _boolean_parent: ${updatedDesc._boolean_parent}`);
+        console.log(`IMPORT - Original main name: ${originalMainName}`);
+        console.log(`IMPORT - Added main name: ${addedMainName}`);
+        console.log(`IMPORT - Name mapping:`, nameMapping);
+        
+        // Always update the _boolean_parent to the new main object name if this is a union component
+        if (mainObject.type === 'union') {
+          updatedDesc._boolean_parent = addedMainName;
+          console.log(`IMPORT - Forced update of _boolean_parent to new union name: ${updatedDesc._boolean_parent}`);
+        } else if (updatedDesc._boolean_parent && nameMapping[updatedDesc._boolean_parent]) {
+          updatedDesc._boolean_parent = nameMapping[updatedDesc._boolean_parent];
+          console.log(`IMPORT - Updated _boolean_parent reference from ${desc._boolean_parent} to ${updatedDesc._boolean_parent}`);
+        } else if (updatedDesc._boolean_parent === originalMainName) {
+          // If the _boolean_parent is the original main object, update it to the new name
+          updatedDesc._boolean_parent = addedMainName;
+          console.log(`IMPORT - Updated _boolean_parent reference to main object: ${updatedDesc._boolean_parent}`);
+        }
+      }
+      
       // Propagate the compound ID to all descendants
       if (mainObject._compoundId) {
         updatedDesc._compoundId = mainObject._compoundId;
@@ -241,6 +272,13 @@ export const importPartialFromAddNew = (
       
       return updatedDesc;
     });
+    
+    // Debug: Log any boolean components after processing
+    const processedBooleanComponents = updatedDescendants.filter(desc => desc._is_boolean_component === true);
+    console.log('IMPORT - Boolean components after processing:', processedBooleanComponents.map(comp => ({
+      name: comp.name,
+      _boolean_parent: comp._boolean_parent
+    })));
     
     // Add all descendants to the volumes array
     updatedGeometries.volumes = [...updatedGeometries.volumes, ...updatedDescendants];
