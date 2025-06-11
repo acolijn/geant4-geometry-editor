@@ -70,8 +70,10 @@ function createVolumes(volumes, geometry) {
     
     // loop over the volumes
     volumes.forEach(volume => {
-        if (volume.type === 'assembly' || volume.type === 'union') {
-            console.log('createVolumes:: skipping volume', volume);
+        if (volume.type === 'assembly' ){
+            createAssembly(volume, geometry);
+        } else if (volume.type === 'union') {
+            createUnion(volume, geometry);
         } else {
             // loop through the placements and create a volume for each placement
             volume.placements.forEach(placement => {
@@ -81,6 +83,105 @@ function createVolumes(volumes, geometry) {
     });
 }
 
+function createAssembly(volume, geometry) {
+    // convert the assembly to the standard geometry format
+    console.log('createAssembly:: volume', volume);
+    console.log('createAssembly:: volume.type', volume.type);
+    console.log('createAssembly:: volume.placements', volume.placements);
+
+    // loop through the placements and create an assembly for each placement
+    let iPlacement = 0;
+    volume.placements.forEach(placement => {
+        // create the assembly
+        let assemblyName = placement.name;
+        const assembly = {
+            name: assemblyName,
+            displayName: placement.g4name,
+            type: volume.type,
+            position: {x: placement.x, y: placement.y, z: placement.z},
+            rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
+            _compoundId: volume._compoundId,
+            _componentId: volume._componentId,
+            mother_volume: placement.parent
+        };
+        console.log('createAssembly:: assembly', assembly);
+        geometry.geometries.volumes.push(assembly);
+
+        // add the components
+        console.log('createAssembly:: volume.components', volume.components);
+        volume.components.forEach(component => {
+            // create the component
+            let placement = component.placements[0];
+            let newName = nextName(placement.name, iPlacement);
+            console.log('createAssembly:: newName', newName);
+            console.log('createAssembly:: placement', placement);
+            const newComponent = {
+                name: newName,
+                displayName: newName,
+                type: component.type,
+                position: {x: placement.x, y: placement.y, z: placement.z},
+                rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
+                material: component.material,
+
+                _compoundId: volume._compoundId,
+                _componentId: component._componentId,
+                // if parent name not "" then use it as mother_volume else use assemblyName
+                mother_volume: placement.parent !== '' ? nextName(placement.parent, iPlacement) : assemblyName
+            };
+
+            setDimensions(newComponent, component);
+
+            geometry.geometries.volumes.push(newComponent);
+            console.log('createAssembly:: done');     
+        });
+
+        iPlacement++;
+    });
+    
+}
+
+/**
+ * Generate the next name by adding a specified increment to the last number after the last underscore
+ * 
+ * @param {string} name - The original name with format like "part1_part2_number"
+ * @param {number} increment - The amount to add to the last number
+ * @returns {string} - The new name with the incremented number
+ */
+function nextName(name, increment) {
+// Split the name by underscores
+const parts = name.split('_');
+
+// Get the last part which should be the number
+const lastPart = parts[parts.length - 1];
+
+// Check if the last part is a number
+if (/^\d+$/.test(lastPart)) {
+    // Convert to number, add the increment
+    const currentNumber = parseInt(lastPart, 10);
+    const nextNumber = currentNumber + increment;
+    
+    // Pad with leading zeros to maintain the same length
+    const paddedNumber = nextNumber.toString().padStart(lastPart.length, '0');
+    
+    // Replace the last part with the new number
+    parts[parts.length - 1] = paddedNumber;
+    
+    // Join the parts back with underscores
+    return parts.join('_');
+}
+
+// If the last part is not a number, append the increment with an underscore
+return `${name}_${increment}`;
+}
+
+function createUnion(volume, geometry) {
+    // convert the union to the standard geometry format
+    console.log('createUnion:: volume', volume);
+    console.log('createUnion:: volume.type', volume.type);
+    console.log('createUnion:: volume.placements', volume.placements);
+    console.log('createUnion:: volume.material', volume.material);
+}
+
 function createVolume(volume, placement) {
     // convert the volume to the standard geometry format
     console.log('createVolume:: volume', volume);
@@ -88,7 +189,6 @@ function createVolume(volume, placement) {
     console.log('createVolume:: volume.placements', volume.placements);
     console.log('createVolume:: volume.material', volume.material);
     console.log('createVolume:: volume.dimensions', volume.dimensions);
-
 
     const newVolume = {
         name: volume.name,

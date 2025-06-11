@@ -47,7 +47,11 @@ function generateWorldVolume(world) {
 function processAssembly(assemblies, volume) {
 
   // append placement
+  console.log('processAssembly:: volume', volume);
+  console.log('processAssembly:: assemblies', assemblies);
+  console.log('processAssembly:: assemblies[volume._compoundId]', assemblies[volume._compoundId]);
   assemblies[volume._compoundId].placements.push({
+    name: volume.name,
     g4name: volume.displayName,
     x: volume.position?.x || 0,
     y: volume.position?.y || 0,
@@ -80,6 +84,8 @@ function processVolume(volume) {
     dimensions: convertDimensions(volume),
     placements: [
       {
+        name: volume.name,
+        g4name: volume.displayName,
         x: volume.position?.x || 0,
         y: volume.position?.y || 0,
         z: volume.position?.z || 0,
@@ -96,6 +102,7 @@ function processVolume(volume) {
     // if hitsColectionName is not empty, add it to the object
     ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
     //parent: volume.mother_volume
+    ...(volume._componentId && { _componentId: volume._componentId }),
     ...(volume.boolean_operation !== undefined && { boolean_operation: volume.boolean_operation }),
     ...(volume._is_boolean_component!== undefined && { _is_boolean_component: volume._is_boolean_component }),
     ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent })
@@ -117,21 +124,22 @@ function initializeAssemblies(assemblies, geometry) {
     if (!assemblies[volume._compoundId] && 
         (volume.type === 'assembly' || volume.type === 'union')) {
       console.log('processAssembly:: new assembly', volume);
+      console.log('processAssembly::  displayName', volume.displayName);
+
+
       assemblies[volume._compoundId] = {
         name: volume.type === 'union' ? volume.name : volume.displayName.split('_')[0],
+        displayName: volume.displayName,
         type: volume.type,
         material: volume.material,
-        placements: [],
-        components: [],
         _compoundId: volume._compoundId,
         _componentId: volume._componentId,
+        placements: []
       };
 
       if (volume.hitsCollectionName !== undefined) {
         assemblies[volume._compoundId].hitsCollectionName = volume.hitsCollectionName;
       }
-
-
     }
   });
 
@@ -163,12 +171,13 @@ function initializeAssemblies(assemblies, geometry) {
       
       // Create the component object
       const componentObj = {
-        name: volume.name,
-        g4name: volume.displayName || volume.name,
+        //name: volume.name,
+        //g4name: volume.displayName || volume.name,
         type: volume.type,
         dimensions: convertDimensions(volume),
         placements: [
           {
+            name: volume.name,
             x: volume.position?.x || 0,
             y: volume.position?.y || 0,
             z: volume.position?.z || 0,
@@ -182,6 +191,7 @@ function initializeAssemblies(assemblies, geometry) {
         ],
         visible: volume.visible !== undefined ? volume.visible : true,
         // Include boolean_operation in the JSON output
+        ...(volume._componentId && { _componentId: volume._componentId }),
         ...(volume.boolean_operation !== undefined && { boolean_operation: volume.boolean_operation }),
         ...(volume._is_boolean_component!== undefined && { _is_boolean_component: volume._is_boolean_component }),
         ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent })

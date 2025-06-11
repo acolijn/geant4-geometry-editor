@@ -711,7 +711,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         >
           {/* Show update possibility for assemblies and objects with parent World */}
           {/* only for top level objects-> mother_volume eitehr has no _compoundId or _motehr _compoundId is different from the selected object */}
-          {(geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'World' || geometries.volumes[contextMenu.volumeIndex]?.mother_volume._compoundId !== geometries.volumes[contextMenu.volumeIndex]?._compoundId) && (
+          {(geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'World' || 
+            (typeof geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'object' && 
+             geometries.volumes[contextMenu.volumeIndex]?.mother_volume._compoundId !== geometries.volumes[contextMenu.volumeIndex]?._compoundId)) && (
             <>
               <div
                 onClick={() => handleUpdateAllAssemblies(contextMenu.volumeIndex, geometries, onUpdateGeometry, setContextMenu)}
