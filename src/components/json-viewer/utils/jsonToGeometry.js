@@ -310,8 +310,11 @@ function createMaterials(materials, geometry) {
         const { name, ...materialWithoutName } = processedMaterial;
         
         // Add to materials object with name as key
+        console.log('createMaterials:: materialWithoutName', materialWithoutName);
+        console.log('createMaterials:: material name', materialName);
         geometry.materials[materialName] = materialWithoutName;
     });
+    console.log('createMaterials:: geometry.materials', geometry.materials);
 }
 
 function createMaterial(material) {
@@ -322,7 +325,7 @@ function createMaterial(material) {
         name: material.name,
         density: material.density,
         // Map composition to components if it exists
-        components: material.components || material.composition
+        composition: material.composition
     };
     
     // Add additional properties if they exist

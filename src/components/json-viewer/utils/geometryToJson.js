@@ -171,13 +171,14 @@ function initializeAssemblies(assemblies, geometry) {
       
       // Create the component object
       const componentObj = {
-        //name: volume.name,
-        //g4name: volume.g4name || volume.name,
+        name: volume.name,
+        g4name: volume.g4name || volume.name,
         type: volume.type,
         dimensions: convertDimensions(volume),
         placements: [
           {
             name: volume.name,
+            g4name: volume.g4name || volume.name,
             x: volume.position?.x || 0,
             y: volume.position?.y || 0,
             z: volume.position?.z || 0,
