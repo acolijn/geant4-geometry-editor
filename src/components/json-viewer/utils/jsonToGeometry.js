@@ -14,12 +14,12 @@
  */
 
 export function jsonToGeometry(json, geometry) {
-  
     console.log('jsonToGeometry:: json', json);
     console.log('jsonToGeometry:: geometry', geometry);
 
-    // check if json has world: if so a completly new geometry is to be created
+    // check if json has world: if so update the world in geometry
     if (json.world) {
+        console.log('jsonToGeometry:: json has world - create new geometry');
         geometry = createNewGeometry(json);
     }
 
@@ -28,12 +28,13 @@ export function jsonToGeometry(json, geometry) {
         createVolumes(json.volumes, geometry);
     }
 
-    // check if json has assemblies: if so add them to the geometry
+    // check if json has materials: if so add them to the geometry
     if (json.materials) {
         createMaterials(json.materials, geometry);
     }
 
     console.log('jsonToGeometry:: created/updated geometry::', geometry);
+
     return geometry;
 }
 
@@ -43,46 +44,95 @@ export function jsonToGeometry(json, geometry) {
  * @returns {Object} The standard geometry format
  */
 function createNewGeometry(json) {
-    const geometry = {}
-    geometry.geometries.world = json.world;
+    console.log('createNewGeometry:: json', json.world);
+    const geometry = {
+        geometries: {
+            world: json.world,
+            volumes: []
+        },
+        materials: []
+    };
 
+    // I need to set the size of the world to the dimensions of the world
+    geometry.geometries.world.size = {
+        x: json.world.dimensions.x,
+        y: json.world.dimensions.y,
+        z: json.world.dimensions.z
+    };
     return geometry;
 }
 
-function createVolumes(json, geometry) {
+function createVolumes(volumes, geometry) {
+    // Make sure volumes array exists
+    if (!geometry.geometries.volumes) {
+        geometry.geometries.volumes = [];
+    }
+    
     // loop over the volumes
-    json.volumes.forEach(volume => {
+    volumes.forEach(volume => {
         geometry.geometries.volumes.push(createVolume(volume));
     });
 }
 
 function createVolume(volume) {
     // convert the volume to the standard geometry format
- 
-    
-    const volume = {
+    console.log('createVolume:: volume', volume);
+    console.log('createVolume:: volume.type', volume.type);
+    const newVolume = {
         name: volume.name,
+        displayName: volume.g4name || volume.name,
         type: volume.type,
         material: volume.material,
-        placements: volume.placements
+        placements: volume.placements,
+        majorRadius: 50,
+        minorRadius: 10
     };
-    return volume;
+    return newVolume;
 }
 
-function createMaterials(json, geometry) {
-    // loop over the materials
-    json.materials.forEach(material => {
-        geometry.materials.push(createMaterial(material));
+function createMaterials(materials, geometry) {
+    // Make sure materials object exists
+    console.log('createMaterials:: geometry', geometry);
+    console.log('createMaterials:: materials', materials);
+    
+    // Initialize materials as an object, not an array
+    geometry.materials = {};
+    
+    // Process materials object where keys are material names
+    Object.entries(materials).forEach(([materialName, materialData]) => {
+        // Create the material and add it to the materials object with the name as key
+        const processedMaterial = createMaterial({
+            ...materialData,
+            name: materialName
+        });
+        
+        // Remove the name property since it's redundant as a key
+        const { name, ...materialWithoutName } = processedMaterial;
+        
+        // Add to materials object with name as key
+        geometry.materials[materialName] = materialWithoutName;
     });
 }
 
 function createMaterial(material) {
     // convert the material to the standard geometry format
-    const material = {
+    console.log('createMaterial:: material', material);
+    
+    const newMaterial = {
         name: material.name,
         density: material.density,
-        components: material.components
+        // Map composition to components if it exists
+        components: material.components || material.composition
     };
-    return material;
+    
+    // Add additional properties if they exist
+    if (material.density_unit) newMaterial.density_unit = material.density_unit;
+    if (material.state) newMaterial.state = material.state;
+    if (material.temperature) newMaterial.temperature = material.temperature;
+    if (material.temperature_unit) newMaterial.temperature_unit = material.temperature_unit;
+    if (material.type) newMaterial.type = material.type;
+    if (material.color) newMaterial.color = material.color;
+    
+    return newMaterial;
 }
 

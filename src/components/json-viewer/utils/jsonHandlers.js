@@ -6,6 +6,7 @@
  */
 
 import { generateJson } from './geometryToJson';
+import { jsonToGeometry } from './jsonToGeometry';
 
 /**
  * Format JSON data with proper indentation for display
@@ -107,4 +108,64 @@ export const handleDownload = (content, filename) => {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+};
+
+/**
+ * Handle file upload and parse JSON content
+ * 
+ * @param {File} file - The uploaded file
+ * @returns {Promise<Object>} Parsed JSON object
+ */
+export const handleFileUpload = (file) => {
+  console.log('handleFileUpload:: Starting file upload for:', file.name);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      try {
+        console.log('handleFileUpload:: File read successfully, parsing JSON');
+        const jsonContent = JSON.parse(event.target.result);
+        console.log('handleFileUpload:: JSON parsed successfully:', jsonContent);
+        resolve(jsonContent);
+      } catch (error) {
+        console.error('handleFileUpload:: Error parsing JSON:', error);
+        reject(new Error(`Failed to parse JSON: ${error.message}`));
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('handleFileUpload:: Error reading file:', error);
+      reject(new Error('Error reading file'));
+    };
+    
+    reader.readAsText(file);
+  });
+};
+
+/**
+ * Import JSON geometry into the application's geometry structure
+ * 
+ * @param {Object} jsonData - The parsed JSON data
+ * @param {Object} currentGeometry - The current geometry object (optional)
+ * @returns {Object} - The updated geometry object
+ */
+export const importJsonGeometry = (jsonData, currentGeometry = null) => {
+  console.log('importJsonGeometry:: Starting import with data:', jsonData);
+  console.log('importJsonGeometry:: Current geometry:', currentGeometry);
+  
+  // Initialize an empty geometry if none provided
+  const geometry = currentGeometry || {
+    geometries: {
+      world: null,
+      volumes: []
+    },
+    materials: []
+  };
+  
+  console.log('importJsonGeometry:: Using geometry structure:', geometry);
+  
+  // Use the jsonToGeometry function to convert the JSON data
+  const result = jsonToGeometry(jsonData, geometry);
+  console.log('importJsonGeometry:: Conversion complete, result:', result);
+  return result;
 };

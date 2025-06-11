@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Box, 
   Paper, 
@@ -14,15 +14,58 @@ import {
   ensureOrderedZPlanes,
   generateMaterialsJson,
   generateGeometryJson,
-  handleDownload
+  handleDownload,
+  handleFileUpload,
+  importJsonGeometry
 } from './utils/jsonHandlers';
 
-const JsonViewer = ({ geometries, materials }) => {
+const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMaterials }) => {
   const [tabValue, setTabValue] = useState(0);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
   
-  // Generate the geometry JSON with multiple placements and include materials
+
+  
   const combinedJson = generateGeometryJson(geometries, materials);
+  // Handle importing geometry from JSON file
+  const handleImportGeometry = async (event) => {
+    console.log('handleImportGeometry:: Import button clicked');
+    const file = event.target.files[0];
+    if (!file) {
+      console.log('handleImportGeometry:: No file selected');
+      return;
+    }
+        
+    try {
+      // Parse the JSON file
+      const jsonData = await handleFileUpload(file);
+      
+      // Convert the JSON to geometry format
+      const currentGeometry = {
+        geometries: geometries,
+        materials: materials
+      };
+      console.log('handleImportGeometry:: Current geometry:', currentGeometry);
+      
+      const updatedGeometry = importJsonGeometry(jsonData, currentGeometry);
+      console.log('handleImportGeometry:: Updated geometry:', updatedGeometry);
+  
+      onImportGeometries(updatedGeometry.geometries);
+      onImportMaterials(updatedGeometry.materials);
+      
+      setAlert({
+        open: true,
+        message: 'Geometry imported successfully!',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('handleImportGeometry:: Error importing geometry:', error);
+      setAlert({
+        open: true,
+        message: `Error importing geometry: ${error.message}`,
+        severity: 'error'
+      });
+    }
+  };
   
   // Alert handling functions
   const handleAlertClose = () => {
@@ -56,6 +99,26 @@ const JsonViewer = ({ geometries, materials }) => {
             size="small"
           >
             Download JSON
+          </Button>
+          
+          <Button
+            variant="contained"
+            component="label"
+            size="small"
+            color="secondary"
+            onClick={() => console.log('Import button clicked directly')}
+          >
+            Import JSON
+            <input
+              type="file"
+              accept=".json"
+              hidden
+              onClick={(e) => console.log('Input element clicked')}
+              onChange={(e) => {
+                console.log('onChange event fired');
+                handleImportGeometry(e);
+              }}
+            />
           </Button>
 
           <Button 

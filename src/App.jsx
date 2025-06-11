@@ -112,27 +112,39 @@ function App() {
   
   // Handle importing geometries
   const handleImportGeometries = (importData) => {
+    console.log('handleImportGeometries:: Received data:', importData);
+    
     // Validate the imported geometries structure
     if (!importData || !importData.volumes || !Array.isArray(importData.volumes)) {
       console.error('Invalid geometries format');
       return { success: false, message: 'Invalid geometries format' };
     }
     
+    // Create a deep copy to prevent reference issues
+    const geometriesCopy = JSON.parse(JSON.stringify(importData));
+    console.log('handleImportGeometries:: Setting geometries state with:', geometriesCopy);
+    
     // Set the geometries state with the imported data
-    setGeometries(importData);
+    setGeometries(geometriesCopy);
     return { success: true, message: 'Geometries imported successfully' };
   };
   
   // Handle importing materials
   const handleImportMaterials = (importedMaterials) => {
+    console.log('handleImportMaterials:: Received data:', importedMaterials);
+    
     // Validate the imported materials structure
     if (typeof importedMaterials !== 'object') {
       console.error('Invalid materials format');
       return { success: false, message: 'Invalid materials format' };
     }
     
+    // Create a deep copy to prevent reference issues
+    const materialsCopy = JSON.parse(JSON.stringify(importedMaterials));
+    console.log('handleImportMaterials:: Setting materials state with:', materialsCopy);
+    
     // Set the materials state with the imported data
-    setMaterials(importedMaterials);
+    setMaterials(materialsCopy);
     return { success: true, message: 'Materials imported successfully' };
   };
   
@@ -384,7 +396,7 @@ return (
           {tabValue === 2 && (
             <Container maxWidth="lg" sx={{ height: '100%', py: 2 }}>
               <JsonViewer 
-                geometries={prepareGeometriesForExport()} 
+                geometries={geometries} 
                 materials={materials} 
                 onImportGeometries={handleImportGeometries}
                 onImportMaterials={handleImportMaterials}
