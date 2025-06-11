@@ -5,7 +5,7 @@
  * for the Geant4 Geometry Editor.
  */
 
-import { convertToMultiplePlacements } from './MultiPlacementConverter';
+import { generateJson } from './geometryToJson';
 
 /**
  * Format JSON data with proper indentation for display
@@ -78,7 +78,7 @@ export const generateMaterialsJson = (materials) => {
  * @returns {string} Formatted geometry JSON with materials included
  */
 export const generateGeometryJson = (geometries, materials) => {
-  const geometryData = convertToMultiplePlacements({
+  const geometryData = generateJson({
     world: geometries.world,
     volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))
   });
