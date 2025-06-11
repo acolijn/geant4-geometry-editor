@@ -70,25 +70,119 @@ function createVolumes(volumes, geometry) {
     
     // loop over the volumes
     volumes.forEach(volume => {
-        geometry.geometries.volumes.push(createVolume(volume));
+        if (volume.type === 'assembly' || volume.type === 'union') {
+            console.log('createVolumes:: skipping volume', volume);
+        } else {
+            // loop through the placements and create a volume for each placement
+            volume.placements.forEach(placement => {
+                geometry.geometries.volumes.push(createVolume(volume, placement));
+            });
+        }
     });
 }
 
-function createVolume(volume) {
+function createVolume(volume, placement) {
     // convert the volume to the standard geometry format
     console.log('createVolume:: volume', volume);
     console.log('createVolume:: volume.type', volume.type);
+    console.log('createVolume:: volume.placements', volume.placements);
+    console.log('createVolume:: volume.material', volume.material);
+    console.log('createVolume:: volume.dimensions', volume.dimensions);
+
+
     const newVolume = {
         name: volume.name,
         displayName: volume.g4name || volume.name,
         type: volume.type,
         material: volume.material,
-        placements: volume.placements,
-        majorRadius: 50,
-        minorRadius: 10
+        position: {x: placement.x, y: placement.y, z: placement.z},
+        rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
+        mother_volume: placement.parent
     };
+
+
+    // set the dimensions of the new volume
+    setDimensions(newVolume, volume);
+    
     return newVolume;
 }
+
+function setDimensions(newVolume, volume) {
+    // Inverse operation of convertDimensions from geometryToJson.js
+    // Map dimensions from JSON format to internal geometry format
+    console.log('setDimensions:: volume', volume);
+    
+    if (!volume.dimensions) {
+        console.warn('setDimensions:: No dimensions found for volume:', volume.name);
+        return;
+    }
+    
+    switch (volume.type) {
+        case 'box':
+            newVolume.size = {
+                x: volume.dimensions.x,
+                y: volume.dimensions.y,
+                z: volume.dimensions.z
+            };
+            break;
+            
+        case 'cylinder':
+            newVolume.radius = volume.dimensions.radius;
+            newVolume.height = volume.dimensions.height;
+            if (volume.dimensions.inner_radius !== undefined) {
+                newVolume.innerRadius = volume.dimensions.inner_radius;
+            }
+            break;
+            
+        case 'sphere':
+            newVolume.radius = volume.dimensions.radius;
+            break;
+            
+        case 'ellipsoid':
+            newVolume.xRadius = volume.dimensions.x_radius;
+            newVolume.yRadius = volume.dimensions.y_radius;
+            newVolume.zRadius = volume.dimensions.z_radius;
+            break;
+            
+        case 'trapezoid':
+            newVolume.dx1 = volume.dimensions.dx1;
+            newVolume.dx2 = volume.dimensions.dx2;
+            newVolume.dy1 = volume.dimensions.dy1;
+            newVolume.dy2 = volume.dimensions.dy2;
+            newVolume.dz = volume.dimensions.dz;
+            break;
+            
+        case 'torus':
+            newVolume.majorRadius = volume.dimensions.major_radius;
+            newVolume.minorRadius = volume.dimensions.minor_radius;
+            break;
+            
+        case 'polycone':
+        case 'polyhedra':
+            if (volume.dimensions.z && 
+                volume.dimensions.rmin && 
+                volume.dimensions.rmax) {
+                
+                newVolume.zSections = volume.dimensions.z.map((z, index) => ({
+                    z: z,
+                    rMin: volume.dimensions.rmin[index],
+                    rMax: volume.dimensions.rmax[index]
+                }));
+            }
+            break;
+            
+        default:
+            // For any other geometry types, copy all dimension properties
+            if (volume.dimensions) {
+                Object.keys(volume.dimensions).forEach(key => {
+                    newVolume[key] = volume.dimensions[key];
+                });
+            }
+    }
+    
+    console.log('setDimensions:: newVolume after setting dimensions', newVolume);
+}
+    
 
 function createMaterials(materials, geometry) {
     // Make sure materials object exists
