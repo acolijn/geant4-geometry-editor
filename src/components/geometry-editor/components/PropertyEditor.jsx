@@ -187,12 +187,12 @@ const PropertyEditor = ({
       
       <TextField
         label="Geant4 Name"
-        value={selectedObject?.displayName || selectedObject?.name || ''}
+        value={selectedObject?.g4name || selectedObject?.name || ''}
         onChange={(e) => {
           e.stopPropagation();
-          // Only update the displayName of the selected component
+          // Only update the g4name of the selected component
           // This allows each component to have its own unique Geant4 name
-          handlePropertyChange('displayName', e.target.value, true);
+          handlePropertyChange('g4name', e.target.value, true);
         }}
         onClick={(e) => e.stopPropagation()}
         onFocus={(e) => e.stopPropagation()}
@@ -296,7 +296,7 @@ const PropertyEditor = ({
             
             // For other volumes, find the volume with this name and return its display name
             const motherVolume = geometries.volumes.find(vol => vol.name === value);
-            return motherVolume ? (motherVolume.displayName || motherVolume.name) : value;
+            return motherVolume ? (motherVolume.g4name || motherVolume.name) : value;
           }}
           placeholder="Select a mother volume"
           renderTree={({ expandedNodes, toggleNodeExpansion, handleSelect, selectedValue }) => {
@@ -394,7 +394,7 @@ const PropertyEditor = ({
                   <MenuItem value="none">Not a boolean component</MenuItem>
                   {potentialParentUnions.map((union) => (
                     <MenuItem key={union.name} value={union.name}>
-                      {union.displayName || union.name}
+                      {union.g4name || union.name}
                     </MenuItem>
                   ))}
                 </Select>

@@ -197,9 +197,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         updatedAssembly._instanceId = volume._instanceId;
       }
       
-      // Preserve displayName and g4name if they exist
-      if (volume.displayName) {
-        updatedAssembly.displayName = volume.displayName;
+      // Preserve g4name and g4name if they exist
+      if (volume.g4name) {
+        updatedAssembly.g4name = volume.g4name;
       }
       if (volume.g4name) {
         updatedAssembly.g4name = volume.g4name;
@@ -243,9 +243,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             _componentId: matchingTargetComponent.volume._componentId // Preserve component ID
           };
           
-          // Preserve displayName and g4name if they exist
-          if (matchingTargetComponent.volume.displayName) {
-            updatedComponent.displayName = matchingTargetComponent.volume.displayName;
+          // Preserve g4name and g4name if they exist
+          if (matchingTargetComponent.volume.g4name) {
+            updatedComponent.g4name = matchingTargetComponent.volume.g4name;
           }
           if (matchingTargetComponent.volume.g4name) {
             updatedComponent.g4name = matchingTargetComponent.volume.g4name;
@@ -382,7 +382,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             isPartsFolder: true,
             key: unionPartsKey,
             parentUnionName: geometries.volumes[parentUnionIndex].name,
-            parentUnionDisplayName: geometries.volumes[parentUnionIndex].displayName || geometries.volumes[parentUnionIndex].name
+            parentUniong4name: geometries.volumes[parentUnionIndex].g4name || geometries.volumes[parentUnionIndex].name
           });
         }
         
@@ -423,15 +423,15 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       return null;
     }
     
-    // Sort volumes alphabetically by displayName (if available) or name
+    // Sort volumes alphabetically by g4name (if available) or name
     const sortedVolumes = [...volumesByParent[parentKey]].sort((a, b) => {
       // Special case: Parts folder should always come first
       if (a.isPartsFolder) return -1;
       if (b.isPartsFolder) return 1;
       
-      // Use displayName if available, otherwise fall back to name or generate a default name
-      const nameA = a.volume ? (a.volume.displayName || a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`) : a.parentUnionDisplayName;
-      const nameB = b.volume ? (b.volume.displayName || b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`) : b.parentUnionDisplayName;
+      // Use g4name if available, otherwise fall back to name or generate a default name
+      const nameA = a.volume ? (a.volume.g4name || a.volume.name || `${a.volume.type.charAt(0).toUpperCase() + a.volume.type.slice(1)} ${a.index + 1}`) : a.parentUniong4name;
+      const nameB = b.volume ? (b.volume.g4name || b.volume.name || `${b.volume.type.charAt(0).toUpperCase() + b.volume.type.slice(1)} ${b.index + 1}`) : b.parentUniong4name;
       return nameA.localeCompare(nameB);
     });
     
@@ -550,8 +550,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               fontSize: '16px'
             }}>{getVolumeIcon(volume, isActive)}</span>
             <span style={{ display: 'flex', alignItems: 'center' }}>
-              {/* Display the Geant4 name (displayName) if available, otherwise fall back to internal name */}
-              {volume.displayName || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+              {/* Display the Geant4 name (g4name) if available, otherwise fall back to internal name */}
+              {volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
               
               {/* Active elements are now indicated by the green icon outline */}
             </span>
@@ -831,7 +831,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                     style={{ marginRight: '8px' }}
                   />
                   <span>
-                    {item.volume.displayName || item.volume.name}
+                    {item.volume.g4name || item.volume.name}
                   </span>
                 </div>
               ))}
@@ -903,7 +903,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 }}
               >
                 <span style={{ marginRight: '5px' }}>📁</span>
-                <span>{volume.displayName || volume.name}</span>
+                <span>{volume.g4name || volume.name}</span>
               </div>
             ))}
           </div>

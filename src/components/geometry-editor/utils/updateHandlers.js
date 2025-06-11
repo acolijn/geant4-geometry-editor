@@ -96,9 +96,9 @@ export const createUpdateHandlers = (props) => {
         updatedAssembly._instanceId = volume._instanceId;
       }
       
-      // Preserve displayName and g4name if they exist
-      if (volume.displayName) {
-        updatedAssembly.displayName = volume.displayName;
+      // Preserve g4name and g4name if they exist
+      if (volume.g4name) {
+        updatedAssembly.g4name = volume.g4name;
       }
       if (volume.g4name) {
         updatedAssembly.g4name = volume.g4name;
@@ -149,9 +149,9 @@ export const createUpdateHandlers = (props) => {
             _componentId: matchingTargetComponent.volume._componentId // Preserve component ID
           };
           
-          // Preserve displayName and g4name if they exist
-          if (matchingTargetComponent.volume.displayName) {
-            updatedComponent.displayName = matchingTargetComponent.volume.displayName;
+          // Preserve g4name and g4name if they exist
+          if (matchingTargetComponent.volume.g4name) {
+            updatedComponent.g4name = matchingTargetComponent.volume.g4name;
           }
           if (matchingTargetComponent.volume.g4name) {
             updatedComponent.g4name = matchingTargetComponent.volume.g4name;

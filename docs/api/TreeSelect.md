@@ -38,7 +38,7 @@ TreeSelect extends the functionality of a standard dropdown by supporting hierar
     // Find the volume object that matches the selected value
     const motherVolume = geometries.volumes?.find(v => v.name === value);
     // Return the display name or the raw value
-    return motherVolume ? (motherVolume.displayName || motherVolume.name) : value;
+    return motherVolume ? (motherVolume.g4name || motherVolume.name) : value;
   }}
   renderTree={({ expandedNodes, toggleNodeExpansion, handleSelect, selectedValue }) => {
     return renderMotherVolumeTree({

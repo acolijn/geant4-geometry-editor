@@ -92,9 +92,9 @@ export const handleUpdateAllAssemblies = (volumeIndex, geometries, onUpdateGeome
       rotation: isTopLevel ? volume.rotation : sourceComponent.rotation
     };
     
-    // Preserve displayName and g4name if they exist
-    if (volume.displayName) {
-      updatedComponent.displayName = volume.displayName;
+    // Preserve g4name and g4name if they exist
+    if (volume.g4name) {
+      updatedComponent.g4name = volume.g4name;
     }
     if (volume.g4name) {
       updatedComponent.g4name = volume.g4name;

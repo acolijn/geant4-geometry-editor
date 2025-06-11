@@ -62,8 +62,8 @@ export const renderMotherVolumeTree = ({
     
     // Sort volumes alphabetically
     const sortedVolumes = [...(volumesByParent[parentKey] || [])].sort((a, b) => {
-      const nameA = a.volume.displayName || a.volume.name || '';
-      const nameB = b.volume.displayName || b.volume.name || '';
+      const nameA = a.volume.g4name || a.volume.name || '';
+      const nameB = b.volume.g4name || b.volume.name || '';
       return nameA.localeCompare(nameB);
     });
     
@@ -121,7 +121,7 @@ export const renderMotherVolumeTree = ({
             
             <Box component="span" sx={{ mr: 0.5 }}>{icon}</Box>
             <Box component="span">
-              {volume.displayName || volume.name}
+              {volume.g4name || volume.name}
             </Box>
           </Box>
           

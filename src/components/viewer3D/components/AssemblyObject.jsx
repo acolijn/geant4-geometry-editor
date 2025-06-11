@@ -110,7 +110,7 @@ const AssemblyObject = forwardRef(({ object, isSelected, onClick }, ref) => {
       
       {/* Label showing the assembly name - only visible when selected */}
       {isSelected && (
-        <Label text={object.displayName || object.name || 'Assembly'} />
+        <Label text={object.g4name || object.name || 'Assembly'} />
       )}
     </group>
   );

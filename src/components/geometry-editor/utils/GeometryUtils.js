@@ -112,9 +112,9 @@ export const extractObjectWithDescendants = (objectIdentifier, geometries) => {
     return null;
   }
   
-  // Remove displayName property if it exists - it should not be saved
-  if (mainObject.displayName) {
-    delete mainObject.displayName;
+  // Remove g4name property if it exists - it should not be saved
+  if (mainObject.g4name) {
+    delete mainObject.g4name;
   }
   
   // Find all descendants recursively using the helper function

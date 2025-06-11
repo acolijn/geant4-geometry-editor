@@ -57,12 +57,12 @@ export const importPartialFromAddNew = (
   
   // Process the main object
   const mainObject = { ...content.object };
-  // Preserve the original name as the Geant4 name (displayName)
+  // Preserve the original name as the Geant4 name (g4name)
   // This ensures we keep the user-friendly name from the imported file
-  const originalDisplayName = mainObject.displayName || mainObject.name;
+  const originalg4name = mainObject.g4name || mainObject.name;
   const originalMainName = mainObject.name;
   
-  // Get the metadata name if available (for setting the displayName)
+  // Get the metadata name if available (for setting the g4name)
   const metadataName = content.metadata?.name;
   
   // Preserve the compound ID if it exists - this should be the same for all objects of the same type
@@ -93,27 +93,27 @@ export const importPartialFromAddNew = (
     const typeForNaming = mainObject.type || 'compound';
     mainObject.name = generateUniqueName(typeForNaming);
     
-    // Set the displayName to preserve the Geant4 name
-    // If importing into a specific object type, use that in the displayName
+    // Set the g4name to preserve the Geant4 name
+    // If importing into a specific object type, use that in the g4name
     if (metadataName) {
       // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
       const objectType = metadataName.split('.')[0];
       
-      // Find existing objects with similar displayNames to determine the next serial number
+      // Find existing objects with similar g4names to determine the next serial number
       const existingCount = updatedGeometries.volumes.filter(vol => 
-        vol.displayName && vol.displayName.startsWith(`${objectType}_`)
+        vol.g4name && vol.g4name.startsWith(`${objectType}_`)
       ).length;
       
       // Format: ObjectType_Number (e.g., PMT_1)
-      mainObject.displayName = `${objectType}_${existingCount + 1}`;
+      mainObject.g4name = `${objectType}_${existingCount + 1}`;
     } else {
-      // If no metadata name, preserve the original displayName
-      mainObject.displayName = originalDisplayName;
+      // If no metadata name, preserve the original g4name
+      mainObject.g4name = originalg4name;
     }
     
     // Add to the name mapping
     nameMapping[originalMainName] = mainObject.name;
-    console.log(`IMPORT - Renamed main object from ${originalMainName} to ${mainObject.name}, displayName: ${mainObject.displayName}`);
+    console.log(`IMPORT - Renamed main object from ${originalMainName} to ${mainObject.name}, g4name: ${mainObject.g4name}`);
   }
   
   // DETAILED DEBUG: Log the main object after processing
@@ -122,34 +122,34 @@ export const importPartialFromAddNew = (
   // Define objectSerial in a wider scope so it's available for descendants
   let objectSerial;
   
-  // Set the displayName based on metadata name with a serial number and the component name
+  // Set the g4name based on metadata name with a serial number and the component name
   if (metadataName) {
     // Extract just the base name for the object type (e.g., "PMT" from "PMT.json")
     const objectType = metadataName.split('.')[0];
     
-    // Find existing objects with similar displayNames to determine the next serial number
-    // Extract the serial numbers from existing displayNames with the format "PMT_X"
+    // Find existing objects with similar g4names to determine the next serial number
+    // Extract the serial numbers from existing g4names with the format "PMT_X"
     const existingSerialNumbers = updatedGeometries.volumes
-      .filter(vol => vol.displayName && vol.displayName.startsWith(`${objectType}_`))
+      .filter(vol => vol.g4name && vol.g4name.startsWith(`${objectType}_`))
       .map(vol => {
         // Updated regex to match the new format without colon
-        const match = vol.displayName.match(new RegExp(`^${objectType}_(\\d+)$`));
+        const match = vol.g4name.match(new RegExp(`^${objectType}_(\\d+)$`));
         return match ? parseInt(match[1], 10) : -1;
       })
       .filter(num => num >= 0);
     
     // Start numbering from zero
     let serialNumber = -1;
-    let newDisplayName;
+    let newg4name;
     do {
       serialNumber++;
       // Format: <object>_<serial>
-      newDisplayName = `${objectType}_${serialNumber}`;
+      newg4name = `${objectType}_${serialNumber}`;
     } while (existingSerialNumbers.includes(serialNumber));
     
-    // Set the displayName for the main object
-    mainObject.displayName = newDisplayName;
-    console.log(`IMPORT - Set displayName for main object to ${newDisplayName}`);
+    // Set the g4name for the main object
+    mainObject.g4name = newg4name;
+    console.log(`IMPORT - Set g4name for main object to ${newg4name}`);
     
     // Store the serial number for use with descendants
     objectSerial = serialNumber;
@@ -217,12 +217,12 @@ export const importPartialFromAddNew = (
       // Add the new name to the list of existing names to avoid duplicates
       existingNames.push(processedDesc.name);
       
-      // Set the displayName - keep just the component name for better readability
+      // Set the g4name - keep just the component name for better readability
       if (metadataName && objectSerial !== undefined) {
         // Just use the component name directly without prepending parent assembly name
-        const componentName = processedDesc.displayName || originalName;
-        processedDesc.displayName = componentName;
-        console.log(`IMPORT - Set displayName for descendant to ${processedDesc.displayName}`);
+        const componentName = processedDesc.g4name || originalName;
+        processedDesc.g4name = componentName;
+        console.log(`IMPORT - Set g4name for descendant to ${processedDesc.g4name}`);
       }
       
       return processedDesc;

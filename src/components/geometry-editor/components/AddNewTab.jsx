@@ -107,7 +107,7 @@ const AddNewTab = ({
           
           // For other volumes, find the volume with this name and return its display name
           const motherVolume = geometries.volumes.find(vol => vol.name === value);
-          return motherVolume ? (motherVolume.displayName || motherVolume.name) : value;
+          return motherVolume ? (motherVolume.g4name || motherVolume.name) : value;
         }}
         renderTree={({ expandedNodes, toggleNodeExpansion, handleSelect, selectedValue }) => {
           return renderMotherVolumeTree({

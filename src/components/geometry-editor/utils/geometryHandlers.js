@@ -178,7 +178,7 @@ export const createGeometryHandlers = (props, state) => {
         
       case 'assembly':
         // Use the standard name generation format for consistency
-        const typeName = newObject.displayName || 'assembly';
+        const typeName = newObject.g4name || 'assembly';
         // Use the standard name generation format: type_timestamp_random
         //newObject.name = generateUniqueNameInline('assembly');
         console.log('newObject.name:', newObject.name);
@@ -191,7 +191,7 @@ export const createGeometryHandlers = (props, state) => {
         break;
       case 'union':
         // Use the standard name generation format for consistency
-        const unionName = newObject.displayName || 'union';
+        const unionName = newObject.g4name || 'union';
         // Use the standard name generation format: type_timestamp_random
         //newObject.name = generateUniqueNameInline('union');
         console.log('newObject.name:', newObject.name);

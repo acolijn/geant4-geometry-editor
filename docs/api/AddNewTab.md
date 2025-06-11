@@ -106,7 +106,7 @@ const handleTypeChange = (event) => {
   setNewGeometry({
     type,
     name: '',
-    displayName: '',
+    g4name: '',
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0 },
     material: materials[0]?.name || '',

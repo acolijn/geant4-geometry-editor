@@ -107,7 +107,7 @@ Materials are defined in a structured format:
 ```json
 {
   "name": "Water",
-  "displayName": "Water (H₂O)",
+  "g4name": "Water (H₂O)",
   "state": "liquid",
   "density": {
     "value": 1.0,

@@ -33,7 +33,7 @@ export const ensureStableAssemblyId = (assembly) => {
   // If the assembly doesn't have a _compoundId, generate one
   if (!processedAssembly._compoundId) {
     processedAssembly._compoundId = generateAssemblyId(
-      processedAssembly.displayName || processedAssembly.name || 'assembly'
+      processedAssembly.g4name || processedAssembly.name || 'assembly'
     );
   }
   

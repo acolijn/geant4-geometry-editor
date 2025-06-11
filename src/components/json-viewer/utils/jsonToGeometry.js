@@ -73,7 +73,7 @@ function createVolumes(volumes, geometry) {
         if (volume.type === 'assembly' ){
             createAssembly(volume, geometry);
         } else if (volume.type === 'union') {
-            createUnion(volume, geometry);
+            createAssembly(volume, geometry);
         } else {
             // loop through the placements and create a volume for each placement
             volume.placements.forEach(placement => {
@@ -96,8 +96,9 @@ function createAssembly(volume, geometry) {
         let assemblyName = placement.name;
         const assembly = {
             name: assemblyName,
-            displayName: placement.g4name,
+            g4name: placement.g4name,
             type: volume.type,
+            material: volume.material || undefined,
             position: {x: placement.x, y: placement.y, z: placement.z},
             rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
             _compoundId: volume._compoundId,
@@ -117,17 +118,22 @@ function createAssembly(volume, geometry) {
             console.log('createAssembly:: placement', placement);
             const newComponent = {
                 name: newName,
-                displayName: newName,
+                g4name: newName,
                 type: component.type,
                 position: {x: placement.x, y: placement.y, z: placement.z},
                 rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
-                material: component.material,
-
+                material: component.material || undefined,
                 _compoundId: volume._compoundId,
                 _componentId: component._componentId,
                 // if parent name not "" then use it as mother_volume else use assemblyName
                 mother_volume: placement.parent !== '' ? nextName(placement.parent, iPlacement) : assemblyName
             };
+
+            if (component.boolean_operation) {
+                newComponent.boolean_operation = component.boolean_operation;
+                newComponent._is_boolean_component = true;
+                newComponent._boolean_parent = assemblyName;
+            }
 
             setDimensions(newComponent, component);
 
@@ -192,7 +198,7 @@ function createVolume(volume, placement) {
 
     const newVolume = {
         name: volume.name,
-        displayName: volume.g4name || volume.name,
+        g4name: volume.g4name || volume.name,
         type: volume.type,
         material: volume.material,
         position: {x: placement.x, y: placement.y, z: placement.z},

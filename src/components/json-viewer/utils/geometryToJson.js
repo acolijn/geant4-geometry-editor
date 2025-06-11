@@ -15,7 +15,7 @@ function generateWorldVolume(world) {
 
   const worldJson = {
     name: world.name,
-    g4name: world.displayName || world.name,
+    g4name: world.g4name || world.name,
     type: world.type,
     placements: [
       {
@@ -52,7 +52,7 @@ function processAssembly(assemblies, volume) {
   console.log('processAssembly:: assemblies[volume._compoundId]', assemblies[volume._compoundId]);
   assemblies[volume._compoundId].placements.push({
     name: volume.name,
-    g4name: volume.displayName,
+    g4name: volume.g4name,
     x: volume.position?.x || 0,
     y: volume.position?.y || 0,
     z: volume.position?.z || 0,
@@ -78,14 +78,14 @@ function processVolume(volume) {
 
   return {
     name: volume.name,
-    g4name: volume.displayName,
+    g4name: volume.g4name,
     type: volume.type,
     material: volume.material,
     dimensions: convertDimensions(volume),
     placements: [
       {
         name: volume.name,
-        g4name: volume.displayName,
+        g4name: volume.g4name,
         x: volume.position?.x || 0,
         y: volume.position?.y || 0,
         z: volume.position?.z || 0,
@@ -124,12 +124,12 @@ function initializeAssemblies(assemblies, geometry) {
     if (!assemblies[volume._compoundId] && 
         (volume.type === 'assembly' || volume.type === 'union')) {
       console.log('processAssembly:: new assembly', volume);
-      console.log('processAssembly::  displayName', volume.displayName);
+      console.log('processAssembly::  g4name', volume.g4name);
 
 
       assemblies[volume._compoundId] = {
-        name: volume.type === 'union' ? volume.name : volume.displayName.split('_')[0],
-        displayName: volume.displayName,
+        name: volume.type === 'union' ? volume.name : volume.g4name.split('_')[0],
+        g4name: volume.g4name,
         type: volume.type,
         material: volume.material,
         _compoundId: volume._compoundId,
@@ -172,7 +172,7 @@ function initializeAssemblies(assemblies, geometry) {
       // Create the component object
       const componentObj = {
         //name: volume.name,
-        //g4name: volume.displayName || volume.name,
+        //g4name: volume.g4name || volume.name,
         type: volume.type,
         dimensions: convertDimensions(volume),
         placements: [

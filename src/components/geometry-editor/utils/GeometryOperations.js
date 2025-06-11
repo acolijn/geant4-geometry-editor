@@ -205,12 +205,12 @@ export const addGeometry = (
   propagateCompoundIdToDescendants
 ) => {
   
-  // Set a user-friendly displayName if not already provided
-  if (!newGeometry.displayName || newGeometry.displayName === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
+  // Set a user-friendly g4name if not already provided
+  if (!newGeometry.g4name || newGeometry.g4name === `New${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}`) {
     // Find existing objects of this type to determine the next number
     const existingCount = geometries.volumes.filter(vol => vol.type === newGeometry.type).length;
     // Format: Type_Number (e.g., Box_1, Sphere_2)
-    newGeometry.displayName = `${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}_${existingCount + 1}`;
+    newGeometry.g4name = `${newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1)}_${existingCount + 1}`;
   }
   
   // Check if the parent is an assembly and propagate _compoundId if needed
@@ -229,7 +229,7 @@ export const addGeometry = (
       // This will be used in MultiPlacementConverter to preserve the object's true type
       if (newGeometry.type === 'assembly') {
         // Only store _originalType for assemblies since that's where the issue occurs
-        newGeometry._originalType = newGeometry.displayName || newGeometry.name;
+        newGeometry._originalType = newGeometry.g4name || newGeometry.name;
         console.log(`Preserved original type ${newGeometry._originalType} for new assembly ${newGeometry.name}`);
       }
       
