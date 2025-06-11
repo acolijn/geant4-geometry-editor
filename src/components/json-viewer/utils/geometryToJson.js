@@ -1,9 +1,8 @@
 /**
- * MultiPlacementConverter.js
+ * geometryToJson.js
  * 
- * This utility converts the standard geometry format to a multiple placements format
- * that's optimized for Geant4 simulation. It identifies compound objects based on
- * _compoundId tags and converts them to a more efficient representation.
+ * This utility converts the standard geometry format to a json format
+ * that's optimized for Geant4 simulation. 
  */
 
 /**
