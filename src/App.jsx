@@ -22,7 +22,7 @@ import MaterialsEditor from './components/material-editor/MaterialsEditor';
 import JsonViewer from './components/json-viewer/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
-import { standardizeProjectData, restoreProjectData } from './components/geometry-editor/utils/ObjectFormatStandardizer';
+//import { standardizeProjectData, restoreProjectData } from './components/geometry-editor/utils/ObjectFormatStandardizer';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
 import { importPartialFromAddNew } from './components/geometry-editor/utils/GeometryImport';
 import { extractObjectWithDescendants } from './components/geometry-editor/utils/GeometryUtils';

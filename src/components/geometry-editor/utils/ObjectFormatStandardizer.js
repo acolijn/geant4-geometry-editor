@@ -284,7 +284,7 @@ export const standardizeObjectFormat = (objectData) => {
  * @param {Object} standardizedData - The standardized object data
  * @returns {Object} - The object data in the original format
  */
-export const restoreOriginalFormat = (standardizedData) => {
+/* export const restoreOriginalFormat = (standardizedData) => {
   // Create a deep copy to avoid modifying the original
   const restoredData = JSON.parse(JSON.stringify(standardizedData));
   
@@ -394,7 +394,7 @@ export const restoreOriginalFormat = (standardizedData) => {
   
   return restoredData;
 };
-
+ */
 /**
  * Standardize project data for storage
  * @param {Object} geometries - The geometries object
@@ -402,7 +402,7 @@ export const restoreOriginalFormat = (standardizedData) => {
  * @param {Array} hitCollections - The hit collections array
  * @returns {Object} - The standardized project data
  */
-export const standardizeProjectData = (geometries, materials, hitCollections) => {
+/* export const standardizeProjectData = (geometries, materials, hitCollections) => {
   // Create a deep copy to avoid modifying the original objects
   const standardizedGeometries = JSON.parse(JSON.stringify(geometries));
   const standardizedMaterials = JSON.parse(JSON.stringify(materials));
@@ -504,13 +504,13 @@ export const standardizeProjectData = (geometries, materials, hitCollections) =>
     hitCollections: hitCollections || []
   };
 };
-
+ */
 /**
  * Restore volume format from standardized format
  * @param {Object} standardizedVolume - The standardized volume object
  * @returns {Object} - The restored volume object
  */
-export const restoreVolumeFormat = (standardizedVolume) => {
+/* export const restoreVolumeFormat = (standardizedVolume) => {
   // Create a deep copy to avoid modifying the original object
   const restoredVolume = JSON.parse(JSON.stringify(standardizedVolume));
   
@@ -618,13 +618,13 @@ export const restoreVolumeFormat = (standardizedVolume) => {
   
   return restoredVolume;
 };
-
+ */
 /**
  * Restore project data from standardized format
  * @param {Object} standardizedData - The standardized project data
  * @returns {Object} - The restored project data
  */
-export const restoreProjectData = (standardizedData) => {
+/* export const restoreProjectData = (standardizedData) => {
   if (!standardizedData || !standardizedData.geometries) {
     return {
       geometries: { world: {}, volumes: [] },
@@ -657,11 +657,11 @@ export const restoreProjectData = (standardizedData) => {
     materials: materialsData,
     hitCollections: hitCollectionsData
   };
-};
+}; */
 
 export default {
   standardizeObjectFormat,
-  restoreOriginalFormat,
-  standardizeProjectData,
-  restoreProjectData
+  // restoreOriginalFormat,
+  // standardizeProjectData,
+  //restoreProjectData
 };

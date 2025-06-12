@@ -36,7 +36,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import CategoryIcon from '@mui/icons-material/Category';
 import fileSystemManager from '../utils/FileSystemManager';
-import { standardizeProjectData, restoreProjectData } from './geometry-editor/utils/ObjectFormatStandardizer';
+//import { standardizeProjectData, restoreProjectData } from './geometry-editor/utils/ObjectFormatStandardizer';
 // Import the extractObjectWithDescendants function from GeometryUtils
 import { extractObjectWithDescendants } from './geometry-editor/utils/GeometryUtils';
 // Import the geometry conversion utilities
