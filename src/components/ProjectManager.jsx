@@ -39,6 +39,10 @@ import fileSystemManager from '../utils/FileSystemManager';
 import { standardizeProjectData, restoreProjectData } from './geometry-editor/utils/ObjectFormatStandardizer';
 // Import the extractObjectWithDescendants function from GeometryUtils
 import { extractObjectWithDescendants } from './geometry-editor/utils/GeometryUtils';
+// Import the geometry conversion utilities
+import { generateJson } from './json-viewer/utils/geometryToJson';
+import { jsonToGeometry } from './json-viewer/utils/jsonToGeometry';
+import { importJsonGeometry } from './json-viewer/utils/jsonHandlers';
 // LocalStorageManager has been removed to avoid browser storage usage
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -313,8 +317,21 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
 
     setIsLoading(true);
     try {
-      // Standardize project data for storage
-      const standardizedData = standardizeProjectData(geometries, materials, hitCollections);
+      // Use geometryToJson to convert the geometry to JSON format
+      const geometryData = generateJson({
+        world: geometries.world,
+        volumes: geometries.volumes || []
+      });
+      
+      // Add materials to the geometry data if available
+      if (materials && Object.keys(materials).length > 0) {
+        geometryData.materials = materials;
+      }
+      
+      // Add hit collections to the geometry data if available
+      if (hitCollections && hitCollections.length > 0) {
+        geometryData.hitCollections = hitCollections;
+      }
       
       // Create metadata
       const metadata = {
@@ -323,10 +340,10 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
         updatedAt: new Date().toISOString()
       };
 
-      // Save standardized project data to storage
+      // Save the geometry data to storage
       const success = await storageManager.saveProject(
         projectName.trim(),
-        standardizedData,
+        geometryData,
         metadata
       );
 
@@ -465,38 +482,53 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
       
       console.log('ProjectManager::loadProject:: projectData', projectData);
       
-      // Check if the project data is in the new standardized format
-      if (projectData && projectData.geometry && 
-          (projectData.geometry.geometries?.world?.dimensions || 
-           (projectData.geometry.geometries?.volumes && 
-            projectData.geometry.geometries.volumes.length > 0 && 
-            projectData.geometry.geometries.volumes[0].dimensions))) {
-        
-        // Project is in the new format, proceed with restoration
-        const restoredData = restoreProjectData(projectData.geometry);
-        
-        // Extract components from restored data
-        const { geometries: restoredGeometries, materials: restoredMaterials, hitCollections: restoredHitCollections } = restoredData;
-        
-        // Load the project with restored data
-        onLoadProject(restoredGeometries, restoredMaterials, restoredHitCollections);
-        setLoadDialogOpen(false);
-        setAlert({
-          open: true,
-          message: `Project "${projectName}" loaded successfully`,
-          severity: 'success'
-        });
-      } else if (projectData && projectData.geometry) {
-        // Project is in the old format
-        setAlert({
-          open: true,
-          message: `Project "${projectName}" is in an outdated format and cannot be loaded. Please create a new project.`,
-          severity: 'error'
-        });
+      // Check if the project data exists
+      if (projectData && projectData.geometry) {
+        try {
+          // The FileSystemManager returns { metadata, geometry } structure
+          // We need to extract just the geometry part for processing
+          const geometryData = projectData.geometry;
+          console.log('ProjectManager::loadProject:: Geometry data to import:', geometryData);
+          
+          // Create the current geometry structure in the same format as JsonViewer
+          const currentGeometry = {
+            geometries: geometries,
+            materials: materials
+          };
+          console.log('ProjectManager::loadProject:: Current geometry:', currentGeometry);
+          
+          // Use jsonToGeometry directly like the JSON viewer does
+          const updatedGeometry = jsonToGeometry(geometryData, currentGeometry);
+          console.log('ProjectManager::loadProject:: Updated geometry:', updatedGeometry);
+          
+          // Validate the updated geometry
+          if (!updatedGeometry || !updatedGeometry.geometries) {
+            throw new Error('Invalid geometry data structure after import');
+          }
+          
+          // Get hit collections if they exist in the project data
+          const restoredHitCollections = geometryData.hitCollections || [];
+          
+          // Load the project with the updated data
+          onLoadProject(updatedGeometry.geometries, updatedGeometry.materials, restoredHitCollections);
+          setLoadDialogOpen(false);
+          setAlert({
+            open: true,
+            message: `Project "${projectName}" loaded successfully`,
+            severity: 'success'
+          });
+        } catch (conversionError) {
+          console.error('Error importing geometry:', conversionError);
+          setAlert({
+            open: true,
+            message: `Error importing geometry: ${conversionError.message}`,
+            severity: 'error'
+          });
+        }
       } else {
         setAlert({
           open: true,
-          message: `Failed to load project "${projectName}"`,
+          message: `Failed to load project "${projectName}": Invalid project data`,
           severity: 'error'
         });
       }
@@ -504,7 +536,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
       console.error('Error loading project:', error);
       setAlert({
         open: true,
-        message: 'Error loading project',
+        message: `Error loading project: ${error.message}`,
         severity: 'error'
       });
     } finally {

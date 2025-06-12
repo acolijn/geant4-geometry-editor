@@ -17,6 +17,29 @@ export function jsonToGeometry(json, geometry) {
     console.log('jsonToGeometry:: json', json);
     console.log('jsonToGeometry:: geometry', geometry);
 
+    // Validate input parameters
+    if (!json) {
+        console.warn('jsonToGeometry:: json is null or undefined');
+        return geometry || {
+            geometries: {
+                world: null,
+                volumes: []
+            },
+            materials: {}
+        };
+    }
+
+    // Ensure geometry is initialized
+    if (!geometry) {
+        geometry = {
+            geometries: {
+                world: null,
+                volumes: []
+            },
+            materials: {}
+        };
+    }
+
     // check if json has world: if so update the world in geometry
     if (json.world) {
         console.log('jsonToGeometry:: json has world - create new geometry');
@@ -24,7 +47,7 @@ export function jsonToGeometry(json, geometry) {
     }
 
     // check if json has volumes: if so add them to the geometry
-    if (json.volumes) {
+    if (json.volumes && Array.isArray(json.volumes)) {
         createVolumes(json.volumes, geometry);
     }
 
@@ -50,15 +73,26 @@ function createNewGeometry(json) {
             world: json.world,
             volumes: []
         },
-        materials: []
+        materials: {}
     };
 
-    // I need to set the size of the world to the dimensions of the world
-    geometry.geometries.world.size = {
-        x: json.world.dimensions.x,
-        y: json.world.dimensions.y,
-        z: json.world.dimensions.z
-    };
+    // Make sure world exists and has dimensions
+    if (json.world && json.world.dimensions) {
+        // Set the size of the world to the dimensions of the world
+        geometry.geometries.world.size = {
+            x: json.world.dimensions.x || 1000,
+            y: json.world.dimensions.y || 1000,
+            z: json.world.dimensions.z || 1000
+        };
+    } else {
+        // Create default world dimensions if missing
+        geometry.geometries.world = geometry.geometries.world || {};
+        geometry.geometries.world.size = {
+            x: 1000,
+            y: 1000,
+            z: 1000
+        };
+    }
     return geometry;
 }
 
@@ -68,17 +102,32 @@ function createVolumes(volumes, geometry) {
         geometry.geometries.volumes = [];
     }
     
+    // Validate volumes is an array
+    if (!Array.isArray(volumes)) {
+        console.warn('createVolumes:: volumes is not an array');
+        return;
+    }
+    
     // loop over the volumes
     volumes.forEach(volume => {
+        if (!volume) {
+            console.warn('createVolumes:: volume is null or undefined');
+            return;
+        }
+        
         if (volume.type === 'assembly' ){
             createAssembly(volume, geometry);
         } else if (volume.type === 'union') {
             createAssembly(volume, geometry);
-        } else {
+        } else if (volume.placements && Array.isArray(volume.placements)) {
             // loop through the placements and create a volume for each placement
             volume.placements.forEach(placement => {
-                geometry.geometries.volumes.push(createVolume(volume, placement));
+                if (placement) {
+                    geometry.geometries.volumes.push(createVolume(volume, placement));
+                }
             });
+        } else {
+            console.warn(`createVolumes:: volume ${volume.name} has no placements or invalid placements`);
         }
     });
 }

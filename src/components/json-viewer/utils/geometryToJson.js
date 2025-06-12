@@ -13,10 +13,37 @@
 function generateWorldVolume(world) {
   console.log('generateWorldVolume:: geometry.world', world);
 
+  // Check if world is null or undefined
+  if (!world) {
+    console.warn('generateWorldVolume:: World object is null or undefined, creating default world');
+    // Return a default world object
+    return {
+      name: 'World',
+      g4name: 'World',
+      type: 'box',
+      placements: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          rotation: {
+            x: 0,
+            y: 0,
+            z: 0
+          }
+        }
+      ],
+      material: 'G4_AIR',
+      dimensions: { x: 1000, y: 1000, z: 1000 },
+      visible: false,
+      wireframe: true
+    };
+  }
+
   const worldJson = {
-    name: world.name,
-    g4name: world.g4name || world.name,
-    type: world.type,
+    name: world.name || 'World',
+    g4name: world.g4name || world.name || 'World',
+    type: world.type || 'box',
     placements: [
       {
         x: world.position?.x || 0,
@@ -29,8 +56,8 @@ function generateWorldVolume(world) {
         }
       }
     ],
-    material: world.material,
-    dimensions: world.size,
+    material: world.material || 'G4_AIR',
+    dimensions: world.size || { x: 1000, y: 1000, z: 1000 },
     visible: false,
     wireframe: true
   };
@@ -239,6 +266,13 @@ function initializeAssemblies(assemblies, geometry) {
  */
 export function generateJson(geometry){
   console.log('generateJson:: geometry', geometry);
+  
+  // Validate geometry input
+  if (!geometry) {
+    console.warn('generateJson:: Geometry is null or undefined');
+    geometry = { world: null, volumes: [] };
+  }
+  
   // generate the world volume
   const worldJson = generateWorldVolume(geometry.world);
 
@@ -246,20 +280,24 @@ export function generateJson(geometry){
   let assemblies = {};
 
   // initialize the assemblies and components
-  assemblies = initializeAssemblies(assemblies,geometry)
+  if (geometry.volumes && Array.isArray(geometry.volumes)) {
+    assemblies = initializeAssemblies(assemblies, geometry);
+  }
 
   // loop over the volumes
-  geometry.volumes.forEach(volume => {
-    if (volume.type === 'assembly' || volume.type === 'union') {
-      processAssembly(assemblies, volume); 
-    } else {
-      // standard volume
-      // if _compoundId is not in the assemblies object, it is a standalone volume
-      if (!assemblies[volume._compoundId]) {
-        volumes.push(processVolume(volume));
+  if (geometry.volumes && Array.isArray(geometry.volumes)) {
+    geometry.volumes.forEach(volume => {
+      if (volume && (volume.type === 'assembly' || volume.type === 'union')) {
+        processAssembly(assemblies, volume); 
+      } else if (volume) {
+        // standard volume
+        // if _compoundId is not in the assemblies object, it is a standalone volume
+        if (!assemblies[volume._compoundId]) {
+          volumes.push(processVolume(volume));
+        }
       }
-    }
-  });
+    });
+  }
 
   // add the assemblies to the volumes
   Object.keys(assemblies).forEach(_compoundId => {
