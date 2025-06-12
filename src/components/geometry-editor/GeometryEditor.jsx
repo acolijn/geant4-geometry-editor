@@ -16,7 +16,6 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 // Import utility handlers
 import {
-  createComponentHandlers,
   createPropertyHandlers,
   createImportExportHandlers,
   createGeometryHandlers,
@@ -88,13 +87,13 @@ const RefactoredGeometryEditor = ({
   // Default mother volume for new geometries
   const [newMotherVolume, setNewMotherVolume] = useState('World');
   // For union solids: first solid selection
-  const [firstSolid, setFirstSolid] = useState('');
+  ////const [firstSolid, setFirstSolid] = useState('');
   // For union solids: second solid selection
-  const [secondSolid, setSecondSolid] = useState('');
+  ////const [secondSolid, setSecondSolid] = useState('');
   // For multi-component union solids: number of additional components beyond the first two
-  const [additionalComponents, setAdditionalComponents] = useState(0);
+  ////const [additionalComponents, setAdditionalComponents] = useState(0);
   // For multi-component union solids: values of the additional components
-  const [additionalComponentsValues, setAdditionalComponentsValues] = useState([]);
+  ////const [additionalComponentsValues, setAdditionalComponentsValues] = useState([]);
 
   // ===== Dialog States =====
   // Save Object Dialog
@@ -109,15 +108,7 @@ const RefactoredGeometryEditor = ({
   const [hitCollectionsDialogOpen, setHitCollectionsDialogOpen] = useState(false);
 
   // ===== Create handlers using utility functions =====
-  // Component handlers
-  const {
-    handleAddComponent,
-    handleRemoveComponent,
-    handleAdditionalComponentChange
-  } = createComponentHandlers(
-    { setAdditionalComponents, setAdditionalComponentsValues },
-    { additionalComponents, additionalComponentsValues }
-  );
+ 
 
   // Property handlers
   const {
@@ -151,7 +142,6 @@ const RefactoredGeometryEditor = ({
 
   // Geometry handlers
   const {
-    generateUniqueName,
     handleAddGeometry,
     handleUpdateObjects
   } = createGeometryHandlers(
@@ -165,10 +155,10 @@ const RefactoredGeometryEditor = ({
     {
       newGeometryType,
       newMotherVolume,
-      firstSolid,
-      secondSolid,
-      additionalComponents,
-      additionalComponentsValues
+      //firstSolid,
+      //secondSolid,
+      //additionalComponents,
+      //additionalComponentsValues
     }
   );
 
@@ -260,12 +250,12 @@ const RefactoredGeometryEditor = ({
         setNewGeometryType={setNewGeometryType}
         newMotherVolume={newMotherVolume}
         setNewMotherVolume={setNewMotherVolume}
-        firstSolid={firstSolid}
-        setFirstSolid={setFirstSolid}
-        secondSolid={secondSolid}
-        setSecondSolid={setSecondSolid}
-        additionalComponents={additionalComponents}
-        additionalComponentsValues={additionalComponentsValues}
+        ////firstSolid={firstSolid}
+        ////setFirstSolid={setFirstSolid}
+        ////secondSolid={secondSolid}
+        ////setSecondSolid={setSecondSolid}
+        ////additionalComponents={additionalComponents}
+        ////additionalComponentsValues={additionalComponentsValues}
         handleAddComponent={handleAddComponent}
         handleRemoveComponent={handleRemoveComponent}
         handleAdditionalComponentChange={handleAdditionalComponentChange}

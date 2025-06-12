@@ -23,10 +23,10 @@ export const generateUniqueName = (type) => {
  * @param {Object} state - Object containing current state values
  * @param {string} state.newGeometryType - Type of new geometry to create
  * @param {string} state.newMotherVolume - Mother volume for new geometry
- * @param {string} state.firstSolid - First solid for union
- * @param {string} state.secondSolid - Second solid for union
- * @param {number} state.additionalComponents - Number of additional components
- * @param {Array} state.additionalComponentsValues - Values of additional components
+ * //@param {string} state.firstSolid - First solid for union
+ * //@param {string} state.secondSolid - Second solid for union
+ * //@param {number} state.additionalComponents - Number of additional components
+ * //@param {Array} state.additionalComponentsValues - Values of additional components
  * @returns {Object} Object containing handler functions
  */
 export const createGeometryHandlers = (props, state) => {
@@ -40,11 +40,11 @@ export const createGeometryHandlers = (props, state) => {
   
   const {
     newGeometryType,
-    newMotherVolume,
-    firstSolid,
-    secondSolid,
-    additionalComponents,
-    additionalComponentsValues
+    newMotherVolume
+    ////firstSolid,
+    ////secondSolid,
+    ////additionalComponents,
+    ////additionalComponentsValues
   } = state;
 
   /**
@@ -54,7 +54,7 @@ export const createGeometryHandlers = (props, state) => {
    * @param {string} type - Type of the object
    * @returns {string} A unique name for the object
    */
-  const generateInternalName = (baseName, type) => {
+/*   const generateInternalName = (baseName, type) => {
     // Start with the base name and type
     console.log('generateInternalName:', baseName, type);
     let name = `${baseName}_${type}`;
@@ -74,7 +74,7 @@ export const createGeometryHandlers = (props, state) => {
     }
     
     return name;
-  };
+  }; */
 
   /**
    * Add a new geometry object to the scene
@@ -331,7 +331,7 @@ export const createGeometryHandlers = (props, state) => {
   };
 
   return {
-    generateInternalName,
+    // generateInternalName,
     handleAddGeometry,
     handleUpdateObjects
   };

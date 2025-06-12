@@ -13,33 +13,6 @@
 function generateWorldVolume(world) {
   console.log('generateWorldVolume:: geometry.world', world);
 
-  // Check if world is null or undefined
-  if (!world) {
-    console.warn('generateWorldVolume:: World object is null or undefined, creating default world');
-    // Return a default world object
-    return {
-      name: 'World',
-      g4name: 'World',
-      type: 'box',
-      placements: [
-        {
-          x: 0,
-          y: 0,
-          z: 0,
-          rotation: {
-            x: 0,
-            y: 0,
-            z: 0
-          }
-        }
-      ],
-      material: 'G4_AIR',
-      dimensions: { x: 1000, y: 1000, z: 1000 },
-      visible: false,
-      wireframe: true
-    };
-  }
-
   const worldJson = {
     name: world.name || 'World',
     g4name: world.g4name || world.name || 'World',
@@ -274,7 +247,10 @@ export function generateJson(geometry){
   }
   
   // generate the world volume
-  const worldJson = generateWorldVolume(geometry.world);
+  let worldJson = null;
+  if (geometry.world) {
+    worldJson = generateWorldVolume(geometry.world);
+  }
 
   const volumes = [];
   let assemblies = {};
@@ -306,8 +282,9 @@ export function generateJson(geometry){
   
   // create the output structure
   const outputStructure = {
-    world: worldJson,
-    volumes: volumes,
+    // if worldJson is null, it means there is no world volume
+    world: worldJson || null,
+    volumes: volumes
   };
 
   console.log('generateJson:: outputStructure', outputStructure);
