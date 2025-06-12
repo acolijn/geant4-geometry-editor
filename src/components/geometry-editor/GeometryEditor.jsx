@@ -128,7 +128,6 @@ const RefactoredGeometryEditor = ({
   const {
     applyStructuredNaming,
     handleExportObject,
-    //handleImportFromFileSystem,
     handleImportObjectFile
   } = createImportExportHandlers({
     handleImportPartialFromAddNew,
@@ -155,10 +154,6 @@ const RefactoredGeometryEditor = ({
     {
       newGeometryType,
       newMotherVolume,
-      //firstSolid,
-      //secondSolid,
-      //additionalComponents,
-      //additionalComponentsValues
     }
   );
 
@@ -184,7 +179,7 @@ const RefactoredGeometryEditor = ({
   // We'll use the handleLoadObject function from the importExportHandlers utility
 
   // Handle saving an object to a file
-  const handleSaveObject = async () => {
+/*   const handleSaveObject = async () => {
     if (!objectToSave) return;
     
     try {
@@ -218,7 +213,7 @@ const RefactoredGeometryEditor = ({
         severity: 'error'
       });
     }
-  };
+  }; */
 
   // Render the property editor tab
   const renderPropertyEditor = () => {
@@ -250,17 +245,7 @@ const RefactoredGeometryEditor = ({
         setNewGeometryType={setNewGeometryType}
         newMotherVolume={newMotherVolume}
         setNewMotherVolume={setNewMotherVolume}
-        ////firstSolid={firstSolid}
-        ////setFirstSolid={setFirstSolid}
-        ////secondSolid={secondSolid}
-        ////setSecondSolid={setSecondSolid}
-        ////additionalComponents={additionalComponents}
-        ////additionalComponentsValues={additionalComponentsValues}
-        handleAddComponent={handleAddComponent}
-        handleRemoveComponent={handleRemoveComponent}
-        handleAdditionalComponentChange={handleAdditionalComponentChange}
         handleAddGeometry={handleAddGeometry}
-        //handleImportFromFileSystem={handleImportFromFileSystem}
         fileInputRef={fileInputRef}
         handleImportObjectFile={handleImportObjectFile}
         importAlert={importAlert}

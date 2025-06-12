@@ -42,8 +42,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     }
   });
   
-  // Create a wrapper for handleExportObject that ensures geometries is passed correctly
-  const handleExportObject = () => {
+  // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
+  const handleExportObject = async () => {
     console.log('handleExportObject:: geometries');
     
     // Get the currently selected geometry object
@@ -61,14 +61,42 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       world: geometries.world || { name: 'world' }
     };
     
-    // Extract the object and its descendants
-    let objectId;
-    if (contextMenu && contextMenu.volumeIndex !== undefined) {
+    // Get the compound ID and object ID
+    //let objectId;
+    let compoundId = selectedObject._compoundId;
+    
+/*     if (contextMenu && contextMenu.volumeIndex !== undefined) {
       objectId = `volume-${contextMenu.volumeIndex}`;
     } else {
       objectId = selectedGeometry;
     }
-    
+     */
+    // If this is an assembly or union, use generateTemplateJson
+    //if (selectedObject.type === 'assembly' || selectedObject.type === 'union') {
+    try {
+      // Import the generateTemplateJson function
+      const { generateTemplateJson } = await import('../../components/json-viewer/utils/geometryToJson');
+      
+      // Generate a template JSON for this compound object
+      const templateJson = generateTemplateJson(geometriesForExport, compoundId);
+      
+      if (!templateJson) {
+        console.error('Failed to generate template JSON');
+        return;
+      }
+      
+      console.log('templateJson::', templateJson);
+      
+      // Set the object to save and open the dialog
+      setObjectToSave(templateJson);
+      setSaveObjectDialogOpen(true);
+      return;
+    } catch (error) {
+      console.error('Error generating template JSON:', error);
+    }
+    //}
+/*     
+    // Fallback to the original method for non-compound objects
     const exportData = extractObjectWithDescendants(objectId, geometriesForExport);
     if (!exportData) {
       console.error('Failed to extract object data');
@@ -79,7 +107,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Set the object to save and open the dialog
     setObjectToSave(exportData);
-    setSaveObjectDialogOpen(true);
+    setSaveObjectDialogOpen(true); */
   };
   // State to track expanded nodes - initially only World is expanded
   const [expandedNodes, setExpandedNodes] = useState({ world: true });

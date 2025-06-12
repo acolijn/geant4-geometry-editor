@@ -36,11 +36,23 @@ export const saveObject = async (name, description, objectData, preserveComponen
     // Sanitize the file name
     const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
     
-    // Standardize the object format to be consistent with the main output JSON file
-    const standardizedObjectData = standardizeObjectFormat(objectData);
-    // Remove 'placement' ONLY from the top-level object before saving
-    if (standardizedObjectData.object && standardizedObjectData.object.placement) {
-      delete standardizedObjectData.object.placement;
+    // Check if we have a templateJson from geometryToJson
+    let dataToProcess;
+    if (objectData.templateJson) {
+      console.log('ObjectStorage::saveObject:: Using templateJson for consistent formatting');
+      dataToProcess = {
+        object: objectData.object,
+        descendants: objectData.descendants || [],
+        templateJson: objectData.templateJson
+      };
+    } else {
+      // Fall back to the old standardization method
+      console.log('ObjectStorage::saveObject:: Using standardizeObjectFormat for formatting');
+      dataToProcess = standardizeObjectFormat(objectData);
+      // Remove 'placement' ONLY from the top-level object before saving
+      if (dataToProcess.object && dataToProcess.object.placement) {
+        delete dataToProcess.object.placement;
+      }
     }
     
     // If preserveComponentIds is true, check if the object already exists and preserve component IDs
@@ -67,8 +79,8 @@ export const saveObject = async (name, description, objectData, preserveComponen
           
           // Create a map of new components by name for easier matching
           const newComponentsByName = new Map();
-          if (standardizedObjectData.descendants && Array.isArray(standardizedObjectData.descendants)) {
-            standardizedObjectData.descendants.forEach(component => {
+          if (dataToProcess.descendants && Array.isArray(dataToProcess.descendants)) {
+            dataToProcess.descendants.forEach(component => {
               if (component.name) {
                 newComponentsByName.set(component.name, component);
               }
@@ -76,9 +88,9 @@ export const saveObject = async (name, description, objectData, preserveComponen
           }
           
           // Process each component in the new data
-          if (standardizedObjectData.descendants && Array.isArray(standardizedObjectData.descendants)) {
+          if (dataToProcess.descendants && Array.isArray(dataToProcess.descendants)) {
             // First, try to match by _componentId if it exists
-            standardizedObjectData.descendants.forEach(component => {
+            dataToProcess.descendants.forEach(component => {
               if (component._componentId && existingComponentsMap.has(component._componentId)) {
                 console.log(`Matched component by ID: ${component.name} (${component._componentId})`);
                 // Component already has a matching ID, no need to do anything
@@ -101,7 +113,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
     
     // Add metadata to the object data
     dataToSave = {
-      ...standardizedObjectData,
+      ...dataToProcess,
       metadata: {
         name,
         description,

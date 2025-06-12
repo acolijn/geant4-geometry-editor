@@ -395,17 +395,34 @@ export function generateTemplateJson(geometry, compoundId) {
   }
   
   // Create a filtered geometry with only volumes matching the compoundId
-  const filteredGeometry = {
+  let filteredGeometry = {
     world: null,
     volumes: geometry.volumes.filter(volume => volume._compoundId === compoundId)
   };
+
+  // recursively add volumes that are daughters, granddaughters, etc.
+  const addDaughters = (volumeId) => {
+    geometry.volumes.forEach(volume => {
+      if (volume.mother_volume === volumeId) {
+        filteredGeometry.volumes.push(volume);
+        addDaughters(volume._compoundId);
+      }
+    });
+  };
+  // if top object is not assembly or union
+  if (geometry.volumes.find(volume => volume._compoundId === compoundId).type !== 'assembly' && 
+      geometry.volumes.find(volume => volume._compoundId === compoundId).type !== 'union') {
+    addDaughters(compoundId);
+  }
+  
+  console.log('generateTemplateJson:: filteredGeometry', filteredGeometry);
   
   // If no volumes match, return null
   if (filteredGeometry.volumes.length === 0) {
     console.warn(`generateTemplateJson:: No volumes found with _compoundId: ${compoundId}`);
     return null;
   }
-  
+
   // Use the existing generateJson function to create the JSON structure
   const templateJson = generateJson(filteredGeometry);
   
