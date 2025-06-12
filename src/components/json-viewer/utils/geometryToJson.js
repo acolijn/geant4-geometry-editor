@@ -381,3 +381,49 @@ function convertDimensions(volume) {
   
   return dimensions;
 }
+
+/**
+ * Generates a template JSON for a specific compound object
+ * @param {Object} geometry - The full geometry object
+ * @param {String} compoundId - The _compoundId to extract
+ * @returns {Object} - The template JSON for the compound
+ */
+export function generateTemplateJson(geometry, compoundId) {
+  if (!geometry || !compoundId) {
+    console.warn('generateTemplateJson:: Invalid input parameters');
+    return null;
+  }
+  
+  // Create a filtered geometry with only volumes matching the compoundId
+  const filteredGeometry = {
+    world: null,
+    volumes: geometry.volumes.filter(volume => volume._compoundId === compoundId)
+  };
+  
+  // If no volumes match, return null
+  if (filteredGeometry.volumes.length === 0) {
+    console.warn(`generateTemplateJson:: No volumes found with _compoundId: ${compoundId}`);
+    return null;
+  }
+  
+  // Use the existing generateJson function to create the JSON structure
+  const templateJson = generateJson(filteredGeometry);
+  
+  // Reset all placements to default position/rotation
+  if (templateJson.volumes && templateJson.volumes.length > 0) {
+    templateJson.volumes.forEach(volume => {
+      if (volume.placements && volume.placements.length > 0) {
+        // Keep only the first placement and reset its position/rotation
+        volume.placements = [{
+          ...volume.placements[0],
+          x: 0,
+          y: 0,
+          z: 0,
+          rotation: { x: 0, y: 0, z: 0 }
+        }];
+      }
+    });
+  }
+  
+  return templateJson;
+}
