@@ -398,7 +398,26 @@ export function generateTemplateJson(geometry, compoundId) {
   let filteredGeometry = {
     world: null,
     volumes: geometry.volumes.filter(volume => volume._compoundId === compoundId)
+    // set the placement of the top object to default position/rotation
+    
   };
+
+  // Reset placements of teh top level objects to default position/rotation
+  // if top object is not assembly or union
+  if (filteredGeometry.volumes && filteredGeometry.volumes.length > 0) {
+    filteredGeometry.volumes.forEach(volume => {
+      if (volume.placements && volume.placements.length > 0) {
+        // Keep only the first placement and reset its position/rotation
+        volume.placements = [{
+          ...volume.placements[0],
+          x: 0,
+          y: 0,
+          z: 0,
+          rotation: { x: 0, y: 0, z: 0 }
+        }];
+      }
+    });
+  }
 
   // recursively add volumes that are daughters, granddaughters, etc.
   const addDaughters = (volumeId) => {
@@ -416,31 +435,11 @@ export function generateTemplateJson(geometry, compoundId) {
   }
   
   console.log('generateTemplateJson:: filteredGeometry', filteredGeometry);
-  
-  // If no volumes match, return null
-  if (filteredGeometry.volumes.length === 0) {
-    console.warn(`generateTemplateJson:: No volumes found with _compoundId: ${compoundId}`);
-    return null;
-  }
 
   // Use the existing generateJson function to create the JSON structure
   const templateJson = generateJson(filteredGeometry);
   
-  // Reset all placements to default position/rotation
-  if (templateJson.volumes && templateJson.volumes.length > 0) {
-    templateJson.volumes.forEach(volume => {
-      if (volume.placements && volume.placements.length > 0) {
-        // Keep only the first placement and reset its position/rotation
-        volume.placements = [{
-          ...volume.placements[0],
-          x: 0,
-          y: 0,
-          z: 0,
-          rotation: { x: 0, y: 0, z: 0 }
-        }];
-      }
-    });
-  }
+
   
   return templateJson;
 }
