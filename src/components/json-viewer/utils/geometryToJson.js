@@ -50,20 +50,36 @@ function processAssembly(assemblies, volume) {
   console.log('processAssembly:: volume', volume);
   console.log('processAssembly:: assemblies', assemblies);
   console.log('processAssembly:: assemblies[volume._compoundId]', assemblies[volume._compoundId]);
-  assemblies[volume._compoundId].placements.push({
-    name: volume.name,
-    g4name: volume.g4name,
-    x: volume.position?.x || 0,
-    y: volume.position?.y || 0,
-    z: volume.position?.z || 0,
-    rotation: {
-      x: volume.rotation?.x || 0,
-      y: volume.rotation?.y || 0,
-      z: volume.rotation?.z || 0
-    },
-    parent: volume.mother_volume
-  });
-
+  
+  if (volume._write_full_geometry) {
+    assemblies[volume._compoundId].placements.push({
+      name: volume.name,
+      g4name: volume.g4name,
+      x: volume.position?.x || 0,
+      y: volume.position?.y || 0,
+      z: volume.position?.z || 0,
+      rotation: {
+        x: volume.rotation?.x || 0,
+        y: volume.rotation?.y || 0,
+        z: volume.rotation?.z || 0
+      },
+      parent: volume.mother_volume
+    });
+  } else {
+    assemblies[volume._compoundId].placements = [{
+      name: volume.name,
+      g4name: volume.g4name,
+      x: 0,
+      y: 0,
+      z: 0,
+      rotation: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      parent: ""
+    }];
+  }
 
   return assemblies;
 }
@@ -248,8 +264,11 @@ export function generateJson(geometry){
   
   // generate the world volume
   let worldJson = null;
+  // set to true if we write the full geometry, otherwise we are saving a component
+  let _write_full_geometry = false; 
   if (geometry.world) {
     worldJson = generateWorldVolume(geometry.world);
+    _write_full_geometry = true;
   }
 
   const volumes = [];
@@ -263,6 +282,7 @@ export function generateJson(geometry){
   // loop over the volumes
   if (geometry.volumes && Array.isArray(geometry.volumes)) {
     geometry.volumes.forEach(volume => {
+      volume._write_full_geometry = _write_full_geometry;
       if (volume && (volume.type === 'assembly' || volume.type === 'union')) {
         processAssembly(assemblies, volume); 
       } else if (volume) {
