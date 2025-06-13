@@ -31,7 +31,8 @@ const AddNewTab = ({
   handleAddGeometry,
   setLoadObjectDialogOpen,
   setHitCollectionsDialogOpen,
-  setUpdateObjectsDialogOpen
+  setUpdateObjectsDialogOpen,
+  setImportObjectDialogOpen
 }) => {
   return (
     <Box sx={{ p: 2 }}>
@@ -57,6 +58,16 @@ const AddNewTab = ({
             sx={{ flexGrow: 1 }}
           >
             Select From Library
+          </Button>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => setImportObjectDialogOpen(true)}
+            sx={{ flexGrow: 1 }}
+          >
+            Import Object From Library
           </Button>
         </Box>
         <Typography variant="caption" color="text.secondary">

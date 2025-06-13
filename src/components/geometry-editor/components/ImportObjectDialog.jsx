@@ -24,14 +24,16 @@ import InfoIcon from '@mui/icons-material/Info';
 import AddIcon from '@mui/icons-material/Add';
 
 /**
- * Dialog for loading a compound object from the objects directory
+ * Dialog for importing a JSON object from the objects directory
+ * This dialog specifically uses jsonToGeometry to convert the object to geometry
  */
-const LoadObjectDialog = ({
+const ImportObjectDialog = ({
   open,
   onClose,
-  onLoad,
-  onAddNew,
-  title = "Load Compound Object" // Default title
+  onImportGeometries,
+  onImportMaterials,
+  geometries,
+  materials
 }) => {
   const [objects, setObjects] = useState([]);
   const [filteredObjects, setFilteredObjects] = useState([]);
@@ -93,8 +95,8 @@ const LoadObjectDialog = ({
     setObjectDetails(object);
   };
   
-  // Handle loading the selected object
-  const handleLoad = async () => {
+  // Handle importing the selected object
+  const handleImport = async () => {
     if (!selectedObject) return;
     
     setIsLoading(true);
@@ -102,19 +104,35 @@ const LoadObjectDialog = ({
     
     try {
       // Import dynamically to avoid server-side issues
-      console.log('YOOOO handleLoad:: selectedObject', selectedObject); 
       const { loadObject } = await import('../utils/ObjectStorage');
       const result = await loadObject(selectedObject.fileName);
       
       if (result.success) {
-        onLoad(result.data);
+        // Import the jsonToGeometry function
+        const { jsonToGeometry } = await import('../../json-viewer/utils/jsonToGeometry');
+        
+        // Create current geometry object
+        const currentGeometry = {
+          geometries: geometries,
+          materials: materials
+        };
+        
+        // Convert the object data to geometry
+        console.log('handleImport:: result.data', result.data);
+        console.log('handleImport:: currentGeometry', currentGeometry);
+        const updatedGeometry = jsonToGeometry(result.data, currentGeometry);
+        
+        // Call the import callbacks with the updated geometry and materials
+        onImportGeometries(updatedGeometry.geometries);
+        onImportMaterials(updatedGeometry.materials);
+        
         onClose();
       } else {
         setError(result.message || 'Error loading object');
       }
     } catch (error) {
-      console.error('Error loading object:', error);
-      setError(`Error loading object: ${error.message}`);
+      console.error('Error importing object:', error);
+      setError(`Error importing object: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +156,7 @@ const LoadObjectDialog = ({
       maxWidth="md"
       fullWidth
     >
-      <DialogTitle>{title}</DialogTitle>
+      <DialogTitle>Import Object From Library</DialogTitle>
       
       <DialogContent>
         <Box sx={{ mt: 1 }}>
@@ -164,17 +182,6 @@ const LoadObjectDialog = ({
                 ),
               }}
             />
-            
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                onClose();
-                if (onAddNew) onAddNew();
-              }}
-            >
-              Add New Object
-            </Button>
           </Box>
           
           <Box sx={{ display: 'flex', height: '400px' }}>
@@ -286,16 +293,16 @@ const LoadObjectDialog = ({
           Cancel
         </Button>
         <Button 
-          onClick={handleLoad} 
+          onClick={handleImport} 
           variant="contained" 
           disabled={isLoading || !selectedObject}
           startIcon={isLoading ? <CircularProgress size={20} /> : null}
         >
-          {isLoading ? 'Loading...' : 'Load Object'}
+          {isLoading ? 'Importing...' : 'Import Object'}
         </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-export default LoadObjectDialog;
+export default ImportObjectDialog;

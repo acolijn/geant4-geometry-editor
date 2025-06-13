@@ -374,6 +374,8 @@ return (
                   onRemoveGeometry={handleRemoveGeometry}
                   extractObjectWithDescendants={processObjectWithDescendants}
                   handleImportPartialFromAddNew={handleImportPartialFromAddNew}
+                  handleImportGeometries={handleImportGeometries}
+                  handleImportMaterials={handleImportMaterials}
                   externalUpdateDialogData={updateDialogData}
                   updateDialogOpen={updateDialogOpen}
                   setUpdateDialogOpen={setUpdateDialogOpen}

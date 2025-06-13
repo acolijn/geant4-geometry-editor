@@ -30,6 +30,7 @@ import PropertyEditor from './components/PropertyEditor';
 import AddNewTab from './components/AddNewTab';
 import UpdateObjectsDialog from './components/UpdateObjectsDialog';
 import LoadObjectDialog from './components/LoadObjectDialog';
+import ImportObjectDialog from './components/ImportObjectDialog';
 import SaveObjectDialog from './components/SaveObjectDialog';
 import HitCollectionsDialog from './components/HitCollectionsDialog';
 
@@ -65,6 +66,8 @@ const RefactoredGeometryEditor = ({
   onRemoveGeometry,
   extractObjectWithDescendants,
   handleImportPartialFromAddNew,
+  handleImportGeometries,
+  handleImportMaterials,
   externalUpdateDialogData,
   updateDialogOpen,
   setUpdateDialogOpen,
@@ -103,6 +106,9 @@ const RefactoredGeometryEditor = ({
   
   // Load Object Dialog
   const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
+  
+  // Import Object Dialog
+  const [importObjectDialogOpen, setImportObjectDialogOpen] = useState(false);
   
   // Hit Collections Dialog
   const [hitCollectionsDialogOpen, setHitCollectionsDialogOpen] = useState(false);
@@ -251,6 +257,7 @@ const RefactoredGeometryEditor = ({
         importAlert={importAlert}
         handleCloseAlert={handleCloseAlert}
         setLoadObjectDialogOpen={setLoadObjectDialogOpen}
+        setImportObjectDialogOpen={setImportObjectDialogOpen}
         setHitCollectionsDialogOpen={setHitCollectionsDialogOpen}
         setUpdateObjectsDialogOpen={setUpdateDialogOpen}
       />
@@ -304,6 +311,23 @@ const RefactoredGeometryEditor = ({
         onClose={() => setLoadObjectDialogOpen(false)}
         onLoad={handleImportObjectFile}
         onAddNew={() => handleTabChange(null, 1)} // Switch to Add New tab
+      />
+      
+      {/* Import Object Dialog */}
+      <ImportObjectDialog
+        open={importObjectDialogOpen}
+        onClose={() => {
+          setImportObjectDialogOpen(false);
+          setImportAlert({
+            show: true,
+            message: 'Object imported successfully!',
+            severity: 'success'
+          });
+        }}
+        geometries={geometries}
+        materials={materials}
+        onImportGeometries={handleImportGeometries}
+        onImportMaterials={handleImportMaterials}
       />
       
       {/* Hit Collections Dialog */}
