@@ -7,6 +7,7 @@
  * @returns {Object} The standard geometry format
  */
 
+//import { generateUniqueName } from '../../geometry-editor/utils/geometryHandlers';
 
 /**
  * 
@@ -20,35 +21,22 @@ export function jsonToGeometry(json, geometry) {
     // Validate input parameters
     if (!json) {
         console.warn('jsonToGeometry:: json is null or undefined');
-        return geometry || {
-            geometries: {
-                world: null,
-                volumes: []
-            },
-            materials: {}
-        };
-    }
-
-    // Ensure geometry is initialized
-    if (!geometry) {
-        geometry = {
-            geometries: {
-                world: null,
-                volumes: []
-            },
-            materials: {}
-        };
+        return geometry;
     }
 
     // check if json has world: if so update the world in geometry
+    let _middle_id = "";
     if (json.world) {
         console.log('jsonToGeometry:: json has world - create new geometry');
         geometry = createNewGeometry(json);
+    } else {
+        _middle_id = `${Date.now()}`;
+        console.log('jsonToGeometry:: json has no world - use middle_id:', _middle_id);
     }
 
     // check if json has volumes: if so add them to the geometry
     if (json.volumes && Array.isArray(json.volumes)) {
-        createVolumes(json.volumes, geometry);
+        createVolumes(json.volumes, geometry, _middle_id);
     }
 
     // check if json has materials: if so add them to the geometry
@@ -96,7 +84,7 @@ function createNewGeometry(json) {
     return geometry;
 }
 
-function createVolumes(volumes, geometry) {
+function createVolumes(volumes, geometry, _middle_id) {
     // Make sure volumes array exists
     if (!geometry.geometries.volumes) {
         geometry.geometries.volumes = [];
@@ -109,25 +97,37 @@ function createVolumes(volumes, geometry) {
     }
     
     // loop over the volumes
+    let _iplacement = 0;
     volumes.forEach(volume => {
         if (!volume) {
             console.warn('createVolumes:: volume is null or undefined');
             return;
         }
         
-        if (volume.type === 'assembly' ){
-            createAssembly(volume, geometry);
-        } else if (volume.type === 'union') {
+        volume._middle_id = _middle_id;
+        volume._iplacement = _iplacement;
+
+        if (volume.type === 'assembly' || volume.type === 'union' ){
             createAssembly(volume, geometry);
         } else if (volume.placements && Array.isArray(volume.placements)) {
-            // loop through the placements and create a volume for each placement
-            volume.placements.forEach(placement => {
-                if (placement) {
-                    geometry.geometries.volumes.push(createVolume(volume, placement));
-                }
-            });
+            createStandardVolume(volume, geometry);
         } else {
             console.warn(`createVolumes:: volume ${volume.name} has no placements or invalid placements`);
+        }
+        _iplacement++;
+    });
+}
+
+function createStandardVolume(volume, geometry) {
+    // convert the standard volume to the standard geometry format
+    console.log('createStandardVolume:: volume', volume);
+    console.log('createStandardVolume:: volume.type', volume.type);
+    console.log('createStandardVolume:: volume.placements', volume.placements);
+
+    // loop through the placements and create a volume for each placement
+    volume.placements.forEach(placement => {
+        if (placement) {
+            geometry.geometries.volumes.push(createVolume(volume, placement));
         }
     });
 }
@@ -138,11 +138,14 @@ function createAssembly(volume, geometry) {
     console.log('createAssembly:: volume.type', volume.type);
     console.log('createAssembly:: volume.placements', volume.placements);
 
+
     // loop through the placements and create an assembly for each placement
     let iPlacement = 0;
     volume.placements.forEach(placement => {
+
+        let assemblyName = convertName(placement.name, volume._middle_id);
+
         // create the assembly
-        let assemblyName = placement.name;
         const assembly = {
             name: assemblyName,
             g4name: placement.g4name,
@@ -162,7 +165,7 @@ function createAssembly(volume, geometry) {
         volume.components.forEach(component => {
             // create the component
             let placement = component.placements[0];
-            let newName = nextName(placement.name, iPlacement);
+            let newName = convertName(nextName(placement.name, iPlacement), volume._middle_id);
             console.log('createAssembly:: newName', newName);
             console.log('createAssembly:: placement', placement);
             const newComponent = {
@@ -175,7 +178,7 @@ function createAssembly(volume, geometry) {
                 _compoundId: volume._compoundId,
                 _componentId: component._componentId,
                 // if parent name not "" then use it as mother_volume else use assemblyName
-                mother_volume: placement.parent !== '' ? nextName(placement.parent, iPlacement) : assemblyName
+                mother_volume: placement.parent !== '' ? convertName(nextName(placement.parent, iPlacement), volume._middle_id) : assemblyName
             };
 
             if (component.boolean_operation) {
@@ -194,6 +197,22 @@ function createAssembly(volume, geometry) {
     });
     
 }
+function convertName(name, _middle_id) {
+    if (_middle_id === "") {
+        return name;
+    } else {
+        // split name by _
+        console.log('convertName:: name', name);
+        let parts = name.split('_');
+        if (parts.length < 2) {
+            return name;
+        }
+        // replace teh second part
+        parts[1] = _middle_id;
+        // join the parts back with _
+        return parts.join('_');
+    }
+}
 
 /**
  * Generate the next name by adding a specified increment to the last number after the last underscore
@@ -203,30 +222,30 @@ function createAssembly(volume, geometry) {
  * @returns {string} - The new name with the incremented number
  */
 function nextName(name, increment) {
-// Split the name by underscores
-const parts = name.split('_');
+    // Split the name by underscores
+    const parts = name.split('_');
 
-// Get the last part which should be the number
-const lastPart = parts[parts.length - 1];
+    // Get the last part which should be the number
+    const lastPart = parts[parts.length - 1];
 
-// Check if the last part is a number
-if (/^\d+$/.test(lastPart)) {
-    // Convert to number, add the increment
-    const currentNumber = parseInt(lastPart, 10);
-    const nextNumber = currentNumber + increment;
-    
-    // Pad with leading zeros to maintain the same length
-    const paddedNumber = nextNumber.toString().padStart(lastPart.length, '0');
-    
-    // Replace the last part with the new number
-    parts[parts.length - 1] = paddedNumber;
-    
-    // Join the parts back with underscores
-    return parts.join('_');
-}
+    // Check if the last part is a number
+    if (/^\d+$/.test(lastPart)) {
+        // Convert to number, add the increment
+        const currentNumber = parseInt(lastPart, 10);
+        const nextNumber = currentNumber + increment;
+        
+        // Pad with leading zeros to maintain the same length
+        const paddedNumber = nextNumber.toString().padStart(lastPart.length, '0');
+        
+        // Replace the last part with the new number
+        parts[parts.length - 1] = paddedNumber;
+        
+        // Join the parts back with underscores
+        return parts.join('_');
+    }
 
-// If the last part is not a number, append the increment with an underscore
-return `${name}_${increment}`;
+    // If the last part is not a number, append the increment with an underscore
+    return `${name}_${increment}`;
 }
 
 function createUnion(volume, geometry) {
@@ -244,17 +263,19 @@ function createVolume(volume, placement) {
     console.log('createVolume:: volume.placements', volume.placements);
     console.log('createVolume:: volume.material', volume.material);
     console.log('createVolume:: volume.dimensions', volume.dimensions);
+    // if placement_number is 0 then mother_volume: placement.parent else mother_volume: convertName(placement.parent, _middle_id)
+    let _iplacement = volume._iplacement;
+    let mother_volume = _iplacement === 0 ? placement.parent : convertName(placement.parent, volume._middle_id);
 
     const newVolume = {
-        name: volume.name,
+        name: convertName(volume.name, volume._middle_id),
         g4name: volume.g4name || volume.name,
         type: volume.type,
         material: volume.material,
         position: {x: placement.x, y: placement.y, z: placement.z},
         rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
-        mother_volume: placement.parent
+        mother_volume: mother_volume
     };
-
 
     // set the dimensions of the new volume
     setDimensions(newVolume, volume);
