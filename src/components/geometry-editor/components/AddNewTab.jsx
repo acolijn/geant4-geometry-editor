@@ -50,16 +50,7 @@ const AddNewTab = ({
       
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2, mb: 3 }}>
         <Typography variant="subtitle1">Import Existing Object</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setLoadObjectDialogOpen(true)}
-            sx={{ flexGrow: 1 }}
-          >
-            Select From Library
-          </Button>
-        </Box>
+
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="contained"
@@ -67,7 +58,7 @@ const AddNewTab = ({
             onClick={() => setImportObjectDialogOpen(true)}
             sx={{ flexGrow: 1 }}
           >
-            Import Object From Library
+            Import From Library
           </Button>
         </Box>
         <Typography variant="caption" color="text.secondary">

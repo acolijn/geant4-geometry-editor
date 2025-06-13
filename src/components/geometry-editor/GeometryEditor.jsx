@@ -29,7 +29,6 @@ import { generateAssemblyId } from './utils/assemblyManager';
 import PropertyEditor from './components/PropertyEditor';
 import AddNewTab from './components/AddNewTab';
 import UpdateObjectsDialog from './components/UpdateObjectsDialog';
-import LoadObjectDialog from './components/LoadObjectDialog';
 import ImportObjectDialog from './components/ImportObjectDialog';
 import SaveObjectDialog from './components/SaveObjectDialog';
 import HitCollectionsDialog from './components/HitCollectionsDialog';
@@ -306,12 +305,7 @@ const RefactoredGeometryEditor = ({
       />
       
       {/* Load Object Dialog */}
-      <LoadObjectDialog
-        open={loadObjectDialogOpen}
-        onClose={() => setLoadObjectDialogOpen(false)}
-        onLoad={handleImportObjectFile}
-        onAddNew={() => handleTabChange(null, 1)} // Switch to Add New tab
-      />
+
       
       {/* Import Object Dialog */}
       <ImportObjectDialog
