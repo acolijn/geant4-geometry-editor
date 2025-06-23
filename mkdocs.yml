@@ -12,19 +12,27 @@ theme:
 
 nav:
   - Home: 'index.md'
-  - Getting Started: 'getting-started.md'
-  - User Interface: 'user-interface.md'
-  - Geometry Components: 'geometry-components.md'
-  - Materials: 'materials.md'
-  - Coordinate System: 'coordinate-system.md'
-  - JSON Format: 'json-format.md'
-  - Integration with Geant4: 'integration-with-geant4.md'
-  - API Reference:
-    - Overview: 'api/index.md'
-    - GeometryEditor: 'api/GeometryEditor.md'
-    - ProjectManager: 'api/ProjectManager.md'
+  - Installation: 'installation.md'
+  - 3D View:
+    - Overview: '3d-view/index.md'
+    - Geometry Tree: '3d-view/geometry-tree.md'
+    - 3D Viewer: '3d-view/viewer.md'
+    - Properties Tab: '3d-view/properties-tab.md'
+    - Add New Tab: '3d-view/add-new-tab.md'
+  - Materials:
+    - Overview: 'materials/index.md'
+    - NIST Materials: 'materials/nist-materials.md'
+    - Element-Based Materials: 'materials/element-based.md'
+    - Compounds: 'materials/compounds.md'
+    - Material Properties: 'materials/material-properties.md'
+    - Material Management: 'materials/material-management.md'
+  - JSON: 'json/json-viewer.md'
+  - Save and Load: 'save-load.md'
 
 markdown_extensions:
   - toc:
       permalink: true
   - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
