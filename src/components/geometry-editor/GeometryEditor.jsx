@@ -17,7 +17,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 // Import utility handlers
 import {
   createPropertyHandlers,
-  createImportExportHandlers,
+  //createImportExportHandlers,
   createGeometryHandlers,
   createUpdateHandlers
 } from './utils';
@@ -252,7 +252,7 @@ const RefactoredGeometryEditor = ({
         setNewMotherVolume={setNewMotherVolume}
         handleAddGeometry={handleAddGeometry}
         fileInputRef={fileInputRef}
-        handleImportObjectFile={handleImportObjectFile}
+        //handleImportObjectFile={handleImportObjectFile}
         importAlert={importAlert}
         handleCloseAlert={handleCloseAlert}
         setLoadObjectDialogOpen={setLoadObjectDialogOpen}
