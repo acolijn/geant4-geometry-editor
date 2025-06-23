@@ -1,43 +1,27 @@
-# Geant4 Geometry Editor Documentation
+# Geant4 Geometry Editor
 
-Welcome to the documentation for the Geant4 Geometry Editor, a web-based tool for creating and editing geometries for Geant4 simulations.
+A web-based visual editor for creating and modifying Geant4 detector geometries. This tool allows you to create complex 3D geometries through an intuitive interface and export them to JSON format for use in Geant4 simulations.
 
 ## Overview
 
-The Geant4 Geometry Editor provides a graphical interface for designing detector geometries that can be exported as JSON files and used with Geant4-based simulations. This tool bridges the gap between visual design and simulation code, making it easier to create and modify complex detector geometries.
+The Geant4 Geometry Editor provides a user-friendly interface for creating and editing detector geometries for Geant4 simulations. It allows you to:
 
-## Contents
+- Create and modify 3D geometries visually
+- Define and customize materials
+- Export geometries in various JSON formats
+- Save and load your work
+- Interface with the geant4-simulations package
 
-### Main Components
+## Documentation Sections
 
-- [Geometry Editor](geometry-editor.md) - Core component for creating and editing geometry objects
-- [Material Editor](material-editor.md) - Interface for creating and managing materials
-- [JSON Viewer](json-viewer.md) - View and export the JSON representation of geometries
-- [Viewer3D](viewer3D.md) - Interactive 3D visualization of geometries
+- [Installation and Setup](installation.md) - How to install and set up the editor
+- [3D View](3d-view/index.md) - Working with the 3D visualization and geometry tree
+- [Materials](materials/index.md) - Creating and managing materials
+- [JSON Formats](json/index.md) - Understanding the JSON output formats
+- [Save/Load](save-load.md) - Saving and loading your work
+- [Geant4 Integration](geant4-integration.md) - Interfacing with the geant4-simulations package
+- [API Reference](api/index.md) - Reference documentation for developers
 
-### Additional Resources
+## Quick Start
 
-- [Getting Started](getting-started.md) - Quick start guide
-- [User Interface](user-interface.md) - Overview of the user interface
-- [Coordinate System](coordinate-system.md) - Explanation of the coordinate system
-- [Integration with Geant4](integration-with-geant4.md) - Using the editor with Geant4
-- [API Reference](api/index.md) - Detailed API documentation
-
-## Key Features
-
-- 3D visualization of Geant4 geometries using Three.js
-- Support for multiple shapes: Box, Cylinder, Sphere, Ellipsoid, Torus, Trapezoid, and Polycone
-- Interactive 3D transform controls for positioning and rotating objects
-- Material editor for defining custom materials
-- Real-time JSON preview and export
-- Object library for saving and reusing geometry components
-- Consistent coordinate system with Geant4 (sequential rotations)
-- Alphabetically sorted geometry tree for easier navigation
-
-## Development
-
-This application is built with:
-- React for UI components
-- Three.js for 3D visualization
-- Material UI for the user interface components
-- Vite as the build tool and development server
+To quickly get started with the Geant4 Geometry Editor, see the [Installation and Setup](installation.md) guide followed by the [3D View](3d-view/index.md) documentation.
