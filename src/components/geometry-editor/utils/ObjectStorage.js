@@ -12,7 +12,7 @@
 import FileSystemManager from '../../../utils/FileSystemManager';
 
 // Import the ObjectFormatStandardizer
-import { standardizeObjectFormat } from './ObjectFormatStandardizer';
+//import { standardizeObjectFormat } from './ObjectFormatStandardizer';
 
 /**
  * Save a compound object to the objects directory
@@ -47,12 +47,19 @@ export const saveObject = async (name, description, objectData, preserveComponen
       };
     } else {
       // Fall back to the old standardization method
-      console.log('ObjectStorage::saveObject:: Using standardizeObjectFormat for formatting');
-      dataToProcess = standardizeObjectFormat(objectData);
+      //console.log('ObjectStorage::saveObject:: Using standardizeObjectFormat for formatting');
+      //dataToProcess = standardizeObjectFormat(objectData);
       // Remove 'placement' ONLY from the top-level object before saving
-      if (dataToProcess.object && dataToProcess.object.placement) {
-        delete dataToProcess.object.placement;
-      }
+      //if (dataToProcess.object && dataToProcess.object.placement) {
+      //  delete dataToProcess.object.placement;
+      //}
+
+      // error: old obsolete formate
+
+      console.log('ObjectStorage::saveObject:: Using old obsolete format for formatting');
+      // throw error
+      throw new Error('ObjectStorage::saveObject:: Using old obsolete format for formatting');
+      
     }
     
     // If preserveComponentIds is true, check if the object already exists and preserve component IDs
