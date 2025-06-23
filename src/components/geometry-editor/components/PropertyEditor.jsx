@@ -35,7 +35,7 @@ const PropertyEditor = ({
   hitCollections,
   onUpdateGeometry,
   onRemoveGeometry,
-  handleExportObject,
+  //handleExportObject,
   handleInputFocus,
   setUpdateObjectsDialogOpen,
   handlePropertyChange,

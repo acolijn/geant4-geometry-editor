@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
-import { createImportExportHandlers } from '../geometry-editor/utils/importExportHandlers';
+//import { createImportExportHandlers } from '../geometry-editor/utils/importExportHandlers';
 import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryUtils';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
-
+import { getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
@@ -18,7 +18,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   // but we need to adapt our geometries structure to match what it expects
   
   // Get the importExportHandlers functions
-  const importExportHandlers = createImportExportHandlers({
+/*   const importExportHandlers = createImportExportHandlers({
     geometries: {
       volumes: geometries.volumes,
       world: geometries.world || { name: 'world' } // Provide a default world if not available
@@ -40,14 +40,17 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       }
       return null;
     }
-  });
+  }); */
+
   
   // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
   const handleExportObject = async () => {
     console.log('handleExportObject:: geometries');
     
     // Get the currently selected geometry object
-    const selectedObject = importExportHandlers.getSelectedGeometryObjectLocal();
+    //const selectedObject = importExportHandlers.getSelectedGeometryObjectLocal();
+    
+    const selectedObject = getSelectedGeometryObject(selectedGeometry, geometries);
     console.log('handleExportObject:: selectedObject', selectedObject);
     
     if (!selectedObject) {

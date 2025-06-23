@@ -130,7 +130,7 @@ const RefactoredGeometryEditor = ({
   });
 
   // Import/Export handlers
-  const {
+/*   const {
     applyStructuredNaming,
     handleExportObject,
     handleImportObjectFile
@@ -142,7 +142,7 @@ const RefactoredGeometryEditor = ({
     setObjectToSave,
     setSaveObjectDialogOpen,
     setImportAlert
-  });
+  }); */
 
   // Geometry handlers
   const {
@@ -236,7 +236,7 @@ const RefactoredGeometryEditor = ({
         handleRelativePositionChange={handleRelativePositionChange}
         handleRelativeRotationChange={handleRelativeRotationChange}
         handleInputFocus={handleInputFocus}
-        handleExportObject={handleExportObject}
+        //handleExportObject={handleExportObject}
       />
     );
   };
