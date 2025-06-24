@@ -336,6 +336,31 @@ class FileSystemManager {
   }
 
   /**
+   * Delete an object from the file system
+   * @param {string} name - Object name
+   * @returns {Promise<boolean>} Whether the delete was successful
+   */
+  async deleteObject(name) {
+    if (!this.initialized) {
+      throw new Error('FileSystemManager not initialized');
+    }
+
+    try {
+      // Get the objects directory
+      const objectsDir = await this.baseDirectory.getDirectoryHandle('objects');
+      
+      // Delete the object file
+      await objectsDir.removeEntry(`${name}.json`);
+      console.log(`Deleted object: ${name}.json`);
+      
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete object ${name}:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Open a file picker dialog in the current directory
    * @param {Object} options - Options for the file picker
    * @returns {Promise<FileSystemFileHandle>} The selected file handle

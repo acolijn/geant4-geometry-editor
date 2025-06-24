@@ -17,10 +17,13 @@ import {
   Divider,
   Paper,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Tooltip,
+  DialogContentText
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 
 /**
@@ -89,6 +92,53 @@ const ImportObjectDialog = ({
     }
   };
   
+  // Handle deleting an object
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [objectToDelete, setObjectToDelete] = useState(null);
+  
+  const handleDeleteClick = (event, object) => {
+    event.stopPropagation(); // Prevent selecting the object when clicking delete
+    setObjectToDelete(object);
+    setDeleteConfirmOpen(true);
+  };
+  
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+    setObjectToDelete(null);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!objectToDelete) return;
+    
+    setIsLoading(true);
+    setDeleteConfirmOpen(false);
+    
+    try {
+      // Import dynamically to avoid server-side issues
+      const { deleteObject } = await import('../utils/ObjectStorage');
+      const result = await deleteObject(objectToDelete.fileName);
+      
+      if (result.success) {
+        // If the deleted object was selected, deselect it
+        if (selectedObject && selectedObject.fileName === objectToDelete.fileName) {
+          setSelectedObject(null);
+          setObjectDetails(null);
+        }
+        
+        // Reload the objects list
+        await loadObjectsList();
+      } else {
+        setError(result.message || 'Error deleting object');
+      }
+    } catch (error) {
+      console.error('Error deleting object:', error);
+      setError(`Error deleting object: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setObjectToDelete(null);
+    }
+  };
+  
   // Handle selecting an object
   const handleSelectObject = (object) => {
     setSelectedObject(object);
@@ -150,12 +200,13 @@ const ImportObjectDialog = ({
   };
   
   return (
-    <Dialog 
-      open={open} 
-      onClose={isLoading ? undefined : onClose}
-      maxWidth="md"
-      fullWidth
-    >
+    <>
+      <Dialog 
+        open={open} 
+        onClose={isLoading ? undefined : onClose}
+        maxWidth="md"
+        fullWidth
+      >
       <DialogTitle>Import Object From Library</DialogTitle>
       
       <DialogContent>
@@ -221,13 +272,26 @@ const ImportObjectDialog = ({
                             : object.description}
                         />
                         <ListItemSecondaryAction>
-                          <IconButton 
-                            edge="end" 
-                            onClick={() => handleSelectObject(object)}
-                            size="small"
-                          >
-                            <InfoIcon fontSize="small" />
-                          </IconButton>
+                          <Tooltip title="View details">
+                            <IconButton 
+                              edge="end" 
+                              onClick={() => handleSelectObject(object)}
+                              size="small"
+                              sx={{ mr: 1 }}
+                            >
+                              <InfoIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete object">
+                            <IconButton 
+                              edge="end" 
+                              onClick={(e) => handleDeleteClick(e, object)}
+                              size="small"
+                              color="error"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </ListItemSecondaryAction>
                       </ListItem>
                       {index < filteredObjects.length - 1 && <Divider />}
@@ -302,6 +366,32 @@ const ImportObjectDialog = ({
         </Button>
       </DialogActions>
     </Dialog>
+    
+    {/* Delete confirmation dialog */}
+    <Dialog
+      open={deleteConfirmOpen}
+      onClose={handleDeleteCancel}
+      aria-labelledby="delete-dialog-title"
+      aria-describedby="delete-dialog-description"
+    >
+      <DialogTitle id="delete-dialog-title">
+        Delete Object
+      </DialogTitle>
+      <DialogContent>
+        <DialogContentText id="delete-dialog-description">
+          Are you sure you want to delete "{objectToDelete?.name}"? This action cannot be undone.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleDeleteCancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isLoading}>
+          {isLoading ? 'Deleting...' : 'Delete'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 };
 

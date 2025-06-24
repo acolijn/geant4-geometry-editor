@@ -234,8 +234,46 @@ export const loadObject = async (fileName) => {
   }
 };
 
+/**
+ * Delete a compound object by filename
+ * @param {string} fileName - The name of the file to delete
+ * @returns {Promise<Object>} - Result of the delete operation
+ */
+export const deleteObject = async (fileName) => {
+  try {
+    // Check if FileSystemManager is initialized
+    if (!FileSystemManager.initialized) {
+      await FileSystemManager.initialize();
+    }
+    
+    // Extract the object name from the filename
+    const objectName = fileName.replace('.json', '');
+    
+    // Delete the object using FileSystemManager
+    const success = await FileSystemManager.deleteObject(objectName);
+    
+    if (!success) {
+      throw new Error(`Failed to delete object "${fileName}"`);
+    }
+    
+    console.log(`Object "${fileName}" deleted successfully`);
+    
+    return {
+      success: true,
+      message: `Object "${fileName}" deleted successfully`
+    };
+  } catch (error) {
+    console.error(`Error deleting object ${fileName}:`, error);
+    return {
+      success: false,
+      message: `Error deleting object: ${error.message}`
+    };
+  }
+};
+
 export default {
   saveObject,
   listObjects,
-  loadObject
+  loadObject,
+  deleteObject
 };
