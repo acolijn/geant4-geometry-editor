@@ -145,17 +145,19 @@ function createAssembly(volume, geometry) {
 
         let assemblyName = convertName(placement.name, volume._middle_id);
 
+        let g4name = makeg4name(placement.g4name, volume, geometry);
+        
         // create the assembly
         const assembly = {
             name: assemblyName,
-            g4name: placement.g4name,
+            g4name: g4name,
             type: volume.type,
             material: volume.material || undefined,
             position: {x: placement.x, y: placement.y, z: placement.z},
             rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
             _compoundId: volume._compoundId,
             _componentId: volume._componentId,
-            mother_volume: placement.parent
+            mother_volume: placement.parent || "World"
         };
         console.log('createAssembly:: assembly', assembly);
         geometry.geometries.volumes.push(assembly);
@@ -197,6 +199,27 @@ function createAssembly(volume, geometry) {
     });
     
 }
+
+function makeg4name(name, volume, geometry) {
+
+    if (volume._middle_id === "") {
+        return name;
+    } else {
+        let baseName = name.split('_')[0];
+        // count the number of instances of this volume type
+        let count = 0;
+        geometry.geometries.volumes.forEach(volume => {
+            // check _compoundId and _componentId
+            // check if volume is the top level volume
+            if (volume._compoundId === volume._compoundId && (volume.type === 'assembly' || volume.type === 'union')) {
+                count++;
+            }
+        });
+        
+        return `${baseName}_${count}`;
+    }
+}
+
 function convertName(name, _middle_id) {
     if (_middle_id === "") {
         return name;
