@@ -24,7 +24,7 @@ import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
 //import { standardizeProjectData, restoreProjectData } from './components/geometry-editor/utils/ObjectFormatStandardizer';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
-import { importPartialFromAddNew } from './components/geometry-editor/utils/GeometryImport';
+//import { importPartialFromAddNew } from './components/geometry-editor/utils/GeometryImport';
 import { extractObjectWithDescendants } from './components/geometry-editor/utils/GeometryUtils';
 
 import './App.css';
@@ -95,7 +95,7 @@ function App() {
   };
   
   // Handle importing a partial geometry from the Add New tab using the imported utility function
-  const handleImportPartialFromAddNew = (content, motherVolume) => {
+/*   const handleImportPartialFromAddNew = (content, motherVolume) => {
     // Log the import operation for debugging
     console.log('IMPORT - Using imported utility function for partial geometry import');
     
@@ -108,7 +108,7 @@ function App() {
       setSelectedGeometry,
       propagateCompoundIdToDescendants
     );
-  };
+  }; */
   
   // Handle importing geometries
   const handleImportGeometries = (importData) => {
@@ -333,7 +333,7 @@ return (
               materials={materials}
               hitCollections={hitCollections}
               onLoadProject={handleLoadProject}
-              handleImportPartialFromAddNew={handleImportPartialFromAddNew}
+              //handleImportPartialFromAddNew={handleImportPartialFromAddNew}
               compactMode={true}
             />
           </Box>
@@ -373,7 +373,7 @@ return (
                   onAddGeometry={handleAddGeometry}
                   onRemoveGeometry={handleRemoveGeometry}
                   extractObjectWithDescendants={processObjectWithDescendants}
-                  handleImportPartialFromAddNew={handleImportPartialFromAddNew}
+                  //handleImportPartialFromAddNew={handleImportPartialFromAddNew}
                   handleImportGeometries={handleImportGeometries}
                   handleImportMaterials={handleImportMaterials}
                   externalUpdateDialogData={updateDialogData}

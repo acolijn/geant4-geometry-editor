@@ -64,7 +64,7 @@ const RefactoredGeometryEditor = ({
   onAddGeometry,
   onRemoveGeometry,
   extractObjectWithDescendants,
-  handleImportPartialFromAddNew,
+  // handleImportPartialFromAddNew,
   handleImportGeometries,
   handleImportMaterials,
   externalUpdateDialogData,
