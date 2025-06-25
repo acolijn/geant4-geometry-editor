@@ -618,8 +618,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             const fileName = name || objectToSave.object.name || 'geometry';
             
             // Apply structured naming if needed
-            console.log('GeometryTree::applyStructuredNaming:: objectToSave', objectToSave);
-            console.log('GeometryTree::applyStructuredNaming:: preserveComponentIds', preserveComponentIds);
+            console.log('GeometryTree:: objectToSave', objectToSave);
+            console.log('GeometryTree:: preserveComponentIds', preserveComponentIds);
             // const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
             const dataToSave = objectToSave;
             // Save the object to the library
