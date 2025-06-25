@@ -284,6 +284,7 @@ export function generateJson(geometry){
     geometry.volumes.forEach(volume => {
       volume._write_full_geometry = _write_full_geometry;
       if (volume && (volume.type === 'assembly' || volume.type === 'union')) {
+        console.log('generateJson:: processing assembly', volume);
         processAssembly(assemblies, volume); 
       } else if (volume) {
         // standard volume

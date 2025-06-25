@@ -14,6 +14,9 @@ import FileSystemManager from '../../../utils/FileSystemManager';
 // Import the ObjectFormatStandardizer
 //import { standardizeObjectFormat } from './ObjectFormatStandardizer';
 
+// Import the geometryToJson
+//import { generateJson } from '../../json-viewer/utils/geometryToJson';
+
 /**
  * Save a compound object to the objects directory
  * @param {string} name - The name of the object
@@ -39,27 +42,16 @@ export const saveObject = async (name, description, objectData, preserveComponen
     // Check if we have a templateJson from geometryToJson
     let dataToProcess;
     if (objectData.templateJson) {
-      console.log('ObjectStorage::saveObject:: Using templateJson for consistent formatting');
+      console.log('ObjectStorage::saveObject:: Using templateJson for old formatting');
       dataToProcess = {
         object: objectData.object,
         descendants: objectData.descendants || [],
         templateJson: objectData.templateJson
       };
     } else {
-      // Fall back to the old standardization method
-      //console.log('ObjectStorage::saveObject:: Using standardizeObjectFormat for formatting');
-      //dataToProcess = standardizeObjectFormat(objectData);
-      // Remove 'placement' ONLY from the top-level object before saving
-      //if (dataToProcess.object && dataToProcess.object.placement) {
-      //  delete dataToProcess.object.placement;
-      //}
-
-      // error: old obsolete formate
-
-      console.log('ObjectStorage::saveObject:: Using old obsolete format for formatting');
-      // throw error
-      throw new Error('ObjectStorage::saveObject:: Using old obsolete format for formatting');
-      
+      dataToProcess = objectData;
+      console.log('ObjectStorage::saveObject:: dataToProcess', dataToProcess);
+      console.log('ObjectStorage::saveObject:: objectData', objectData.descendants);
     }
     
     // If preserveComponentIds is true, check if the object already exists and preserve component IDs
