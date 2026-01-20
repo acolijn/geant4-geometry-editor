@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
-//import { createImportExportHandlers } from '../geometry-editor/utils/importExportHandlers';
 import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryUtils';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
@@ -14,42 +13,11 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
 
-  // We'll use the existing extractObjectWithDescendants function from GeometryUtils
-  // but we need to adapt our geometries structure to match what it expects
-  
-  // Get the importExportHandlers functions
-/*   const importExportHandlers = createImportExportHandlers({
-    geometries: {
-      volumes: geometries.volumes,
-      world: geometries.world || { name: 'world' } // Provide a default world if not available
-    },
-    selectedGeometry,
-    onUpdateGeometry,
-    extractObjectWithDescendants, // Use the original function
-    setObjectToSave,
-    setSaveObjectDialogOpen,
-    getSelectedGeometryObjectLocal: () => {
-      // If we have a volumeIndex from context menu, use that
-      if (contextMenu && contextMenu.volumeIndex !== undefined) {
-        return geometries.volumes[contextMenu.volumeIndex];
-      }
-      // Otherwise use the currently selected geometry
-      if (selectedGeometry && selectedGeometry !== 'world') {
-        const volumeIndex = parseInt(selectedGeometry.split('-')[1]);
-        return geometries.volumes[volumeIndex];
-      }
-      return null;
-    }
-  }); */
-
-  
   // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
   const handleExportObject = async () => {
     console.log('handleExportObject:: geometries');
     
     // Get the currently selected geometry object
-    //const selectedObject = importExportHandlers.getSelectedGeometryObjectLocal();
-    
     const selectedObject = getSelectedGeometryObject(selectedGeometry, geometries);
     console.log('handleExportObject:: selectedObject', selectedObject);
     
@@ -64,18 +32,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       world: geometries.world || { name: 'world' }
     };
     
-    // Get the compound ID and object ID
-    //let objectId;
+    // Get the compound ID
     let compoundId = selectedObject._compoundId;
     
-/*     if (contextMenu && contextMenu.volumeIndex !== undefined) {
-      objectId = `volume-${contextMenu.volumeIndex}`;
-    } else {
-      objectId = selectedGeometry;
-    }
-     */
-    // If this is an assembly or union, use generateTemplateJson
-    //if (selectedObject.type === 'assembly' || selectedObject.type === 'union') {
     try {
       // Import the generateTemplateJson function
       const { generateTemplateJson } = await import('../../components/json-viewer/utils/geometryToJson');
@@ -97,21 +56,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     } catch (error) {
       console.error('Error generating template JSON:', error);
     }
-    //}
-/*     
-    // Fallback to the original method for non-compound objects
-    const exportData = extractObjectWithDescendants(objectId, geometriesForExport);
-    if (!exportData) {
-      console.error('Failed to extract object data');
-      return;
-    }
-    
-    console.log('exportData::', exportData);
-    
-    // Set the object to save and open the dialog
-    setObjectToSave(exportData);
-    setSaveObjectDialogOpen(true); */
   };
+
   // State to track expanded nodes - initially only World is expanded
   const [expandedNodes, setExpandedNodes] = useState({ world: true });
   

@@ -17,7 +17,6 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 // Import utility handlers
 import {
   createPropertyHandlers,
-  //createImportExportHandlers,
   createGeometryHandlers,
   createUpdateHandlers
 } from './utils';
@@ -64,7 +63,6 @@ const RefactoredGeometryEditor = ({
   onAddGeometry,
   onRemoveGeometry,
   extractObjectWithDescendants,
-  // handleImportPartialFromAddNew,
   handleImportGeometries,
   handleImportMaterials,
   externalUpdateDialogData,
@@ -88,14 +86,6 @@ const RefactoredGeometryEditor = ({
   const [newGeometryType, setNewGeometryType] = useState('box');
   // Default mother volume for new geometries
   const [newMotherVolume, setNewMotherVolume] = useState('World');
-  // For union solids: first solid selection
-  ////const [firstSolid, setFirstSolid] = useState('');
-  // For union solids: second solid selection
-  ////const [secondSolid, setSecondSolid] = useState('');
-  // For multi-component union solids: number of additional components beyond the first two
-  ////const [additionalComponents, setAdditionalComponents] = useState(0);
-  // For multi-component union solids: values of the additional components
-  ////const [additionalComponentsValues, setAdditionalComponentsValues] = useState([]);
 
   // ===== Dialog States =====
   // Save Object Dialog
@@ -128,21 +118,6 @@ const RefactoredGeometryEditor = ({
     selectedGeometry,
     geometries
   });
-
-  // Import/Export handlers
-/*   const {
-    applyStructuredNaming,
-    handleExportObject,
-    handleImportObjectFile
-  } = createImportExportHandlers({
-    handleImportPartialFromAddNew,
-    extractObjectWithDescendants,
-    geometries,
-    selectedGeometry,
-    setObjectToSave,
-    setSaveObjectDialogOpen,
-    setImportAlert
-  }); */
 
   // Geometry handlers
   const {
@@ -181,45 +156,6 @@ const RefactoredGeometryEditor = ({
     setImportAlert({ ...importAlert, show: false });
   };
 
-  // We'll use the handleLoadObject function from the importExportHandlers utility
-
-  // Handle saving an object to a file
-/*   const handleSaveObject = async () => {
-    if (!objectToSave) return;
-    
-    try {
-      // Import the FileSystemManager
-      const { FileSystemManager } = await import('../../utils/FileSystemManager');
-      
-      // Generate a default file name if none is provided
-      const fileName = objectFileName || `${objectToSave.object.name || 'geometry'}.json`;
-      
-      // Save the object to a file
-      await FileSystemManager.saveTextFile(
-        JSON.stringify(objectToSave, null, 2),
-        fileName
-      );
-      
-      // Close the dialog
-      setSaveObjectDialogOpen(false);
-      setObjectFileName('');
-      
-      // Show success message
-      setImportAlert({
-        show: true,
-        message: `Object saved as ${fileName}`,
-        severity: 'success'
-      });
-    } catch (error) {
-      console.error('Error saving object:', error);
-      setImportAlert({
-        show: true,
-        message: `Error saving object: ${error.message}`,
-        severity: 'error'
-      });
-    }
-  }; */
-
   // Render the property editor tab
   const renderPropertyEditor = () => {
     return (
@@ -236,7 +172,6 @@ const RefactoredGeometryEditor = ({
         handleRelativePositionChange={handleRelativePositionChange}
         handleRelativeRotationChange={handleRelativeRotationChange}
         handleInputFocus={handleInputFocus}
-        //handleExportObject={handleExportObject}
       />
     );
   };
@@ -252,7 +187,6 @@ const RefactoredGeometryEditor = ({
         setNewMotherVolume={setNewMotherVolume}
         handleAddGeometry={handleAddGeometry}
         fileInputRef={fileInputRef}
-        //handleImportObjectFile={handleImportObjectFile}
         importAlert={importAlert}
         handleCloseAlert={handleCloseAlert}
         setLoadObjectDialogOpen={setLoadObjectDialogOpen}

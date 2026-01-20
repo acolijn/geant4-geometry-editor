@@ -47,8 +47,6 @@ import { importJsonGeometry } from './json-viewer/utils/jsonHandlers';
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
 
-
-//const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, handleImportPartialFromAddNew, compactMode = false }) => {
 const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, compactMode = false }) => {
     // UI state
   const [currentTab, setCurrentTab] = useState(0);
@@ -590,22 +588,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
         mainObject.rotation = { x: 0, y: 0, z: 0, unit: 'deg' };
       }
       
-      // Now use the existing import function with the validated data
-/*       if (typeof handleImportPartialFromAddNew === 'function') {
-        const result = handleImportPartialFromAddNew(objectData, 'World');
-        
-        if (result && result.success) {
-          setAlert({
-            open: true,
-            message: `Object "${objectName}" loaded successfully`,
-            severity: 'success'
-          });
-        } else {
-          throw new Error(result?.message || 'Failed to import object');
-        } 
-      } else {
-        throw new Error('Import function not available');
-      } */
+      // Object loading functionality has been removed - use import dialog instead
     } catch (error) {
       console.error('Error loading object:', error);
       setAlert({

@@ -13,18 +13,14 @@ import {
   Button,
   Tooltip
 } from '@mui/material';
-// Import utility functions from GeometryOperations.js
 import { updateGeometry, addGeometry, removeGeometry } from './components/geometry-editor/utils/GeometryOperations';
 import Viewer3D from './components/viewer3D/Viewer3D';
-//import GeometryEditor from './components/GeometryEditor';
 import GeometryEditor from './components/geometry-editor/GeometryEditor';
 import MaterialsEditor from './components/material-editor/MaterialsEditor';
 import JsonViewer from './components/json-viewer/JsonViewer';
 import ProjectManager from './components/ProjectManager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
-//import { standardizeProjectData, restoreProjectData } from './components/geometry-editor/utils/ObjectFormatStandardizer';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
-//import { importPartialFromAddNew } from './components/geometry-editor/utils/GeometryImport';
 import { extractObjectWithDescendants } from './components/geometry-editor/utils/GeometryUtils';
 
 import './App.css';
@@ -70,9 +66,7 @@ function App() {
     );
   };
   
-  // Using imported generateId and generateUniqueName functions from GeometryOperations.js
-  
-  // Handle adding a new geometry using the imported utility function
+  // Handle adding a new geometry
   const handleAddGeometry = (newGeometry) => {
     return addGeometry(
       newGeometry,
@@ -83,7 +77,7 @@ function App() {
     );
   };
   
-  // Handle removing a geometry using the imported utility function
+  // Handle removing a geometry
   const handleRemoveGeometry = (id) => {
     removeGeometry(
       id,
@@ -93,22 +87,6 @@ function App() {
       selectedGeometry
     );
   };
-  
-  // Handle importing a partial geometry from the Add New tab using the imported utility function
-/*   const handleImportPartialFromAddNew = (content, motherVolume) => {
-    // Log the import operation for debugging
-    console.log('IMPORT - Using imported utility function for partial geometry import');
-    
-    // Call the imported utility function with all required parameters
-    return importPartialFromAddNew(
-      content,
-      motherVolume,
-      geometries,
-      setGeometries,
-      setSelectedGeometry,
-      propagateCompoundIdToDescendants
-    );
-  }; */
   
   // Handle importing geometries
   const handleImportGeometries = (importData) => {
@@ -333,7 +311,6 @@ return (
               materials={materials}
               hitCollections={hitCollections}
               onLoadProject={handleLoadProject}
-              //handleImportPartialFromAddNew={handleImportPartialFromAddNew}
               compactMode={true}
             />
           </Box>
@@ -373,7 +350,6 @@ return (
                   onAddGeometry={handleAddGeometry}
                   onRemoveGeometry={handleRemoveGeometry}
                   extractObjectWithDescendants={processObjectWithDescendants}
-                  //handleImportPartialFromAddNew={handleImportPartialFromAddNew}
                   handleImportGeometries={handleImportGeometries}
                   handleImportMaterials={handleImportMaterials}
                   externalUpdateDialogData={updateDialogData}
@@ -407,12 +383,8 @@ return (
           )}
         </Box>
       </Box>
-      
-      {/* Instance tracking components have been removed for a cleaner implementation */}
     </ThemeProvider>
   );
-  
-  // Instance update functionality has been removed for a cleaner implementation
 }
 
 export default App;

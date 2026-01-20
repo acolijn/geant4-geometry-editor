@@ -62,74 +62,7 @@ const PropertyEditor = ({
     return getSelectedGeometryObject(selectedGeometry, geometries);
   };
 
-
-/*   // Handle property changes
-  const handlePropertyChangeLocal = (key, value, isString = false) => {
-    const selectedObject = getSelectedGeometryObjectLocal();
-    if (!selectedObject) return;
-  
-    // Determine if this is a numeric field that needs unit conversion
-    const isNumberField = !isString && typeof value === 'string' && /^-?\d*\.?\d*$/.test(value);
-  
-    // Parse the value if it's a number
-    let finalValue = value;
-    if (isNumberField) {
-      const parsed = parseFloat(value);
-      if (!isNaN(parsed)) {
-        // Determine if this is a length or angle property
-        const isAngle = key.includes('rotation');
-        
-        // Convert to internal units (mm or rad)
-        finalValue = toInternalUnit(
-          parsed, 
-          isAngle ? angleUnit : lengthUnit,
-          isAngle ? 'angle' : 'length'
-        );
-      }
-    } else if (!isString) {
-      const parsed = parseFloat(value);
-      if (!isNaN(parsed)) {
-        finalValue = parsed;
-      }
-    }
-  
-    // Update the object with the converted value
-    const keys = key.split('.');
-    const updatedObject = { ...selectedObject };
-  
-    if (keys.length === 1) {
-      updatedObject[key] = finalValue;
-    } else {
-      const [outer, inner] = keys;
-      updatedObject[outer] = {
-        ...updatedObject[outer],
-        [inner]: finalValue
-      };
-      
-      // For rotation, always store in radians (no unit needed)
-      // For position, preserve the length unit
-      if (outer === 'position') {
-        updatedObject[outer].unit = lengthUnit;
-      } else if (updatedObject[outer].unit) {
-        // For other properties, remove unit as it's no longer needed
-        delete updatedObject[outer].unit;
-      }
-      
-      // Special handling for box dimensions - update both dimensions and size
-      if (outer === 'dimensions' && updatedObject.type === 'box') {
-        // Ensure size property exists and is updated to match dimensions
-        if (!updatedObject.size) {
-          updatedObject.size = {};
-        }
-        updatedObject.size[inner] = finalValue;
-        console.log(`Updated box ${inner} dimension to ${finalValue} and synchronized with size property`);
-      }
-    }
-  
-    onUpdateGeometry(selectedGeometry, updatedObject);
-  }; */
-  
-// Get the selected object
+  // Get the selected object
   const selectedObject = getSelectedGeometryObjectLocal();
   
   if (!selectedObject) {
@@ -979,40 +912,6 @@ const PropertyEditor = ({
       
       {selectedGeometry !== 'world' && (
         <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-          {/* Save to Library button - exports the selected geometry to the object library */}
-          {/* Only enabled for top-level assemblies */}
-{/*           {(() => {
-            // Get the selected object
-            const selectedObj = getSelectedGeometryObjectLocal();
-            
-            // Check if this is a top-level assembly
-            const isTopLevelAssembly = selectedObj && 
-              selectedObj.type === 'assembly' && 
-              (!selectedObj.mother_volume || selectedObj.mother_volume === 'World');
-            
-            return (
-              <Button 
-                variant="outlined" 
-                color="primary" 
-                onClick={handleExportObject}
-                disabled={!isTopLevelAssembly}
-                aria-label="Save selected geometry to library"
-                title={isTopLevelAssembly 
-                  ? "Save this assembly and its descendants to the object library for reuse" 
-                  : "Only top-level assemblies can be saved to the library"}
-                sx={{
-                  opacity: isTopLevelAssembly ? 1 : 0.6,
-                  '&:hover': {
-                    opacity: isTopLevelAssembly ? 1 : 0.6
-                  }
-                }}
-              >
-                Save to Library
-              </Button>
-            );
-          })()}  */}
-
-          {/* Remove Geometry button - deletes the selected geometry from the scene */}
           <Button 
             variant="outlined" 
             color="error" 

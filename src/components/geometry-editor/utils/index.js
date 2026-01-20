@@ -5,6 +5,5 @@
  */
 
 export { createPropertyHandlers } from './propertyHandlers';
-//export { createImportExportHandlers } from './importExportHandlers';
 export { createGeometryHandlers } from './geometryHandlers';
 export { createUpdateHandlers } from './updateHandlers';
