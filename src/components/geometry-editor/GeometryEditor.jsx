@@ -47,8 +47,6 @@ import HitCollectionsDialog from './components/HitCollectionsDialog';
  * @param {Function} props.onUpdateGeometry - Callback to update a geometry object
  * @param {Function} props.onAddGeometry - Callback to add a new geometry object
  * @param {Function} props.onRemoveGeometry - Callback to remove a geometry object
- * @param {Function} props.extractObjectWithDescendants - Function to extract an object with its descendants
- * @param {Function} props.handleImportPartialFromAddNew - Function to handle importing partial geometry
  * @param {Object} props.updateDialogData - Data for the update dialog
  * @param {boolean} props.updateDialogOpen - State of the update dialog
  * @param {Function} props.setUpdateDialogOpen - Callback to set the update dialog state
@@ -62,7 +60,6 @@ const RefactoredGeometryEditor = ({
   onUpdateGeometry,
   onAddGeometry,
   onRemoveGeometry,
-  extractObjectWithDescendants,
   handleImportGeometries,
   handleImportMaterials,
   externalUpdateDialogData,
