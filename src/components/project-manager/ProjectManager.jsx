@@ -71,16 +71,8 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
       const { objectData } = event.detail;
       if (objectData && objectData.object) {
         setObjectName(objectData.object.name || '');
-        const objectType = objectData.object.type?.toLowerCase() || '';
-        if (objectType.includes('box')) {
-          setSelectedCategory('common');
-        } else if (objectType.includes('sphere')) {
-          setSelectedCategory('detectors');
-        } else if (objectType.includes('cylinder')) {
-          setSelectedCategory('shielding');
-        } else {
-          setSelectedCategory('common');
-        }
+        // Keep the currently selected category or default to 'common'
+        // User can change it in the dialog if needed
         setObjectToSave(objectData);
         setObjectDialogOpen(true);
       }

@@ -2,14 +2,29 @@
  * ObjectStorage.js
  * 
  * Utility for managing the storage and retrieval of compound objects
- * using the FileSystemManager to save to the <working_directory>/objects directory.
+ * using either FileSystemManager or IndexedDBManager (whichever is initialized).
  * 
  * Objects are stored in a standardized format consistent with the main output JSON file,
  * using 'placement' for position/rotation and 'dimensions' for object dimensions.
  */
 
-// Import the FileSystemManager
+// Import the storage managers
 import FileSystemManager from '../../../utils/FileSystemManager';
+import IndexedDBManager from '../../../utils/IndexedDBManager';
+
+/**
+ * Get the active storage manager (whichever is initialized)
+ * @returns {Object|null} The active storage manager or null
+ */
+const getStorageManager = () => {
+  if (FileSystemManager.initialized) {
+    return FileSystemManager;
+  }
+  if (IndexedDBManager.initialized) {
+    return IndexedDBManager;
+  }
+  return null;
+};
 
 // Import the ObjectFormatStandardizer
 //import { standardizeObjectFormat } from './ObjectFormatStandardizer';
@@ -31,9 +46,24 @@ export const saveObject = async (name, description, objectData, preserveComponen
   console.log('ObjectStorage::saveObject:: objectData', objectData);
   console.log('ObjectStorage::saveObject:: preserveComponentIds', preserveComponentIds);
   try {
-    // Check if FileSystemManager is initialized
-    if (!FileSystemManager.initialized) {
-      await FileSystemManager.initialize();
+    // Get the active storage manager
+    let storageManager = getStorageManager();
+    
+    // If no storage manager is initialized, try to initialize one
+    if (!storageManager) {
+      // Try FileSystem first, fall back to IndexedDB
+      try {
+        if ('showDirectoryPicker' in window) {
+          await FileSystemManager.initialize();
+          storageManager = FileSystemManager;
+        } else {
+          await IndexedDBManager.initialize();
+          storageManager = IndexedDBManager;
+        }
+      } catch (error) {
+        console.error('Failed to initialize storage:', error);
+        throw new Error('No storage manager available. Please initialize storage first.');
+      }
     }
     
     // Sanitize the file name
@@ -61,7 +91,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
       console.log(`ObjectStorage::saveObject:: Preserving component IDs for "${name}"`);
       try {
         // Try to load the existing object
-        const existingObject = await FileSystemManager.loadObject(sanitizedName);
+        const existingObject = await storageManager.loadObject(sanitizedName);
         
         if (existingObject) {
           console.log(`Existing object found. Preserving component IDs for "${name}"`);
@@ -122,8 +152,14 @@ export const saveObject = async (name, description, objectData, preserveComponen
       }
     };
     
-    // Save the object using FileSystemManager
-    const success = await FileSystemManager.saveObject(sanitizedName, dataToSave);
+    // Save the object using the storage manager
+    // IndexedDBManager requires a category parameter, FileSystemManager doesn't
+    let success;
+    if (storageManager === IndexedDBManager) {
+      success = await storageManager.saveObject(sanitizedName, dataToSave, 'common');
+    } else {
+      success = await storageManager.saveObject(sanitizedName, dataToSave);
+    }
     
     if (!success) {
       throw new Error('Failed to save object to file system');
@@ -151,18 +187,25 @@ export const saveObject = async (name, description, objectData, preserveComponen
  */
 export const listObjects = async () => {
   try {
-    // Check if FileSystemManager is initialized
-    if (!FileSystemManager.initialized) {
-      await FileSystemManager.initialize();
+    // Get the active storage manager
+    let storageManager = getStorageManager();
+    
+    // If no storage manager is initialized, return empty array
+    if (!storageManager) {
+      console.warn('No storage manager initialized');
+      return [];
     }
     
-    // Get list of object names from FileSystemManager
-    const objectNames = await FileSystemManager.listObjects();
+    // Get list of object names from storage manager
+    // For IndexedDB, pass null to get all objects across all categories
+    const objectNames = storageManager === IndexedDBManager 
+      ? await storageManager.listObjects(null) 
+      : await storageManager.listObjects();
     
     // Load metadata for each object
     const objects = await Promise.all(objectNames.map(async (name) => {
       try {
-        const objectData = await FileSystemManager.loadObject(name);
+        const objectData = await storageManager.loadObject(name);
         return {
           name: objectData?.metadata?.name || name,
           description: objectData?.metadata?.description || '',
@@ -193,16 +236,19 @@ export const listObjects = async () => {
  */
 export const loadObject = async (fileName) => {
   try {
-    // Check if FileSystemManager is initialized
-    if (!FileSystemManager.initialized) {
-      await FileSystemManager.initialize();
+    // Get the active storage manager
+    let storageManager = getStorageManager();
+    
+    // If no storage manager is initialized, throw error
+    if (!storageManager) {
+      throw new Error('No storage manager initialized. Please initialize storage first.');
     }
     
     // Extract the object name from the filename
     const objectName = fileName.replace('.json', '');
     
-    // Load the object using FileSystemManager
-    const data = await FileSystemManager.loadObject(objectName);
+    // Load the object using storage manager
+    const data = await storageManager.loadObject(objectName);
     
     if (!data) {
       throw new Error(`Object "${fileName}" not found`);
@@ -233,16 +279,36 @@ export const loadObject = async (fileName) => {
  */
 export const deleteObject = async (fileName) => {
   try {
-    // Check if FileSystemManager is initialized
-    if (!FileSystemManager.initialized) {
-      await FileSystemManager.initialize();
+    // Get the active storage manager
+    let storageManager = getStorageManager();
+    
+    // If no storage manager is initialized, throw error
+    if (!storageManager) {
+      throw new Error('No storage manager initialized. Please initialize storage first.');
     }
     
     // Extract the object name from the filename
     const objectName = fileName.replace('.json', '');
     
-    // Delete the object using FileSystemManager
-    const success = await FileSystemManager.deleteObject(objectName);
+    // Delete the object using storage manager
+    let success;
+    if (storageManager === IndexedDBManager) {
+      // For IndexedDB, we need to find which category the object is in
+      // First, load the object to get its category information
+      const objectData = await storageManager.loadObject(objectName, null);
+      if (objectData) {
+        // Try common categories
+        const categories = ['common', 'detectors', 'shielding'];
+        for (const cat of categories) {
+          success = await storageManager.deleteObject(objectName, cat);
+          if (success) break;
+        }
+      } else {
+        success = false;
+      }
+    } else {
+      success = await storageManager.deleteObject(objectName);
+    }
     
     if (!success) {
       throw new Error(`Failed to delete object "${fileName}"`);

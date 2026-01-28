@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { listObjects } from '../utils/ObjectStorage';
 import {
   Dialog,
   DialogTitle,
@@ -89,8 +90,6 @@ const SaveObjectDialog = ({
   const loadExistingObjects = async () => {
     setIsLoading(true);
     try {
-      // Import dynamically to avoid server-side issues
-      const { listObjects } = await import('../utils/ObjectStorage');
       const objectsList = await listObjects();
       
       // Sort by name

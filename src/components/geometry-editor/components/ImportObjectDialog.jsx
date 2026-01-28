@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { listObjects, deleteObject, loadObject } from '../utils/ObjectStorage';
 import {
   Dialog,
   DialogTitle,
@@ -75,8 +76,6 @@ const ImportObjectDialog = ({
     setObjectDetails(null);
     
     try {
-      // Import dynamically to avoid server-side issues
-      const { listObjects } = await import('../utils/ObjectStorage');
       const objectsList = await listObjects();
       
       // Sort by name
@@ -114,8 +113,6 @@ const ImportObjectDialog = ({
     setDeleteConfirmOpen(false);
     
     try {
-      // Import dynamically to avoid server-side issues
-      const { deleteObject } = await import('../utils/ObjectStorage');
       const result = await deleteObject(objectToDelete.fileName);
       
       if (result.success) {
@@ -153,8 +150,6 @@ const ImportObjectDialog = ({
     setError('');
     
     try {
-      // Import dynamically to avoid server-side issues
-      const { loadObject } = await import('../utils/ObjectStorage');
       const result = await loadObject(selectedObject.fileName);
       
       if (result.success) {

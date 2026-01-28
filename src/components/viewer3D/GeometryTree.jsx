@@ -6,6 +6,7 @@ import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryU
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
 import { getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
+import { saveObject } from '../geometry-editor/utils/ObjectStorage';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
@@ -557,9 +558,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
           }
           
           try {
-            // Import the ObjectStorage utility
-            const { saveObject } = await import('../geometry-editor/utils/ObjectStorage');
-            
             // Generate a default file name if none is provided
             const fileName = name || objectToSave.object.name || 'geometry';
             
