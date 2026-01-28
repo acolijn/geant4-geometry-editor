@@ -18,7 +18,7 @@ import Viewer3D from './components/viewer3D/Viewer3D';
 import GeometryEditor from './components/geometry-editor/GeometryEditor';
 import MaterialsEditor from './components/material-editor/MaterialsEditor';
 import JsonViewer from './components/json-viewer/JsonViewer';
-import ProjectManager from './components/ProjectManager';
+import { ProjectManager } from './components/project-manager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
 
