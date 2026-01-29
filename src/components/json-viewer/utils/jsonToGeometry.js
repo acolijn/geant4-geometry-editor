@@ -300,6 +300,14 @@ function createVolume(volume, placement) {
         mother_volume: mother_volume
     };
 
+    // Preserve _compoundId and _componentId if they exist in the source volume
+    if (volume._compoundId !== undefined) {
+        newVolume._compoundId = volume._compoundId;
+    }
+    if (volume._componentId !== undefined) {
+        newVolume._componentId = volume._componentId;
+    }
+
     // set the dimensions of the new volume
     setDimensions(newVolume, volume);
     

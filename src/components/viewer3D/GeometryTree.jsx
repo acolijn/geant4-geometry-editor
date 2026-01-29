@@ -36,6 +36,13 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     // Get the compound ID
     let compoundId = selectedObject._compoundId;
     
+    // Check if compoundId exists
+    if (!compoundId) {
+      console.error('handleExportObject:: No _compoundId found for selected object:', selectedObject);
+      alert('Cannot export this object: missing compound ID. This may be an older object that needs to be recreated.');
+      return;
+    }
+    
     try {
       // Import the generateTemplateJson function
       const { generateTemplateJson } = await import('../../components/json-viewer/utils/geometryToJson');
@@ -45,6 +52,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       
       if (!templateJson) {
         console.error('Failed to generate template JSON');
+        alert('Failed to generate template JSON for this object');
         return;
       }
       
