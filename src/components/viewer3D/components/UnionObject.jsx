@@ -5,7 +5,6 @@ import { CSG } from 'three-csg-ts';
 
 // Helper function to create a basic geometry based on solid type
 const createGeometry = (solid) => {
-  console.log('XXXXX UnionObject:: solid', solid);
   if (!solid || !solid.type) return new THREE.BoxGeometry(1, 1, 1);
   
   switch (solid.type) {
@@ -23,7 +22,7 @@ const createGeometry = (solid) => {
       );
     case 'cylinder':
     case 'tube':
-    case 'tubs':
+    case 'tubs': {
       // Create a cylinder with height along the y-axis (Three.js default)
       const cylinderGeometry = new THREE.CylinderGeometry(
         solid.radius || 1,
@@ -37,6 +36,7 @@ const createGeometry = (solid) => {
       cylinderGeometry.rotateX(Math.PI / 2);
       
       return cylinderGeometry;
+    }
     case 'trapezoid':
     case 'trd':
       // Create a simple box as a placeholder for trapezoid
@@ -53,6 +53,7 @@ const createGeometry = (solid) => {
         32  // radial segments
       );
     case 'ellipsoid':
+    {
       // Use a sphere and scale it to approximate an ellipsoid
       const sphereGeom = new THREE.SphereGeometry(1, 32, 16);
       sphereGeom.scale(
@@ -61,64 +62,33 @@ const createGeometry = (solid) => {
         solid.zRadius || solid.cz || 1
       );
       return sphereGeom;
+    }
     default:
       // Default to a box for other types
       return new THREE.BoxGeometry(1, 1, 1);
   }
 };
 
-// Helper function to extract dimensions from a component
-const extractDimensions = (component) => {
-  // If the component has a dimensions property, use that
-  if (component.dimensions) {
-    return component.dimensions;
-  }
-  // Otherwise, use the component itself as the dimensions
-  return component;
-};
-
 // UnionObject component that visualizes a true boolean union of constituent components
 const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, materials }, ref) => {
   const groupRef = useRef();
   const [unionMesh, setUnionMesh] = useState(null);
-  const [showComponents, setShowComponents] = useState(false); // Toggle to show individual components
   
   // Pass the ref to the group
   // This is critical for the transform controls to work
   React.useImperativeHandle(ref, () => groupRef.current);
   
-  // Debug when component is mounted or updated
-  useEffect(() => {
-    console.log(`UnionObject mounted/updated: ${object.name}`, { 
-      isSelected, 
-      ref: groupRef.current 
-    });
-    return () => {
-      console.log(`UnionObject unmounted: ${object.name}`);
-    };
-  }, [object.name, isSelected]);
-  
   // Find all volumes that are boolean components of this union
   // This should only change if volumes or object.name changes
   const componentVolumes = useMemo(() => {
     if (!volumes || !object.name) return [];
-    console.log(`UnionObject ${object.name}: Finding component volumes`);
     
     // Only use the explicit is_boolean_component flag - no backward compatibility
     const components = volumes.filter(vol => 
       vol._is_boolean_component === true && vol._boolean_parent === object.name
     );
-    
-    console.log(`UnionObject ${object.name}: Found ${components.length} components`);
     return components;
   }, [volumes, object.name]);
-  
-  // Get position and rotation from the object
-  const position = object.position ? [
-    object.position.x || 0, 
-    object.position.y || 0, 
-    object.position.z || 0
-  ] : [0, 0, 0];
   
   // The rotation is already handled by the parent TransformableObject component
   // We don't need to apply any rotation here as the group is already properly oriented
@@ -130,10 +100,6 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
     const materialName = object.material || 'default';
     let color = '#3399ff'; // Default blue
     
-    // Debug materials object
-    console.log(`UnionObject ${object.name} materials:`, materials);
-    console.log(`UnionObject ${object.name} material name:`, materialName);
-    
     // If materials are provided and the material name exists, use its color
     if (materials && typeof materials === 'object') {
       // Check if the material exists in the materials object
@@ -142,35 +108,19 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         if (typeof materials[materialName].color === 'string') {
           // Use the color string directly
           color = materials[materialName].color;
-          console.log(`UnionObject ${object.name} using material color string:`, color);
         } else if (Array.isArray(materials[materialName].color)) {
           // Convert color array [r,g,b,a] to hex string
           const [r, g, b] = materials[materialName].color;
           color = new THREE.Color(r, g, b).getHexString();
           color = '#' + color;
-          console.log(`UnionObject ${object.name} converted color array to hex:`, color);
-        } else {
-          console.log(`UnionObject ${object.name} material has invalid color format, using default blue`);
         }
-      } else {
-        console.log(`UnionObject ${object.name} material '${materialName}' not found, using default blue`);
       }
-    } else {
-      console.log(`UnionObject ${object.name} no materials provided, using default blue`);
     }
     
     // If selected, override with selection color
     if (isSelected) {
       color = '#ff9900';
-      console.log(`UnionObject ${object.name} is selected, using selection color:`, color);
     }
-    
-    console.log(`UnionObject FINAL color for ${object.name}:`, {
-      materialName,
-      color,
-      isSelected
-    });
-    
     return color;
   };
   
@@ -185,46 +135,19 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       transparent: true,
       side: THREE.DoubleSide
     });
-    
-    console.log(`UnionObject ${object.name} created material with color:`, {
-      colorValue: color,
-      materialColor: material.color
-    });
-    
     return material;
   }, [isSelected, object.material, materials, object.name]);
-  
-  // For individual components when debugging, create wireframe materials
-  // When showComponents is true, we show wireframe versions of the components
-  // These should use the union's material color but in wireframe mode for clarity
-  const createComponentMaterial = () => {
-    // Use the same color as the union
-    const color = getUnionColor();
-    
-    // Create a new wireframe material with the union's color
-    return new THREE.MeshStandardMaterial({
-      color: color,
-      opacity: 0.5,
-      transparent: true,
-      wireframe: true,
-      side: THREE.DoubleSide
-    });
-  };
   
   // Create meshes for all components - this should only run when componentVolumes changes
   // Using a stable reference to avoid recreating meshes unnecessarily
   const componentMeshes = useMemo(() => {
     if (!componentVolumes.length) return [];
     
-    console.log(`UnionObject ${object.name}: Creating ${componentVolumes.length} component meshes`);
-    
     // Create a deep copy of the component volumes to avoid reference issues
     // We'll create completely isolated meshes for each component
-    return componentVolumes.map((component, index) => {
+    return componentVolumes.map((component) => {
       // Create a deep clone of the component to avoid reference issues
       const componentClone = JSON.parse(JSON.stringify(component));
-      const shapeType = componentClone.type;
-      console.log(`UnionObject ${object.name}: Component ${index} type:`, shapeType);
       
       // Create geometry for this component based on its type and dimensions
       const geometry = createGeometry(componentClone);
@@ -273,30 +196,21 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       mesh.position.set(0, 0, 0);
       mesh.rotation.set(0, 0, 0);
       
-      console.log(`XXXXX UnionObject:: Component ${index} mesh:`, mesh);
       return mesh;
     });
-  }, [componentVolumes]);
+  }, [componentVolumes, unionMaterial]);
   
   // Perform CSG union operation - only when componentMeshes changes
   // This ensures we don't recreate the union mesh unnecessarily
   useEffect(() => {
     if (!componentMeshes || componentMeshes.length === 0) {
-      console.log(`UnionObject ${object.name}: No component meshes, skipping union`);
+      setUnionMesh(null);
       return;
     }
-    
-    console.log(`UnionObject ${object.name}: Creating union from ${componentMeshes.length} components`);
-    
-    // Create a unique ID for this union operation to help with debugging
-    const unionId = `union-${object.name}-${Date.now()}`;
-    console.log(`UnionObject: Starting union operation ${unionId}`);
     
     try {
       // If there's only one component, just use it directly
       if (componentMeshes.length === 1) {
-        console.log(`UnionObject ${object.name}: Only one component, using it directly`);
-        
         // Clone the mesh to avoid reference issues
         const singleMesh = componentMeshes[0].clone();
         
@@ -309,7 +223,6 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         singleMesh.rotation.set(0, 0, 0);
         singleMesh.updateMatrix();
         
-        console.log(`UnionObject ${object.name}: Single component mesh created`);
         setUnionMesh(singleMesh);
         return;
       }
@@ -330,23 +243,17 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         }
       });
       
-      console.log(`UnionObject ${object.name}: Found ${unionComponents.length} union components and ${subtractComponents.length} subtract components`);
-      
       // We need at least one union component to start with
       if (unionComponents.length === 0) {
-        console.error(`UnionObject ${object.name}: No union components found, need at least one`);
+        setUnionMesh(null);
         return;
       }
       
       // Start with the first union mesh - clone it to avoid reference issues
       let resultMesh = unionComponents[0].clone();
-      console.log(`UnionObject ${object.name}: First union mesh cloned`);
-      
       // Union with each subsequent union mesh
       for (let i = 1; i < unionComponents.length; i++) {
         try {
-          console.log(`UnionObject ${object.name}: Processing union component ${i}`);
-          
           // Clone the next mesh to avoid reference issues
           const nextMesh = unionComponents[i].clone();
           
@@ -363,9 +270,7 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
           }
           
           // Perform the CSG union operation
-          console.log(`UnionObject ${object.name}: Performing union with component ${i}`);
           resultMesh = CSG.union(resultMesh, nextMesh);
-          console.log(`UnionObject ${object.name}: Union with component ${i} successful`);
         } catch (err) {
           console.error(`UnionObject ${object.name}: Error performing union with component ${i}:`, err);
         }
@@ -374,8 +279,6 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       // Now subtract each subtract component
       for (let i = 0; i < subtractComponents.length; i++) {
         try {
-          console.log(`UnionObject ${object.name}: Processing subtract component ${i}`);
-          
           // Clone the next mesh to avoid reference issues
           const nextMesh = subtractComponents[i].clone();
           
@@ -392,9 +295,7 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
           }
           
           // Perform the CSG subtract operation
-          console.log(`UnionObject ${object.name}: Performing subtraction with component ${i}`);
           resultMesh = CSG.subtract(resultMesh, nextMesh);
-          console.log(`UnionObject ${object.name}: Subtraction with component ${i} successful`);
         } catch (err) {
           console.error(`UnionObject ${object.name}: Error performing subtraction with component ${i}:`, err);
         }
@@ -410,26 +311,11 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       resultMesh.updateMatrix();
       
       // Set the union mesh
-      console.log(`UnionObject ${object.name}: Final union mesh created`);
-      console.log(`UnionObject: Completed union operation ${unionId}`);
       setUnionMesh(resultMesh);
     } catch (err) {
       console.error('Error creating union mesh:', err);
     }
   }, [componentMeshes, unionMaterial]);
-  
-  // Toggle component visibility with keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'c' || e.key === 'C') {
-        setShowComponents(prev => !prev);
-        console.log(`UnionObject ${object.name}: Components visibility toggled: ${!showComponents}`);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [object.name]);
   
   // The TransformableObject component expects to control the position of this group
   // So we need to make sure the group is positioned at the origin and let TransformableObject handle positioning
@@ -440,7 +326,6 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       position={[0, 0, 0]}
       rotation={[0, 0, 0]}
       onClick={(e) => {
-        console.log('Union object clicked', object.name);
         e.stopPropagation();
         onClick && onClick();
       }}
@@ -451,8 +336,6 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
           geometry={unionMesh.geometry}
           material={unionMaterial}
           onClick={(e) => {
-            console.log('Union mesh clicked', object.name);
-            console.log('Union material:', unionMaterial);
             e.stopPropagation();
             onClick && onClick();
           }}

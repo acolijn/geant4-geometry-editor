@@ -13,7 +13,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import { TransformControls } from '@react-three/drei';
-import * as THREE from 'three';
 
 // Import geometry components
 import BoxObject from './BoxObject.jsx';
@@ -25,22 +24,6 @@ import EllipsoidObject from './EllipsoidObject.jsx';
 import PolyconeObject from './PolyconeObject.jsx';
 import UnionObject from './UnionObject.jsx';
 import AssemblyObject from './AssemblyObject.jsx';
-
-/**
- * Debug helper function to log object details
- * Useful for diagnosing positioning and rotation issues
- * 
- * @param {string} prefix - Descriptive prefix for the log
- * @param {Object} object - The object to debug
- */
-const debugObject = (prefix, object) => {
-  console.log(`${prefix} - Type: ${object.type}, Name: ${object.name}`, {
-    position: object.position,
-    rotation: object.rotation,
-    worldPosition: object.calculatedWorldPosition,
-    worldRotation: object.calculatedWorldRotation
-  });
-};
 
 /**
  * TransformableObject component for handling 3D object transformations
@@ -79,22 +62,10 @@ export default function TransformableObject({
   const [isDragging, setIsDragging] = useState(false);
   const lastPositionRef = useRef(null); // Track last position to prevent jumps
   
-  console.log(`TransformableObject props: (${objectKey})`, object);
-  // Log when the component is mounted or updated
-  useEffect(() => {
-    console.log(`TransformableObject mounted/updated: ${objectKey} (${object.type})`);
-    return () => {
-      console.log(`TransformableObject unmounted: ${objectKey} (${object.type})`);
-    };
-  }, [objectKey, object.type]);
-
   // Apply incoming props unless dragging
   useEffect(() => {
     const group = groupRef.current;
     if (!group || isDragging) return;
-
-    // Debug the object to help diagnose issues
-    debugObject(`Setting position for ${objectKey}`, object);
 
     // Use world position if provided, otherwise use object's own position
     if (worldPosition) {
@@ -226,17 +197,6 @@ export default function TransformableObject({
           z: group.rotation.z
         };
         
-        // Debug the final transformation
-        console.log(`Final transform for ${objectKey} (${object.type})`, {
-          position: finalPosition,
-          rotation: finalRotation,
-          originalPosition: object.position,
-          originalRotation: object.rotation,
-          worldPosition: object.calculatedWorldPosition,
-          worldRotation: object.calculatedWorldRotation,
-          motherVolume: object.mother_volume
-        });
-        
         // Send final update to parent with world coordinates
         // The parent component will handle converting to local coordinates if needed
         // Pass true as the third parameter to ensure the object stays selected
@@ -270,57 +230,10 @@ export default function TransformableObject({
     };
   }, [gl, isSelected, object, onTransformEnd, isDragging, objectKey]);
 
-  // Shared props for all shape types
-  const sharedProps = {
-    ref: groupRef,
-    position: [0, 0, 0],
-    rotation: [0, 0, 0],
-    color: object.color,
-    wireframe: object.name === 'World',
-    selected: isSelected,
-    onClick: (e) => {
-      e.stopPropagation();
-      // Don't select the World volume by mouse clicking in the 3D view
-      // but allow other objects to be selected
-      if (object.name === 'World' || object.isNonSelectable) {
-        console.log(`${object.name || object.type} is not selectable by mouse clicking`);
-      } else {
-        onSelect();
-      }
-    }
-  };
-
-  // Debug log the object properties to help diagnose rendering issues
-  console.log(`RENDER - Object ${object.name} of type ${object.type}:`, {
-    objectProps: object,
-    dimensions: object.dimensions,
-    innerRadius: object.innerRadius,
-    inner_radius: object.inner_radius,
-    worldPosition,
-    worldRotation
-  });
-  
-  // Force a default size for box objects if size is missing
-  /*let boxSize = [1, 1, 1];
-  if (object.type === 'box') {
-    console.log(`RENDER - Box object ${object.name} dimensions:`, object.dimensions);
-    if (object.dimensions) {
-      boxSize = [object.dimensions.x || 1, object.dimensions.y || 1, object.dimensions.z || 1];
-    } else {
-      console.warn(`RENDER WARNING - Box object ${object.name} missing dimensions property, using default size`);
-    }
-  }*/
-  
   // Create a group for the transform controls
   const renderObject = () => {
     // Clone the object to avoid modifying the original
     const clonedObject = { ...object };
-    
-    // Debug the object being rendered
-    console.log(`Rendering ${objectKey} (${object.type})`, {
-      position: worldPosition || (object.position ? [object.position.x, object.position.y, object.position.z] : [0, 0, 0]),
-      rotation: worldRotation || (object.rotation ? [object.rotation.x, object.rotation.y, object.rotation.z] : [0, 0, 0])
-    });
     
     // Render the appropriate object type
     switch (object.type) {

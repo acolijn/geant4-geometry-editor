@@ -5,6 +5,29 @@
  * Contains functions for updating, adding, and removing geometries
  */
 
+const mergeGeometryObject = (baseObject, patchObject) => {
+  if (!baseObject) {
+    return patchObject;
+  }
+
+  const merged = {
+    ...baseObject,
+    ...patchObject
+  };
+
+  const nestedKeys = ['position', 'rotation', 'size', 'dimensions'];
+  nestedKeys.forEach((key) => {
+    if (baseObject[key] && patchObject[key] && typeof patchObject[key] === 'object') {
+      merged[key] = {
+        ...baseObject[key],
+        ...patchObject[key]
+      };
+    }
+  });
+
+  return merged;
+};
+
 /**
  * Update a geometry object
  * @param {Object} geometries - The current geometries state
@@ -24,14 +47,17 @@ export const updateGeometry = (
   id, 
   updatedObject, 
   keepSelected = true, 
-  isLiveUpdate = false, 
+  _isLiveUpdate = false, 
   extraData = null,
   setGeometries,
   setSelectedGeometry,
   selectedGeometry,
   updateAssembliesFunc,
-  propagateCompoundIdToDescendants
+  _propagateCompoundIdToDescendants
 ) => {
+  void _isLiveUpdate;
+  void _propagateCompoundIdToDescendants;
+
   // Handle special case for assembly update via dialog
   if (extraData && id === null && updatedObject === null) {
     console.log('App: Handling assembly update via dialog', extraData);
@@ -63,14 +89,16 @@ export const updateGeometry = (
     console.log(`updatState:: id: ${id}`);
     
     if (id === 'world') {
-      oldName = geometries.world.name;
-      
       // First update the geometry
       setGeometries(prevGeometries => {
+        oldName = prevGeometries.world.name;
+        const mergedWorld = mergeGeometryObject(prevGeometries.world, updatedObject);
+        newName = mergedWorld.name;
+
         // Update the world object
         const updatedGeometries = {
           ...prevGeometries,
-          world: updatedObject
+          world: mergedWorld
         };
         
         // If name changed, update all daughter volumes that reference this as mother
@@ -87,25 +115,28 @@ export const updateGeometry = (
       });
     } else if (id.startsWith('volume-')) {
       const index = parseInt(id.split('-')[1]);
-      oldName = geometries.volumes[index].name;
-      oldMotherVolume = geometries.volumes[index].mother_volume;
-      
-      // Check if the parent has changed
-      isParentChanged = oldMotherVolume !== newMotherVolume;
       
       setGeometries(prevGeometries => {
+        const previousObject = prevGeometries.volumes[index];
+        oldName = previousObject.name;
+        oldMotherVolume = previousObject.mother_volume;
+
         const updatedVolumes = [...prevGeometries.volumes];
+        const mergedObject = mergeGeometryObject(previousObject, updatedObject);
+        newName = mergedObject.name;
+        newMotherVolume = mergedObject.mother_volume;
+        isParentChanged = oldMotherVolume !== newMotherVolume;
         
         // Check if this is an intermediate object using world coordinates
-        if (updatedObject._usingWorldCoordinates) {
+        if (mergedObject._usingWorldCoordinates) {
           // For intermediate objects using world coordinates, we need to handle them differently
           // Remove the special flag before storing in state
-          const { _usingWorldCoordinates, _isIntermediateObject, ...cleanObject } = updatedObject;
+          const { _usingWorldCoordinates, _isIntermediateObject, ...cleanObject } = mergedObject;
           updatedVolumes[index] = cleanObject;
         } else {
           // Normal update for regular objects
           // Remove any special flags if present
-          const { _isIntermediateObject, ...cleanObject } = updatedObject;
+          const { _isIntermediateObject, ...cleanObject } = mergedObject;
           updatedVolumes[index] = cleanObject;
         }
         
