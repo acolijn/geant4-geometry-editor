@@ -155,7 +155,7 @@ function createAssembly(volume, geometry) {
             material: volume.material || undefined,
             position: {x: placement.x, y: placement.y, z: placement.z},
             rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
-            _compoundId: volume._compoundId,
+            _compoundId: volume._compoundId || assemblyName,
             _componentId: volume._componentId,
             mother_volume: placement.parent || "World"
         };
@@ -177,7 +177,7 @@ function createAssembly(volume, geometry) {
                 position: {x: placement.x, y: placement.y, z: placement.z},
                 rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
                 material: component.material || undefined,
-                _compoundId: volume._compoundId,
+                _compoundId: volume._compoundId || assemblyName,
                 _componentId: component._componentId,
                 // if parent name not "" then use it as mother_volume else use assemblyName
                 mother_volume: placement.parent !== '' ? convertName(nextName(placement.parent, iPlacement), volume._middle_id) : assemblyName

@@ -101,6 +101,22 @@ function App() {
     const geometriesCopy = JSON.parse(JSON.stringify(importData));
     console.log('handleImportGeometries:: Setting geometries state with:', geometriesCopy);
     
+    // Ensure all assemblies and unions have _compoundId assigned and propagate to descendants
+    let updatedVolumes = [...geometriesCopy.volumes];
+    geometriesCopy.volumes.forEach((volume, index) => {
+      if ((volume.type === 'assembly' || volume.type === 'union')) {
+        // Ensure the assembly/union has a _compoundId (use its name if missing)
+        if (!volume._compoundId) {
+          updatedVolumes[index] = { ...volume, _compoundId: volume.name };
+          console.log(`handleImportGeometries:: Assigned _compoundId ${volume.name} to imported ${volume.type}: ${volume.name}`);
+        }
+        // Propagate _compoundId to all descendants
+        const compoundId = updatedVolumes[index]._compoundId;
+        updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
+      }
+    });
+    geometriesCopy.volumes = updatedVolumes;
+    
     // Set the geometries state with the imported data
     setGeometries(geometriesCopy);
     return { success: true, message: 'Geometries imported successfully' };
