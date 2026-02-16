@@ -1,18 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Paper,
   Tabs,
   Tab,
   Snackbar,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField
+  Alert
 } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 // Import utility handlers
 import {
@@ -21,15 +14,11 @@ import {
   createUpdateHandlers
 } from './utils';
 
-// Import assembly manager utility
-import { generateAssemblyId } from './utils/assemblyManager';
-
 // Import components
 import PropertyEditor from './components/PropertyEditor';
 import AddNewTab from './components/AddNewTab';
 import UpdateObjectsDialog from './components/UpdateObjectsDialog';
 import ImportObjectDialog from './components/ImportObjectDialog';
-import SaveObjectDialog from './components/SaveObjectDialog';
 import HitCollectionsDialog from './components/HitCollectionsDialog';
 
 /**
@@ -64,8 +53,7 @@ const RefactoredGeometryEditor = ({
   handleImportMaterials,
   externalUpdateDialogData,
   updateDialogOpen,
-  setUpdateDialogOpen,
-  updateAssembliesFunc
+  setUpdateDialogOpen
 }) => {
   // ===== Refs =====
   // Reference to the file input for importing object JSON files
@@ -85,13 +73,8 @@ const RefactoredGeometryEditor = ({
   const [newMotherVolume, setNewMotherVolume] = useState('World');
 
   // ===== Dialog States =====
-  // Save Object Dialog
-  const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
-  const [objectToSave, setObjectToSave] = useState(null);
-  const [objectFileName, setObjectFileName] = useState('');
-  
   // Load Object Dialog
-  const [loadObjectDialogOpen, setLoadObjectDialogOpen] = useState(false);
+  const [, setLoadObjectDialogOpen] = useState(false);
   
   // Import Object Dialog
   const [importObjectDialogOpen, setImportObjectDialogOpen] = useState(false);
@@ -104,7 +87,6 @@ const RefactoredGeometryEditor = ({
 
   // Property handlers
   const {
-    getSelectedGeometryObject,
     handleInputFocus,
     handlePropertyChange,
     handleRotationChange,

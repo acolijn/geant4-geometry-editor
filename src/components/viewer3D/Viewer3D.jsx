@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import React, { useState } from 'react';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
 import Scene from './Scene';
 import GeometryTree from './GeometryTree';
 import CameraSetup from './components/CameraSetup';
+import { debugLog } from '../../utils/logger';
 
 const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, materials }) => {
   const [transformMode, setTransformMode] = useState('translate');
@@ -20,12 +20,12 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, ma
   
   // Handle transform end - completely rewritten to fix selection issues
   const handleTransformEnd = (objectKey, updates, keepSelected = true, isSourceUpdate = false) => {
-    console.log(`Transform end for ${objectKey}, keepSelected: ${keepSelected}, isSourceUpdate: ${isSourceUpdate}`);
+    debugLog(`Transform end for ${objectKey}, keepSelected: ${keepSelected}, isSourceUpdate: ${isSourceUpdate}`);
     
     // CRITICAL: Force selection of the object being transformed
     // This must happen BEFORE any geometry updates to ensure it takes effect
     if (keepSelected && objectKey !== selectedGeometry) {
-      console.log(`Forcing selection to ${objectKey} before update`);
+      debugLog(`Forcing selection to ${objectKey} before update`);
       onSelect(objectKey);
     }
     
@@ -118,7 +118,7 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, ma
     if (keepSelected) {
       // Use requestAnimationFrame to ensure this happens after the current render cycle
       requestAnimationFrame(() => {
-        console.log(`Forcing selection to ${objectKey} after update`);
+        debugLog(`Forcing selection to ${objectKey} after update`);
         onSelect(objectKey);
       });
     }
@@ -126,7 +126,7 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, ma
     // Instance tracking functionality has been removed for a cleaner implementation
     // Source object tracking and updating will be reimplemented in a simpler way
     if (isSourceUpdate) {
-      console.log('Source update from transform operation - functionality will be reimplemented');
+      debugLog('Source update from transform operation - functionality will be reimplemented');
     }
     
     // If this is a parent object, handle parent-child relationships
@@ -142,7 +142,7 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, ma
           // Find all volumes that have this volume as their mother
           // We don't need to update their positions since they're already positioned relative to parent
           // in the Three.js scene graph, but we do need to maintain selection state
-          geometries.volumes.forEach((volume, index) => {
+          geometries.volumes.forEach((volume) => {
             if (volume.mother_volume === parentVolume.name) {
               // Just maintain the data model relationships
               // No need to change selection for child volumes

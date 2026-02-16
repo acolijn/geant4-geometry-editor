@@ -1,26 +1,21 @@
-import React, { useState, useMemo, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { 
   Box, 
   Paper, 
   Typography, 
   Button,
-  Tabs,
-  Tab,
   Alert,
   Snackbar
 } from '@mui/material';
 import {
-  formatJson,
-  ensureOrderedZPlanes,
-  generateMaterialsJson,
   generateGeometryJson,
   handleDownload,
   handleFileUpload,
   importJsonGeometry
 } from './utils/jsonHandlers';
+import { debugLog } from '../../utils/logger';
 
 const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMaterials }) => {
-  const [tabValue, setTabValue] = useState(0);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
   
 
@@ -28,10 +23,10 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
   const combinedJson = generateGeometryJson(geometries, materials);
   // Handle importing geometry from JSON file
   const handleImportGeometry = async (event) => {
-    console.log('handleImportGeometry:: Import button clicked');
+    debugLog('handleImportGeometry:: Import button clicked');
     const file = event.target.files[0];
     if (!file) {
-      console.log('handleImportGeometry:: No file selected');
+      debugLog('handleImportGeometry:: No file selected');
       return;
     }
         
@@ -44,10 +39,10 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
         geometries: geometries,
         materials: materials
       };
-      console.log('handleImportGeometry:: Current geometry:', currentGeometry);
+      debugLog('handleImportGeometry:: Current geometry:', currentGeometry);
       
       const updatedGeometry = importJsonGeometry(jsonData, currentGeometry);
-      console.log('handleImportGeometry:: Updated geometry:', updatedGeometry);
+      debugLog('handleImportGeometry:: Updated geometry:', updatedGeometry);
   
       onImportGeometries(updatedGeometry.geometries);
       onImportMaterials(updatedGeometry.materials);
@@ -106,18 +101,13 @@ const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMateria
             component="label"
             size="small"
             color="secondary"
-            onClick={() => console.log('Import button clicked directly')}
           >
             Import JSON
             <input
               type="file"
               accept=".json"
               hidden
-              onClick={(e) => console.log('Input element clicked')}
-              onChange={(e) => {
-                console.log('onChange event fired');
-                handleImportGeometry(e);
-              }}
+              onChange={handleImportGeometry}
             />
           </Button>
 

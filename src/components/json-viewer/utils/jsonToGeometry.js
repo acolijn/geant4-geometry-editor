@@ -127,7 +127,7 @@ function createStandardVolume(volume, geometry) {
     // loop through the placements and create a volume for each placement
     volume.placements.forEach(placement => {
         if (placement) {
-            geometry.geometries.volumes.push(createVolume(volume, placement));
+            geometry.geometries.volumes.push(createVolume(volume, placement, geometry));
         }
     });
 }
@@ -201,23 +201,28 @@ function createAssembly(volume, geometry) {
 }
 
 function makeg4name(name, volume, geometry) {
+    const fallbackName = name || volume?.name || 'Object';
 
     if (volume._middle_id === "") {
-        return name;
-    } else {
-        let baseName = name.split('_')[0];
-        // count the number of instances of this volume type
-        let count = 0;
-        geometry.geometries.volumes.forEach(volume => {
-            // check _compoundId and _componentId
-            // check if volume is the top level volume
-            if (volume._compoundId === volume._compoundId && (volume.type === 'assembly' || volume.type === 'union')) {
-                count++;
-            }
-        });
-        
-        return `${baseName}_${count}`;
+        return fallbackName;
     }
+
+    const baseName = fallbackName.split('_')[0];
+    const usedNames = new Set(
+        (geometry?.geometries?.volumes || [])
+            .map((existingVolume) => existingVolume.g4name)
+            .filter(Boolean)
+    );
+
+    let suffix = 0;
+    let candidate = `${baseName}_${suffix}`;
+
+    while (usedNames.has(candidate)) {
+        suffix++;
+        candidate = `${baseName}_${suffix}`;
+    }
+
+    return candidate;
 }
 
 function convertName(name, _middle_id) {
@@ -271,15 +276,7 @@ function nextName(name, increment) {
     return `${name}_${increment}`;
 }
 
-function createUnion(volume, geometry) {
-    // convert the union to the standard geometry format
-    console.log('createUnion:: volume', volume);
-    console.log('createUnion:: volume.type', volume.type);
-    console.log('createUnion:: volume.placements', volume.placements);
-    console.log('createUnion:: volume.material', volume.material);
-}
-
-function createVolume(volume, placement) {
+function createVolume(volume, placement, geometry) {
     // convert the volume to the standard geometry format
     console.log('createVolume:: volume', volume);
     console.log('createVolume:: volume.type', volume.type);
@@ -292,7 +289,7 @@ function createVolume(volume, placement) {
 
     const newVolume = {
         name: convertName(volume.name, volume._middle_id),
-        g4name: volume.g4name || volume.name,
+        g4name: makeg4name(volume.g4name || volume.name, volume, geometry),
         type: volume.type,
         material: volume.material,
         position: {x: placement.x, y: placement.y, z: placement.z},
@@ -408,7 +405,7 @@ function createMaterials(materials, geometry) {
         });
         
         // Remove the name property since it's redundant as a key
-        const { name, ...materialWithoutName } = processedMaterial;
+        const { name: _name, ...materialWithoutName } = processedMaterial;
         
         // Add to materials object with name as key
         console.log('createMaterials:: materialWithoutName', materialWithoutName);

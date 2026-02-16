@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
-import { OrbitControls } from '@react-three/drei';
+import React, { useState, useEffect, useRef } from 'react';
+import { calculateWorldPosition, worldToLocalCoordinates, getParentKey } from './utils/geometryUtils';
 import * as THREE from 'three';
 // Instance tracking functionality has been removed for a cleaner implementation
 import TransformableObject from './components/TransformableObject';
 import CoordinateSystem from './components/CoordinateSystem';
 import CameraSetup from './components/CameraSetup';
+import { debugLog } from '../../utils/logger';
 
 // Scene component with all 3D elements
 
@@ -29,7 +28,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
   // Debug the selected geometry to help diagnose issues
   React.useEffect(() => {
     if (selectedGeometry) {
-      console.log(`Selected geometry: ${selectedGeometry}`);
+      debugLog(`Selected geometry: ${selectedGeometry}`);
     }
   }, [selectedGeometry]);
   // Create a map of volume names to their indices for easy lookup
@@ -266,12 +265,6 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     }
   };
   
-  // Find union volumes for reference
-  const unionVolumeNames = useMemo(() => {
-    if (!geometries.volumes) return [];
-    return geometries.volumes.filter(vol => vol.type === 'union').map(vol => vol.name);
-  }, [geometries.volumes]);
-  
   // Render all volumes in a flat structure
   const renderVolumes = () => {
     if (!geometries.volumes) return null;
@@ -286,10 +279,10 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
         
         if (!isSelected) {
           // Return null for boolean components to maintain indices but not render them
-          console.log(`Scene: Skipping render of boolean component ${volume.name}`);
+          debugLog(`Scene: Skipping render of boolean component ${volume.name}`);
           return null;
         } else {
-          console.log(`Scene: Rendering selected boolean component ${volume.name}`);
+          debugLog(`Scene: Rendering selected boolean component ${volume.name}`);
           // Continue rendering this component since it's selected
         }
       }

@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { calculateWorldPosition, worldToLocalCoordinates, getParentKey, groupVolumesByParent } from './utils/geometryUtils';
+import React, { useState } from 'react';
+import { getParentKey } from './utils/geometryUtils';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
-import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryUtils';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
-import { getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
+import { findAllDescendants, getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
 import { saveObject } from '../geometry-editor/utils/ObjectStorage';
+import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdateUtils';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
@@ -15,11 +14,11 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   const [objectToSave, setObjectToSave] = useState(null);
 
   // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
-  const handleExportObject = async () => {
+  const handleExportObject = async (objectKey = selectedGeometry) => {
     console.log('handleExportObject:: geometries');
     
     // Get the currently selected geometry object
-    const selectedObject = getSelectedGeometryObject(selectedGeometry, geometries);
+    const selectedObject = getSelectedGeometryObject(objectKey, geometries);
     console.log('handleExportObject:: selectedObject', selectedObject);
     
     if (!selectedObject) {
@@ -29,18 +28,31 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Create a proper geometries structure
     const geometriesForExport = {
-      volumes: geometries.volumes,
+      volumes: [...geometries.volumes],
       world: geometries.world || { name: 'world' }
     };
     
     // Get the compound ID
     let compoundId = selectedObject._compoundId;
     
-    // Check if compoundId exists
+    // Repair missing compound IDs for legacy or imported objects before export
     if (!compoundId) {
-      console.error('handleExportObject:: No _compoundId found for selected object:', selectedObject);
-      alert('Cannot export this object: missing compound ID. This may be an older object that needs to be recreated.');
-      return;
+      const repairedCompoundId = selectedObject.name || `compound_${Date.now()}`;
+      const descendantNames = findAllDescendants(selectedObject.name, geometries.volumes).map(v => v.name);
+      const namesToRepair = new Set([selectedObject.name, ...descendantNames]);
+
+      geometriesForExport.volumes = geometries.volumes.map((volume) => {
+        if (namesToRepair.has(volume.name)) {
+          return {
+            ...volume,
+            _compoundId: volume._compoundId || repairedCompoundId
+          };
+        }
+
+        return volume;
+      });
+
+      compoundId = repairedCompoundId;
     }
     
     try {
@@ -119,11 +131,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   // Function to handle the update assemblies dialog confirmation
   const handleUpdateAssembliesConfirm = () => {
     const { sourceIndex, selectedIndices } = updateAssembliesDialog;
-    
-    if (selectedIndices.length === 0) {
-      console.log('No assemblies selected for update.');
-      return;
-    }
+
+    if (selectedIndices.length === 0) return;
     
     // Close the dialog
     setUpdateAssembliesDialog(prev => ({
@@ -131,163 +140,18 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       open: false
     }));
     
-    // Get the selected volume from the sourceIndex
-    const selectedVolume = geometries.volumes[sourceIndex];
-    
-    // First, find all components in the source assembly
-    const sourceComponents = [];
-    const sourceAssemblyName = selectedVolume.name;
-    
-    // Find all components that belong to the source assembly
-    for (let i = 0; i < geometries.volumes.length; i++) {
-      const volume = geometries.volumes[i];
-      if (volume.mother_volume === sourceAssemblyName) {
-        sourceComponents.push({
-          index: i,
-          volume: volume,
-          _componentId: volume._componentId
-        });
-      }
-    }
-    
-    console.log(`Found ${sourceComponents.length} components in source assembly ${sourceAssemblyName}:`, sourceComponents);
-    
-    // Count of successfully updated assemblies
-    let updatedCount = 0;
-    
-    // Update the selected assemblies
-    for (const index of selectedIndices) {
-      // Skip invalid indices
-      if (index < 0 || index >= geometries.volumes.length) continue;
-      
-      const volume = geometries.volumes[index];
-      
-      // Skip non-assemblies
-      if (volume.type !== 'assembly') continue;
-      
-      const targetAssemblyName = volume.name;
-      
-      // Create a new object with properties from the selected assembly
-      // but preserve position, rotation, name, and identifiers of the target assembly
-      const updatedAssembly = {
-        ...selectedVolume,
-        // CRITICAL: Preserve these properties
-        position: { ...volume.position },
-        rotation: { ...volume.rotation },
-        name: targetAssemblyName, // Preserve assembly name
-        mother_volume: volume.mother_volume
-      };
-      
-      // If the assembly has an instance ID, preserve it
-      if (volume._instanceId) {
-        updatedAssembly._instanceId = volume._instanceId;
-      }
-      
-      // Preserve g4name and g4name if they exist
-      if (volume.g4name) {
-        updatedAssembly.g4name = volume.g4name;
-      }
-      if (volume.g4name) {
-        updatedAssembly.g4name = volume.g4name;
-      }
-      
-      // Update this specific assembly
-      // Use the volume ID format: 'volume-index'
-      onUpdateGeometry(`volume-${index}`, updatedAssembly, true, false);
-      
-      // Now update all components of this assembly
-      // First, find all components that belong to this target assembly
-      const targetComponents = [];
-      for (let j = 0; j < geometries.volumes.length; j++) {
-        const component = geometries.volumes[j];
-        if (component.mother_volume === targetAssemblyName) {
-          targetComponents.push({
-            index: j,
-            volume: component,
-            _componentId: component._componentId
-          });
-        }
-      }
-      
-      console.log(`Found ${targetComponents.length} components in target assembly ${targetAssemblyName}:`, targetComponents);
-      
-      // For each source component, find matching target component by _componentId
-      // and update it with the source component's properties
-      for (const sourceComponent of sourceComponents) {
-        // Find matching target component by _componentId
-        const matchingTargetComponent = targetComponents.find(tc => 
-          tc._componentId && sourceComponent._componentId && tc._componentId === sourceComponent._componentId
-        );
-        
-        if (matchingTargetComponent) {
-          // Create updated component with properties from source but preserve critical identifiers
-          const updatedComponent = {
-            ...sourceComponent.volume,
-            // CRITICAL: Preserve these identifiers
-            name: matchingTargetComponent.volume.name, // Preserve internal name
-            mother_volume: targetAssemblyName, // Preserve parent relationship
-            _componentId: matchingTargetComponent.volume._componentId // Preserve component ID
-          };
-          
-          // Preserve g4name and g4name if they exist
-          if (matchingTargetComponent.volume.g4name) {
-            updatedComponent.g4name = matchingTargetComponent.volume.g4name;
-          }
-          if (matchingTargetComponent.volume.g4name) {
-            updatedComponent.g4name = matchingTargetComponent.volume.g4name;
-          }
-          
-          console.log(`Updating component at index ${matchingTargetComponent.index}:`, {
-            sourceComponent: sourceComponent.volume,
-            targetComponent: matchingTargetComponent.volume,
-            updatedComponent: updatedComponent
-          });
-          
-          // Update this specific component
-          onUpdateGeometry(`volume-${matchingTargetComponent.index}`, updatedComponent, true, false);
-        } else {
-          console.log(`No matching component found for source component with ID ${sourceComponent._componentId}`);
-        }
-      }
-      
-      updatedCount++;
-    }
-    
-    // Log success message instead of showing an alert
-    if (updatedCount > 0) {
-      console.log(`Updated ${updatedCount} assemblies successfully.`);
-    } else {
-      console.log('No assemblies were updated.');
-    }
-  };
-  
-  // Function to handle Add to Assembly option
-  const handleAddToAssembly = (volumeIndex) => {
-    // Close the context menu
-    handleCloseContextMenu();
-    
-    // Find all assemblies in the geometry
-    const assemblies = geometries.volumes
-      .map((volume, index) => ({ volume, index }))
-      .filter(item => item.volume.type === 'assembly');
-    
-    if (assemblies.length === 0) {
-      console.log('No assemblies available. Create an assembly first.');
-      return;
-    }
-    
-    // Open the assembly selection dialog
-    setAssemblyDialog({
-      open: true,
-      volumeIndex,
-      assemblies
+    syncAssembliesFromSource({
+      volumes: geometries.volumes,
+      sourceIndex,
+      targetIndices: selectedIndices,
+      onUpdateGeometry,
+      isTargetEligible: (_sourceAssembly, targetAssembly) => targetAssembly.type === 'assembly'
     });
   };
   
   // Function to confirm adding to assembly
   const handleConfirmAddToAssembly = (assemblyIndex) => {
     const volumeIndex = assemblyDialog.volumeIndex;
-    const volume = geometries.volumes[volumeIndex];
     const assembly = geometries.volumes[assemblyIndex];
     
     // Get the volume key for updating
@@ -300,13 +164,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Update the geometry using onUpdateGeometry
     onUpdateGeometry(volumeKey, updatedVolume);
-    
-    // Log the update
-    console.log('Adding volume to assembly:', {
-      volume: geometries.volumes[volumeIndex],
-      assembly,
-      updatedVolume
-    });
     
     // Close the dialog
     setAssemblyDialog({
@@ -426,7 +283,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       // Special handling for Parts folder
       if (item.isPartsFolder) {
         const partsKey = item.key;
-        const hasChildren = volumesByParent[partsKey] && volumesByParent[partsKey].length > 0;
         
         return (
           <React.Fragment key={partsKey}>
@@ -711,11 +567,10 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               <div
                 onClick={() => {
                   // Set the selected geometry to the current context menu item
-                  // This ensures handleExportObject gets the right object
                   const volumeKey = `volume-${contextMenu.volumeIndex}`;
                   onSelect(volumeKey);
-                  // Call our custom handleExportObject and close the context menu
-                  handleExportObject();
+                  // Export explicitly using the clicked object key to avoid stale selection races
+                  handleExportObject(volumeKey);
                   handleCloseContextMenu();
                 }}
                 style={{

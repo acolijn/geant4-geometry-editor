@@ -117,6 +117,7 @@ function processVolume(volume) {
     visible: volume.visible !== undefined ? volume.visible : true,
     // if hitsColectionName is not empty, add it to the object
     ...(volume.hitsCollectionName && { hitsCollectionName: volume.hitsCollectionName }),
+    ...(volume._compoundId && { _compoundId: volume._compoundId }),
     //parent: volume.mother_volume
     ...(volume._componentId && { _componentId: volume._componentId }),
     ...(volume.boolean_operation !== undefined && { boolean_operation: volume.boolean_operation }),

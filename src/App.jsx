@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Box, 
   CssBaseline, 
@@ -9,9 +9,7 @@ import {
   Tab,
   Container,
   ThemeProvider,
-  createTheme,
-  Button,
-  Tooltip
+  createTheme
 } from '@mui/material';
 import { updateGeometry, addGeometry, removeGeometry } from './components/geometry-editor/utils/GeometryOperations';
 import Viewer3D from './components/viewer3D/Viewer3D';
@@ -21,6 +19,7 @@ import JsonViewer from './components/json-viewer/JsonViewer';
 import { ProjectManager } from './components/project-manager';
 import { defaultGeometry, defaultMaterials } from './utils/defaults';
 import { propagateCompoundIdToDescendants } from './components/geometry-editor/utils/compoundIdPropagator';
+import { debugLog } from './utils/logger';
 
 import './App.css';
 
@@ -42,11 +41,15 @@ function App() {
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
-  // State for update dialog
-  const [updateDialogData, setUpdateDialogData] = useState(null);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  // Reference to the updateAssemblies function from Viewer3D
-  const [updateAssembliesFunc, setUpdateAssembliesFunc] = useState(null);
+
+  const cloneData = (data) => {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(data);
+    }
+
+    return JSON.parse(JSON.stringify(data));
+  };
   
   // Handle updating a geometry using the imported utility function
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false, extraData = null) => {
@@ -60,7 +63,7 @@ function App() {
       setGeometries,
       setSelectedGeometry,
       selectedGeometry,
-      updateAssembliesFunc,
+      null,
       propagateCompoundIdToDescendants
     );
   };
@@ -89,7 +92,7 @@ function App() {
   
   // Handle importing geometries
   const handleImportGeometries = (importData) => {
-    console.log('handleImportGeometries:: Received data:', importData);
+    debugLog('handleImportGeometries:: Received data:', importData);
     
     // Validate the imported geometries structure
     if (!importData || !importData.volumes || !Array.isArray(importData.volumes)) {
@@ -98,8 +101,8 @@ function App() {
     }
     
     // Create a deep copy to prevent reference issues
-    const geometriesCopy = JSON.parse(JSON.stringify(importData));
-    console.log('handleImportGeometries:: Setting geometries state with:', geometriesCopy);
+    const geometriesCopy = cloneData(importData);
+    debugLog('handleImportGeometries:: Setting geometries state with:', geometriesCopy);
     
     // Ensure all assemblies and unions have _compoundId assigned and propagate to descendants
     let updatedVolumes = [...geometriesCopy.volumes];
@@ -108,7 +111,7 @@ function App() {
         // Ensure the assembly/union has a _compoundId (use its name if missing)
         if (!volume._compoundId) {
           updatedVolumes[index] = { ...volume, _compoundId: volume.name };
-          console.log(`handleImportGeometries:: Assigned _compoundId ${volume.name} to imported ${volume.type}: ${volume.name}`);
+          debugLog(`handleImportGeometries:: Assigned _compoundId ${volume.name} to imported ${volume.type}: ${volume.name}`);
         }
         // Propagate _compoundId to all descendants
         const compoundId = updatedVolumes[index]._compoundId;
@@ -124,7 +127,7 @@ function App() {
   
   // Handle importing materials
   const handleImportMaterials = (importedMaterials) => {
-    console.log('handleImportMaterials:: Received data:', importedMaterials);
+    debugLog('handleImportMaterials:: Received data:', importedMaterials);
     
     // Validate the imported materials structure
     if (typeof importedMaterials !== 'object') {
@@ -133,8 +136,8 @@ function App() {
     }
     
     // Create a deep copy to prevent reference issues
-    const materialsCopy = JSON.parse(JSON.stringify(importedMaterials));
-    console.log('handleImportMaterials:: Setting materials state with:', materialsCopy);
+    const materialsCopy = cloneData(importedMaterials);
+    debugLog('handleImportMaterials:: Setting materials state with:', materialsCopy);
     
     // Set the materials state with the imported data
     setMaterials(materialsCopy);
@@ -217,16 +220,6 @@ return (
                   selectedGeometry={selectedGeometry}
                   onSelect={setSelectedGeometry}
                   onUpdateGeometry={handleUpdateGeometry}
-                  onOpenUpdateDialog={(data) => {
-                    console.log('App: onOpenUpdateDialog called with data:', data);
-                    setUpdateDialogData(data);
-                    setUpdateDialogOpen(true);
-                    console.log('App: Set updateDialogData and updateDialogOpen');
-                  }}
-                  onRegisterUpdateFunction={(updateFunc) => {
-                    console.log('App: Registering updateAssemblies function');
-                    setUpdateAssembliesFunc(updateFunc);
-                  }}
                   materials={materials}
                 />
               </Box>
@@ -242,10 +235,9 @@ return (
                   onRemoveGeometry={handleRemoveGeometry}
                   handleImportGeometries={handleImportGeometries}
                   handleImportMaterials={handleImportMaterials}
-                  externalUpdateDialogData={updateDialogData}
+                  externalUpdateDialogData={null}
                   updateDialogOpen={updateDialogOpen}
                   setUpdateDialogOpen={setUpdateDialogOpen}
-                  updateAssembliesFunc={updateAssembliesFunc}
                 />
               </Box>
             </Box>
