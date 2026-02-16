@@ -196,13 +196,56 @@ export const listObjects = async () => {
       return [];
     }
     
-    // Get list of object names from storage manager
-    // For IndexedDB, pass null to get all objects across all categories
-    const objectNames = storageManager === IndexedDBManager 
-      ? await storageManager.listObjects(null) 
-      : await storageManager.listObjects();
-    
-    // Load metadata for each object
+    // IndexedDB can contain duplicate object names across categories.
+    // Build category-aware entries to keep load/delete deterministic.
+    if (storageManager === IndexedDBManager) {
+      const categories = await storageManager.listCategories();
+      const objectEntries = [];
+
+      for (const category of categories) {
+        const namesInCategory = await storageManager.listObjects(category);
+        for (const name of namesInCategory) {
+          objectEntries.push({ name, category });
+        }
+      }
+
+      // Fallback for older data where categories may be unavailable.
+      if (objectEntries.length === 0) {
+        const names = await storageManager.listObjects(null);
+        for (const name of names) {
+          objectEntries.push({ name, category: null });
+        }
+      }
+
+      const objects = await Promise.all(objectEntries.map(async ({ name, category }) => {
+        try {
+          const objectData = category
+            ? await storageManager.loadObject(name, category)
+            : await storageManager.loadObject(name);
+          const fileName = category ? `${category}/${name}.json` : `${name}.json`;
+          return {
+            name: objectData?.metadata?.name || name,
+            description: objectData?.metadata?.description || '',
+            updatedAt: objectData?.metadata?.updatedAt || '',
+            fileName,
+            category: category || 'unknown'
+          };
+        } catch (err) {
+          console.warn(`Error reading object ${name}${category ? ` in ${category}` : ''}:`, err);
+          return {
+            name,
+            description: 'Error reading metadata',
+            fileName: category ? `${category}/${name}.json` : `${name}.json`,
+            category: category || 'unknown'
+          };
+        }
+      }));
+
+      return objects;
+    }
+
+    const objectNames = await storageManager.listObjects();
+
     const objects = await Promise.all(objectNames.map(async (name) => {
       try {
         const objectData = await storageManager.loadObject(name);
@@ -221,7 +264,7 @@ export const listObjects = async () => {
         };
       }
     }));
-    
+
     return objects;
   } catch (error) {
     console.error('Error listing objects:', error);
@@ -246,9 +289,30 @@ export const loadObject = async (fileName) => {
     
     // Extract the object name from the filename
     const objectName = fileName.replace('.json', '');
-    
+
     // Load the object using storage manager
-    const data = await storageManager.loadObject(objectName);
+    // IndexedDB entries may be category-qualified: "category/name.json"
+    let data = null;
+    if (storageManager === IndexedDBManager) {
+      if (objectName.includes('/')) {
+        const separatorIndex = objectName.indexOf('/');
+        const category = objectName.slice(0, separatorIndex);
+        const name = objectName.slice(separatorIndex + 1);
+        data = await storageManager.loadObject(name, category);
+      } else {
+        // Backward-compatible lookup for legacy file names without category.
+        data = await storageManager.loadObject(objectName);
+        if (!data) {
+          const categories = await storageManager.listCategories();
+          for (const category of categories) {
+            data = await storageManager.loadObject(objectName, category);
+            if (data) break;
+          }
+        }
+      }
+    } else {
+      data = await storageManager.loadObject(objectName);
+    }
     
     if (!data) {
       throw new Error(`Object "${fileName}" not found`);
@@ -293,18 +357,23 @@ export const deleteObject = async (fileName) => {
     // Delete the object using storage manager
     let success;
     if (storageManager === IndexedDBManager) {
-      // For IndexedDB, we need to find which category the object is in
-      // First, load the object to get its category information
-      const objectData = await storageManager.loadObject(objectName, null);
-      if (objectData) {
-        // Try common categories
-        const categories = ['common', 'detectors', 'shielding'];
-        for (const cat of categories) {
-          success = await storageManager.deleteObject(objectName, cat);
-          if (success) break;
-        }
+      if (objectName.includes('/')) {
+        // Deterministic delete path for category-qualified IDs.
+        const separatorIndex = objectName.indexOf('/');
+        const category = objectName.slice(0, separatorIndex);
+        const name = objectName.slice(separatorIndex + 1);
+        success = await storageManager.deleteObject(name, category);
       } else {
+        // Backward-compatible fallback: probe all known categories dynamically.
         success = false;
+        const categories = await storageManager.listCategories();
+        for (const category of categories) {
+          const exists = await storageManager.loadObject(objectName, category);
+          if (exists) {
+            success = await storageManager.deleteObject(objectName, category);
+            if (success) break;
+          }
+        }
       }
     } else {
       success = await storageManager.deleteObject(objectName);
