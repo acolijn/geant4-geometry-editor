@@ -153,12 +153,14 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   const handleConfirmAddToAssembly = (assemblyIndex) => {
     const volumeIndex = assemblyDialog.volumeIndex;
     const assembly = geometries.volumes[assemblyIndex];
+    const originalVolume = geometries.volumes[volumeIndex];
     
     // Get the volume key for updating
     const volumeKey = `volume-${volumeIndex}`;
     
-    // Update the volume's mother_volume to the assembly
+    // Update using a full object to avoid dropping existing properties
     const updatedVolume = {
+      ...originalVolume,
       mother_volume: assembly.name
     };
     
