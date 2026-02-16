@@ -408,60 +408,52 @@ function convertDimensions(volume) {
  * Generates a template JSON for a specific compound object
  * @param {Object} geometry - The full geometry object
  * @param {String} compoundId - The _compoundId to extract
+ * @param {String} rootName - Optional root instance name to extract (preferred)
  * @returns {Object} - The template JSON for the compound
  */
-export function generateTemplateJson(geometry, compoundId) {
+export function generateTemplateJson(geometry, compoundId, rootName = null) {
   if (!geometry || !compoundId) {
     console.warn('generateTemplateJson:: Invalid input parameters');
     return null;
   }
-  
-  // Create a filtered geometry with only volumes matching the compoundId
-  let filteredGeometry = {
+
+  // Prefer extracting from the selected root instance (name) to avoid
+  // accidentally mixing multiple instances that share the same _compoundId.
+  const rootVolume = rootName
+    ? geometry.volumes.find((volume) => volume.name === rootName)
+    : geometry.volumes.find((volume) => volume._compoundId === compoundId);
+
+  if (!rootVolume) {
+    console.warn('generateTemplateJson:: Could not find root volume');
+    return null;
+  }
+
+  const rootInstanceId = rootVolume._instanceId;
+  const selectedNames = new Set([rootVolume.name]);
+  const queue = [rootVolume.name];
+
+  while (queue.length > 0) {
+    const parentName = queue.shift();
+    geometry.volumes.forEach((volume) => {
+      const sameInstance = !rootInstanceId || volume._instanceId === rootInstanceId;
+      if (sameInstance && volume.mother_volume === parentName && !selectedNames.has(volume.name)) {
+        selectedNames.add(volume.name);
+        queue.push(volume.name);
+      }
+    });
+  }
+
+  const filteredGeometry = {
     world: null,
-    volumes: geometry.volumes.filter(volume => volume._compoundId === compoundId)
-    // set the placement of the top object to default position/rotation
-    
+    volumes: geometry.volumes
+      .filter((volume) => selectedNames.has(volume.name))
+      .map((volume) => ({ ...volume }))
   };
 
-  // Reset placements of teh top level objects to default position/rotation
-  // if top object is not assembly or union
-  if (filteredGeometry.volumes && filteredGeometry.volumes.length > 0) {
-    filteredGeometry.volumes.forEach(volume => {
-      if (volume.placements && volume.placements.length > 0) {
-        // Keep only the first placement and reset its position/rotation
-        volume.placements = [{
-          ...volume.placements[0],
-          x: 0,
-          y: 0,
-          z: 0,
-          rotation: { x: 0, y: 0, z: 0 }
-        }];
-      }
-    });
-  }
-
-  // recursively add volumes that are daughters, granddaughters, etc.
-  const addDaughters = (volumeId) => {
-    geometry.volumes.forEach(volume => {
-      if (volume.mother_volume === volumeId) {
-        filteredGeometry.volumes.push(volume);
-        addDaughters(volume._compoundId);
-      }
-    });
-  };
-  // if top object is not assembly or union
-  if (geometry.volumes.find(volume => volume._compoundId === compoundId).type !== 'assembly' && 
-      geometry.volumes.find(volume => volume._compoundId === compoundId).type !== 'union') {
-    addDaughters(compoundId);
-  }
-  
   console.log('generateTemplateJson:: filteredGeometry', filteredGeometry);
 
   // Use the existing generateJson function to create the JSON structure
   const templateJson = generateJson(filteredGeometry);
-  
 
-  
   return templateJson;
 }

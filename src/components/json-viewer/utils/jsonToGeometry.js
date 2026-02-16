@@ -125,9 +125,9 @@ function createStandardVolume(volume, geometry) {
     console.log('createStandardVolume:: volume.placements', volume.placements);
 
     // loop through the placements and create a volume for each placement
-    volume.placements.forEach(placement => {
+    volume.placements.forEach((placement, placementIndex) => {
         if (placement) {
-            geometry.geometries.volumes.push(createVolume(volume, placement, geometry));
+            geometry.geometries.volumes.push(createVolume(volume, placement, geometry, placementIndex));
         }
     });
 }
@@ -142,6 +142,9 @@ function createAssembly(volume, geometry) {
     // loop through the placements and create an assembly for each placement
     let iPlacement = 0;
     volume.placements.forEach(placement => {
+        const instanceId = volume._middle_id
+            ? `${volume._middle_id}_${iPlacement}`
+            : volume._instanceId;
 
         let assemblyName = convertName(placement.name, volume._middle_id);
 
@@ -159,12 +162,22 @@ function createAssembly(volume, geometry) {
             _componentId: volume._componentId,
             mother_volume: placement.parent || "World"
         };
+        if (instanceId) {
+            assembly._instanceId = instanceId;
+        }
         console.log('createAssembly:: assembly', assembly);
         geometry.geometries.volumes.push(assembly);
 
         // add the components
         console.log('createAssembly:: volume.components', volume.components);
+        const seenComponents = new Set();
         volume.components.forEach(component => {
+            const componentKey = component?._componentId || `${component?.name || 'unnamed'}:${component?.type || 'unknown'}`;
+            if (seenComponents.has(componentKey)) {
+                return;
+            }
+            seenComponents.add(componentKey);
+
             // create the component
             let placement = component.placements[0];
             let newName = convertName(nextName(placement.name, iPlacement), volume._middle_id);
@@ -182,6 +195,9 @@ function createAssembly(volume, geometry) {
                 // if parent name not "" then use it as mother_volume else use assemblyName
                 mother_volume: placement.parent !== '' ? convertName(nextName(placement.parent, iPlacement), volume._middle_id) : assemblyName
             };
+            if (instanceId) {
+                newComponent._instanceId = instanceId;
+            }
 
             if (component.boolean_operation) {
                 newComponent.boolean_operation = component.boolean_operation;
@@ -276,7 +292,7 @@ function nextName(name, increment) {
     return `${name}_${increment}`;
 }
 
-function createVolume(volume, placement, geometry) {
+function createVolume(volume, placement, geometry, placementIndex = 0) {
     // convert the volume to the standard geometry format
     console.log('createVolume:: volume', volume);
     console.log('createVolume:: volume.type', volume.type);
@@ -296,6 +312,13 @@ function createVolume(volume, placement, geometry) {
         rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
         mother_volume: mother_volume
     };
+
+    const instanceId = volume._middle_id
+        ? `${volume._middle_id}_${placementIndex}`
+        : volume._instanceId;
+    if (instanceId) {
+        newVolume._instanceId = instanceId;
+    }
 
     // Preserve _compoundId and _componentId if they exist in the source volume
     if (volume._compoundId !== undefined) {
@@ -436,4 +459,3 @@ function createMaterial(material) {
     
     return newMaterial;
 }
-

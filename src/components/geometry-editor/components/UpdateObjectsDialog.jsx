@@ -89,6 +89,40 @@ const UpdateObjectsDialog = ({
       setIsLoading(false);
     }
   };
+
+  const collectDescendants = (rootName) => {
+    const descendants = [];
+    const stack = [rootName];
+
+    while (stack.length > 0) {
+      const currentParent = stack.pop();
+      const children = geometries.volumes.filter((volume) => volume.mother_volume === currentParent);
+      children.forEach((child) => {
+        descendants.push(child);
+        stack.push(child.name);
+      });
+    }
+
+    return descendants;
+  };
+
+  const buildTypeHistogram = (volumes) => {
+    return volumes.reduce((acc, volume) => {
+      const key = volume.type || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  };
+
+  const sameHistogram = (a, b) => {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const key of keys) {
+      if ((a[key] || 0) !== (b[key] || 0)) {
+        return false;
+      }
+    }
+    return true;
+  };
   
   // Handle selecting an object type
   const handleSelectType = async (objectType) => {
@@ -110,173 +144,61 @@ const UpdateObjectsDialog = ({
         console.warn('Could not load object definition:', err);
       }
       
-      // Find top-level instances of this object type in the scene
-      const baseName = objectType.name;
-      console.log('Looking for instances of:', baseName);
-      console.log('World object:', geometries.world);
-      console.log('All volumes:', geometries.volumes);
-      
-      // Collect all top-level instances from the scene
+      // Only proceed with the standardized object definition shape.
+      if (!objectDefinition?.object || !Array.isArray(objectDefinition.descendants)) {
+        setInstances([]);
+        setSelectedInstances([]);
+        setStep('instances');
+        setError('Selected library object does not contain a structured definition (object + descendants).');
+        return;
+      }
+
+      const definitionRoot = objectDefinition.object;
+      const definitionDescendants = objectDefinition.descendants;
+      const definitionHistogram = buildTypeHistogram(definitionDescendants);
+      const definitionComponentIds = new Set(
+        definitionDescendants
+          .map((descendant) => descendant._componentId)
+          .filter(Boolean)
+      );
+
       const foundInstances = [];
-      
-      // Helper function to check if an object is a top-level instance of the selected type
-      const isTopLevelInstance = (obj) => {
-        if (!obj.name) {
-          console.log('Object has no name:', obj);
-          return false;
+
+      geometries.volumes.forEach((volume, index) => {
+        if (!volume || volume.type !== definitionRoot.type) {
+          return;
         }
-        
-        console.log('Checking object:', obj.name);
-        
-        // Parse the object name to extract parts
-        const nameParts = obj.name.split('_');
-        console.log('Name parts:', nameParts);
-        
-        // Different detection strategies
-        
-        // Strategy 1: Check for BaseName_BaseName_ID pattern (e.g., PMT_PMT_0)
-        if (nameParts.length >= 3) {
-          const objBaseName = nameParts[0];
-          const componentName = nameParts[1];
-          const result = objBaseName === baseName && componentName === baseName;
-          console.log('Strategy 1:', { objBaseName, componentName, baseName, result });
-          if (result) return true;
-        }
-        
-        // Strategy 2: Check if this is a mother object with children that have the same base name
-        let hasMatchingChildren = false;
-        geometries.volumes.forEach(volume => {
-          if (volume.mother_volume === obj.name) {
-            console.log('Found child with mother:', obj.name, volume.name);
-            const childNameParts = volume.name.split('_');
-            if (childNameParts.length > 0 && childNameParts[0] === baseName) {
-              hasMatchingChildren = true;
-              console.log('Child matches base name:', volume.name);
-            }
-          }
-        });
-        
-        if (hasMatchingChildren) {
-          console.log('Strategy 2: Has matching children');
-          return true;
-        }
-        
-        // Strategy 3: Check if the name exactly matches the base name
-        if (obj.name === baseName) {
-          console.log('Strategy 3: Exact name match');
-          return true;
-        }
-        
-        // Strategy 4: Check if the name contains the base name
-        // This is a fallback for simpler naming schemes
-        const result = obj.name.includes(baseName);
-        console.log('Strategy 4: Name includes base name:', result);
-        return result;
-      };
-      
-      // APPROACH 1: Use the object definition to find matching structures
-      if (objectDefinition && objectDefinition.descendants) {
-        console.log('Using structure matching approach');
-        // Get the structure of the object (number and types of descendants)
-        const objectStructure = {
-          mainType: objectDefinition.object.type,
-          descendantTypes: objectDefinition.descendants.map(d => d.type),
-          descendantCount: objectDefinition.descendants.length
-        };
-        console.log('Object structure:', objectStructure);
-        
-        // Find objects that could be the main object based on their descendants
-        const potentialMainObjects = [];
-        
-        // Skip checking the world object - we don't want to update the world
-        // as it's a special object that shouldn't be treated as a compound object
-        
-        // Check all volumes as potential main objects
-        geometries.volumes.forEach((volume, index) => {
-          let descendants = [];
-          geometries.volumes.forEach(vol => {
-            if (vol.mother_volume === volume.name) {
-              descendants.push(vol);
-            }
+
+        const candidateDescendants = collectDescendants(volume.name);
+        const candidateHistogram = buildTypeHistogram(candidateDescendants);
+        const candidateComponentIds = new Set(
+          candidateDescendants
+            .map((descendant) => descendant._componentId)
+            .filter(Boolean)
+        );
+
+        // Strict structural match to avoid accidental updates:
+        // - same root type
+        // - same descendant count
+        // - same descendant type histogram
+        // - if definition has component IDs, candidate must contain all of them
+        const hasMatchingCount = candidateDescendants.length === definitionDescendants.length;
+        const hasMatchingHistogram = sameHistogram(candidateHistogram, definitionHistogram);
+        const hasMatchingComponentIds =
+          definitionComponentIds.size === 0 ||
+          [...definitionComponentIds].every((id) => candidateComponentIds.has(id));
+
+        if (hasMatchingCount && hasMatchingHistogram && hasMatchingComponentIds) {
+          foundInstances.push({
+            id: `volume-${index}`,
+            name: volume.name,
+            type: volume.type,
+            position: volume.position,
+            rotation: volume.rotation
           });
-          
-          if (descendants.length > 0) {
-            potentialMainObjects.push({
-              id: `volume-${index}`,
-              object: volume,
-              descendants: descendants
-            });
-          }
-        });
-        
-        console.log('Potential main objects:', potentialMainObjects);
-        
-        // Check each potential main object to see if its structure matches the object definition
-        potentialMainObjects.forEach(candidate => {
-          console.log('Checking candidate:', candidate.object.name);
-          
-          // Simple structure matching - just check if it has a similar number of descendants
-          // and if the main object type matches
-          const structureMatches = 
-            candidate.descendants.length > 0 &&
-            (candidate.object.type === objectStructure.mainType ||
-             candidate.object.name.includes(baseName));
-          
-          if (structureMatches) {
-            console.log('Found matching structure:', candidate.object.name);
-            foundInstances.push({
-              id: candidate.id,
-              name: candidate.object.name,
-              type: candidate.object.type,
-              position: candidate.object.position,
-              rotation: candidate.object.rotation
-            });
-          }
-        });
-      }
-      
-      // APPROACH 2: Use name-based detection as a fallback
-      if (foundInstances.length === 0) {
-        console.log('Falling back to name-based detection');
-        
-        // Skip checking the world object - we don't want to update the world
-        
-        // Check all volumes
-        geometries.volumes.forEach((volume, index) => {
-          if (isTopLevelInstance(volume)) {
-            foundInstances.push({
-              id: `volume-${index}`,
-              name: volume.name,
-              type: volume.type,
-              position: volume.position,
-              rotation: volume.rotation
-            });
-          }
-        });
-      }
-      
-      // APPROACH 3: Last resort - just find any objects with similar types or names
-      if (foundInstances.length === 0 && objectDefinition) {
-        console.log('Using last resort approach');
-        const mainObjectType = objectDefinition.object.type;
-        
-        // Skip checking the world object - we don't want to update the world
-        
-        // Check all volumes
-        geometries.volumes.forEach((volume, index) => {
-          if (volume.type === mainObjectType || 
-              volume.name.includes(baseName)) {
-            foundInstances.push({
-              id: `volume-${index}`,
-              name: volume.name,
-              type: volume.type,
-              position: volume.position,
-              rotation: volume.rotation
-            });
-          }
-        });
-      }
-      
+        }
+      });
+
       setInstances(foundInstances);
       setSelectedInstances([]);
       setStep('instances');
@@ -330,7 +252,7 @@ const UpdateObjectsDialog = ({
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-    } catch (e) {
+    } catch {
       return dateString;
     }
   };

@@ -59,8 +59,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       // Import the generateTemplateJson function
       const { generateTemplateJson } = await import('../../components/json-viewer/utils/geometryToJson');
       
-      // Generate a template JSON for this compound object
-      const templateJson = generateTemplateJson(geometriesForExport, compoundId);
+      // Generate a template JSON from the selected root instance to avoid
+      // mixing multiple scene instances that share the same _compoundId.
+      const templateJson = generateTemplateJson(geometriesForExport, compoundId, selectedObject.name);
       
       if (!templateJson) {
         console.error('Failed to generate template JSON');
