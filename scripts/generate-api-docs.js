@@ -53,7 +53,6 @@ const generateComponentDocs = async () => {
       
       // Check if we have a manually created documentation file
       const manualDocExists = fs.existsSync(outputFile);
-      let manualDocContent = '';
       let manualDocHeader = '';
       
       // If manual documentation exists, preserve the header section (everything before ## Constants or ## Functions)

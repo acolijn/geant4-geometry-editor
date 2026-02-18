@@ -14,7 +14,7 @@
  * @param {Array} allVolumes - All volumes in the geometry
  * @returns {Object} The object with the propagated compound ID
  */
-export const propagateCompoundId = (object, compoundId, allVolumes) => {
+export const propagateCompoundId = (object, compoundId) => {
   if (!object || !compoundId) return object;
   
   // Create a copy to avoid mutating the original

@@ -67,8 +67,6 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
       // Find the assembly's parent
       const assemblyParentIndex = volumeNameToIndex[parentVolume.mother_volume];
       if (assemblyParentIndex !== undefined) {
-        const assemblyParent = geometries.volumes[assemblyParentIndex];
-        
         // Check for circular reference between parent and child
         if (parentVolume.mother_volume === volume.name) {
           console.warn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);

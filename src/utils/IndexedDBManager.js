@@ -101,7 +101,7 @@ class IndexedDBManager {
    * Create a directory if it doesn't exist (compatibility method)
    * @param {string} path - Path to the directory
    */
-  async createDirectoryIfNotExists(path) {
+  async createDirectoryIfNotExists() {
     // No-op for IndexedDB, kept for API compatibility
     return true;
   }
@@ -118,7 +118,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.PROJECTS], 'readwrite');
         const store = transaction.objectStore(STORES.PROJECTS);
@@ -164,7 +164,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.PROJECTS], 'readonly');
         const store = transaction.objectStore(STORES.PROJECTS);
@@ -202,7 +202,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.PROJECTS], 'readonly');
         const store = transaction.objectStore(STORES.PROJECTS);
@@ -237,7 +237,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.PROJECTS], 'readwrite');
         const store = transaction.objectStore(STORES.PROJECTS);
@@ -271,7 +271,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.OBJECTS], 'readwrite');
         const store = transaction.objectStore(STORES.OBJECTS);
@@ -313,7 +313,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.OBJECTS], 'readonly');
         const store = transaction.objectStore(STORES.OBJECTS);
@@ -363,7 +363,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.OBJECTS], 'readonly');
         const store = transaction.objectStore(STORES.OBJECTS);
@@ -412,7 +412,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.OBJECTS], 'readwrite');
         const store = transaction.objectStore(STORES.OBJECTS);
@@ -444,7 +444,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.CATEGORIES], 'readwrite');
         const store = transaction.objectStore(STORES.CATEGORIES);
@@ -474,7 +474,7 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         const transaction = this.db.transaction([STORES.CATEGORIES], 'readonly');
         const store = transaction.objectStore(STORES.CATEGORIES);
@@ -507,33 +507,36 @@ class IndexedDBManager {
       throw new Error('IndexedDBManager not initialized');
     }
 
-    return new Promise(async (resolve, reject) => {
-      try {
-        if (deleteObjects) {
-          // Delete all objects in the category first
-          const objects = await this.listObjects(name);
-          for (const objName of objects) {
-            await this.deleteObject(objName, name);
+    return new Promise((resolve) => {
+      const run = async () => {
+        try {
+          if (deleteObjects) {
+            // Delete all objects in the category first
+            const objects = await this.listObjects(name);
+            for (const objName of objects) {
+              await this.deleteObject(objName, name);
+            }
           }
-        }
-        
-        const transaction = this.db.transaction([STORES.CATEGORIES], 'readwrite');
-        const store = transaction.objectStore(STORES.CATEGORIES);
-        const request = store.delete(name);
-        
-        request.onsuccess = () => {
-          console.log(`Category "${name}" deleted successfully`);
-          resolve(true);
-        };
-        
-        request.onerror = (event) => {
-          console.error('Failed to delete category:', event.target.error);
+          
+          const transaction = this.db.transaction([STORES.CATEGORIES], 'readwrite');
+          const store = transaction.objectStore(STORES.CATEGORIES);
+          const request = store.delete(name);
+          
+          request.onsuccess = () => {
+            console.log(`Category "${name}" deleted successfully`);
+            resolve(true);
+          };
+          
+          request.onerror = (event) => {
+            console.error('Failed to delete category:', event.target.error);
+            resolve(false);
+          };
+        } catch (error) {
+          console.error('Failed to delete category:', error);
           resolve(false);
-        };
-      } catch (error) {
-        console.error('Failed to delete category:', error);
-        resolve(false);
-      }
+        }
+      };
+      run();
     });
   }
 
@@ -592,7 +595,7 @@ class IndexedDBManager {
           resolve();
         };
         
-        request.onerror = (event) => {
+        request.onerror = () => {
           reject(new Error('Failed to export data'));
         };
       });

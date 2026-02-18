@@ -49,28 +49,7 @@ const ColorPicker = ({ color = [0.5, 0.5, 0.5, 1.0], onChange }) => {
     setG(color[1]);
     setB(color[2]);
     setA(color[3]);
-  }, [color]);
-  
-  // Wrapper functions for the setters that mark changes as internal
-  const handleRChange = (newValue) => {
-    isInternalChange.current = true;
-    setR(newValue);
-  };
-  
-  const handleGChange = (newValue) => {
-    isInternalChange.current = true;
-    setG(newValue);
-  };
-  
-  const handleBChange = (newValue) => {
-    isInternalChange.current = true;
-    setB(newValue);
-  };
-  
-  const handleAChange = (newValue) => {
-    isInternalChange.current = true;
-    setA(newValue);
-  };
+  }, [color, r, g, b, a]);
 
   // Convert RGBA values (0-1) to CSS color string
   const getRgbaString = () => {

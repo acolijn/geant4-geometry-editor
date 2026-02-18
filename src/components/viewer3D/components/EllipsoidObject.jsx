@@ -22,8 +22,6 @@ const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick, materia
     object.position.z
   ] : [0, 0, 0];
   
-  console.log('XXXXX EllipsoidObject:: object', object);
-  
   // Extract dimensions from the object
   const xRadius = object.xRadius || 5;
   const yRadius = object.yRadius || 3;
@@ -39,8 +37,6 @@ const EllipsoidObject = React.forwardRef(({ object, isSelected, onClick, materia
   // 1. The rotation is already applied by the parent component
   // 2. Setting rotation here would override the parent's rotation
   //
-  console.log('EllipsoidObject:: object.rotation', object.rotation);
-
   // Create an ellipsoid geometry (scaled sphere)
   const geometry = useMemo(() => {
     const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);

@@ -57,7 +57,7 @@ export const icons = {
 export const getGeometryIcon = (type, isActive = false) => {
   
   const iconType = icons[type] ? type : 'default';
-  return icons[iconType].regular;
+  return isActive ? icons[iconType].filled : icons[iconType].regular;
 };
 
 /**

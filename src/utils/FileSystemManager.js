@@ -130,7 +130,7 @@ class FileSystemManager {
       try {
         // Try to get the directory
         currentHandle = await currentHandle.getDirectoryHandle(part);
-      } catch (error) {
+      } catch {
         // Directory doesn't exist, create it
         currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
       }
@@ -242,7 +242,7 @@ class FileSystemManager {
               name,
               ...metadata
             });
-          } catch (error) {
+          } catch {
             // If metadata doesn't exist, just add the name
             projects.push({ name });
           }

@@ -31,9 +31,6 @@ import {
 // Import custom hook
 import { useProjectStorage } from './hooks/useProjectStorage';
 
-// Import utility for extracting object with descendants
-import { extractObjectWithDescendants } from '../geometry-editor/utils/GeometryUtils';
-
 const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, compactMode = false }) => {
   // Use custom storage hook
   const storage = useProjectStorage(geometries, materials, hitCollections, onLoadProject);
@@ -58,7 +55,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
     if (!storage.isInitialized) {
       setInitDialogOpen(true);
     }
-  }, []);
+  }, [storage.isInitialized]);
 
   // Handle custom saveObject event
   useEffect(() => {
@@ -86,7 +83,7 @@ const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, 
   const formatDate = (isoString) => {
     try {
       return new Date(isoString).toLocaleString();
-    } catch (e) {
+    } catch {
       return 'Unknown date';
     }
   };

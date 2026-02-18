@@ -6,7 +6,6 @@
  */
 
 import { getSelectedGeometryObject } from './GeometryUtils';
-import { toInternalUnit, fromInternalUnit } from './UnitConverter';
 
 /**
  * Creates property handler functions with access to state and setState
@@ -49,7 +48,7 @@ export const createPropertyHandlers = (props) => {
    * @param {string} unit - The unit of the input value (e.g., 'cm', 'mm', 'deg', 'rad')
    * @param {boolean} isStringProperty - Whether the property is a string (no numeric conversion)
    */
-  const handlePropertyChange = (property, value, unit = 'cm', isStringProperty = false) => {
+  const handlePropertyChange = (property, value, unit = 'cm') => {
     // Get the currently selected geometry object
     console.log(`handlePropertyChange called for property ${property} with value ${value} and unit ${unit}`);
     const selectedObject = getSelectedGeometryObjectLocal();
@@ -70,7 +69,7 @@ export const createPropertyHandlers = (props) => {
       // If the value is already a number (from NumericInput), use it directly
       // The NumericInput component has already done the unit conversion
       finalValue = value;
-    }; 
+    }
     
     // Handle nested properties like 'position.x'
     if (property.includes('.')) {

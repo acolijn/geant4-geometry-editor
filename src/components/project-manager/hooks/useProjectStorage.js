@@ -7,7 +7,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import fileSystemManager from '../../../utils/FileSystemManager';
 import indexedDBManager from '../../../utils/IndexedDBManager';
-import { extractObjectWithDescendants } from '../../geometry-editor/utils/GeometryUtils';
 import { generateJson } from '../../json-viewer/utils/geometryToJson';
 import { jsonToGeometry } from '../../json-viewer/utils/jsonToGeometry';
 
@@ -40,7 +39,7 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
   // Check initialization on mount
   useEffect(() => {
     checkInitialization();
-  }, []);
+  }, [checkInitialization]);
 
   // Check if any storage manager is initialized
   const checkInitialization = useCallback(async () => {

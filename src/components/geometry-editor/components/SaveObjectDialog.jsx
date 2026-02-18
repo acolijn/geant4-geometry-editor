@@ -133,11 +133,6 @@ const SaveObjectDialog = ({
     setSuccess('');
     
     try {
-      console.log('XXX SaveObjectDialog:: onSave:: name', name);
-      console.log('XXX SaveObjectDialog:: onSave:: description', description);
-      console.log('XXX SaveObjectDialog:: onSave:: objectData', objectData);
-      console.log('XXX SaveObjectDialog:: onSave:: preserveComponentIds', preserveComponentIds);
-      
       // Call the onSave callback with the name, description, objectData, and preserveComponentIds flag
       const result = await onSave(sanitizedName, description, objectData, preserveComponentIds);
       

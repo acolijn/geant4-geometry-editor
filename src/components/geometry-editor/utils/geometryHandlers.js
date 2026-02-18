@@ -4,9 +4,6 @@
  * This module contains handler functions for creating and managing geometry objects.
  */
 
-// Import the assemblyManager utility
-import { generateAssemblyId } from './assemblyManager';
-
 export const generateUniqueName = (type) => {
   return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 };
@@ -110,8 +107,6 @@ export const createGeometryHandlers = (props, state) => {
     // We no longer automatically make volumes boolean components when their mother is a union
     // This will be done explicitly through the PropertyEditor
     
-    console.log('newObject:', newObject.name);
-    
     // Add type-specific properties
     switch (newGeometryType) {
       case 'box':
@@ -177,31 +172,21 @@ export const createGeometryHandlers = (props, state) => {
         break;
         
       case 'assembly':
+      {
         // Use the standard name generation format for consistency
-        const typeName = newObject.g4name || 'assembly';
-        // Use the standard name generation format: type_timestamp_random
-        //newObject.name = generateUniqueNameInline('assembly');
-        console.log('newObject.name:', newObject.name);
-        
         // Store the typeName in the _compoundId for type identification
         // Use the same format but with the display name for type identification
         newObject._compoundId = newObject.name;
-        
-        console.log(`Created new assembly with name: ${newObject.name} and ID: ${newObject._compoundId}`);
         break;
+      }
       case 'union':
+      {
         // Use the standard name generation format for consistency
-        const unionName = newObject.g4name || 'union';
-        // Use the standard name generation format: type_timestamp_random
-        //newObject.name = generateUniqueNameInline('union');
-        console.log('newObject.name:', newObject.name);
-        
         // Store the typeName in the _compoundId for type identification
         // Use the same format but with the display name for type identification
         newObject._compoundId = newObject.name;
-        
-        console.log(`Created new union with name: ${newObject.name} and ID: ${newObject._compoundId}`);
         break;
+      }
         
       default:
         // Print a warning for unknown geometry types

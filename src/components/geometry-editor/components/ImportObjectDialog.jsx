@@ -189,7 +189,7 @@ const ImportObjectDialog = ({
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-    } catch (e) {
+    } catch {
       return dateString;
     }
   };

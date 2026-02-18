@@ -18,7 +18,6 @@ import NumericInput from './NumericInput';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../utils/UnitConverter';
 import { getSelectedGeometryObject } from '../utils/GeometryUtils';
-import { createPropertyHandlers } from '../utils/propertyHandlers';
 
 /**
  * PropertyEditor Component
@@ -37,7 +36,6 @@ const PropertyEditor = ({
   onRemoveGeometry,
   //handleExportObject,
   handleInputFocus,
-  setUpdateObjectsDialogOpen,
   handlePropertyChange,
 }) => {
   // State for the menu
@@ -823,7 +821,7 @@ const PropertyEditor = ({
                   : 0
                 }
                 onChange={(e) => {
-                  const newSections = [...selectedObject?.zSections];
+                  const newSections = [...(selectedObject?.zSections || [])];
                   // Convert to internal units (mm)
                   const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
                   newSections[index] = { ...newSections[index], z: valueInMm };
@@ -841,7 +839,7 @@ const PropertyEditor = ({
                   : 0
                 }
                 onChange={(e) => {
-                  const newSections = [...selectedObject?.zSections];
+                  const newSections = [...(selectedObject?.zSections || [])];
                   // Convert to internal units (mm)
                   const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
                   newSections[index] = { ...newSections[index], rMin: valueInMm };
@@ -859,7 +857,7 @@ const PropertyEditor = ({
                   : 0
                 }
                 onChange={(e) => {
-                  const newSections = [...selectedObject?.zSections];
+                  const newSections = [...(selectedObject?.zSections || [])];
                   // Convert to internal units (mm)
                   const valueInMm = toInternalUnit(parseFloat(e.target.value) || 0, lengthUnit, 'length');
                   newSections[index] = { ...newSections[index], rMax: valueInMm };
@@ -875,7 +873,7 @@ const PropertyEditor = ({
                 size="small"
                 onClick={() => {
                   if (selectedObject?.zSections?.length > 2) {
-                    const newSections = [...selectedObject?.zSections];
+                    const newSections = [...(selectedObject?.zSections || [])];
                     newSections.splice(index, 1);
                     handlePropertyChange('zSections', newSections, lengthUnit, true);
                   }

@@ -29,9 +29,7 @@ const AddNewTab = ({
   setNewMotherVolume,
   geometries,
   handleAddGeometry,
-  setLoadObjectDialogOpen,
   setHitCollectionsDialogOpen,
-  setUpdateObjectsDialogOpen,
   setImportObjectDialogOpen
 }) => {
   return (

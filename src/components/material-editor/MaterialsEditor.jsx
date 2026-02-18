@@ -56,8 +56,7 @@ const MaterialsEditor = ({ materials, onUpdateMaterials }) => {
     handleDeleteMaterial,
     handleAddElement,
     handleRemoveElement,
-    handleAddMaterial,
-    handleUpdateColor
+    handleAddMaterial
   } = createMaterialHandlers({
     materials,
     onUpdateMaterials,
