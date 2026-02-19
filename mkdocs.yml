@@ -26,8 +26,18 @@ nav:
     - Compounds: 'materials/compounds.md'
     - Material Properties: 'materials/material-properties.md'
     - Material Management: 'materials/material-management.md'
-  - JSON: 'json/json-viewer.md'
+  - JSON:
+    - Overview: 'json/index.md'
+    - JSON Viewer: 'json/json-viewer.md'
   - Save and Load: 'save-load.md'
+  - API:
+    - Overview: 'api/index.md'
+    - Geometry Editor: 'api/GeometryEditor.md'
+    - Project Manager: 'api/ProjectManager.md'
+    - 3D Viewer: 'api/Viewer3D.md'
+    - Materials Editor: 'api/MaterialsEditor.md'
+    - JSON Viewer: 'api/JsonViewer.md'
+    - Geometry Operations: 'api/GeometryOperations.md'
 
 markdown_extensions:
   - toc:

@@ -19,7 +19,6 @@ The Geant4 Geometry Editor provides a user-friendly interface for creating and e
 - [Materials](materials/index.md) - Creating and managing materials
 - [JSON Formats](json/index.md) - Understanding the JSON output formats
 - [Save/Load](save-load.md) - Saving and loading your work
-- [Geant4 Integration](geant4-integration.md) - Interfacing with the geant4-simulations package
 - [API Reference](api/index.md) - Reference documentation for developers
 
 ## Quick Start

@@ -7,6 +7,17 @@ import GeometryTree from './GeometryTree';
 import CameraSetup from './components/CameraSetup';
 import { debugLog } from '../../utils/logger';
 
+/**
+ * 3D viewer and geometry tree panel.
+ *
+ * @param {Object} props - Component props.
+ * @param {Object} props.geometries - Geometry state with `world` and `volumes`.
+ * @param {string|null} props.selectedGeometry - Currently selected geometry id.
+ * @param {Function} props.onSelect - Selection callback.
+ * @param {Function} props.onUpdateGeometry - Geometry update callback.
+ * @param {Object} props.materials - Material map used for rendering.
+ * @returns {JSX.Element} Viewer3D UI.
+ */
 const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, materials }) => {
   const [transformMode, setTransformMode] = useState('translate');
   const [cameraControls, setCameraControls] = useState(null);

@@ -31,6 +31,17 @@ import {
 // Import custom hook
 import { useProjectStorage } from './hooks/useProjectStorage';
 
+/**
+ * Toolbar actions and dialogs for project/object persistence.
+ *
+ * @param {Object} props - Component props.
+ * @param {Object} props.geometries - Current geometry state.
+ * @param {Object} props.materials - Current material definitions.
+ * @param {Array} props.hitCollections - Current hit collection definitions.
+ * @param {Function} props.onLoadProject - Callback invoked after loading a project.
+ * @param {boolean} [props.compactMode=false] - Whether to render compact controls.
+ * @returns {JSX.Element} Project manager UI.
+ */
 const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, compactMode = false }) => {
   // Use custom storage hook
   const storage = useProjectStorage(geometries, materials, hitCollections, onLoadProject);

@@ -5,6 +5,14 @@
  * Contains functions for updating, adding, and removing geometries
  */
 
+/**
+ * Merge a partial geometry patch into an existing geometry object.
+ * Nested transform/dimension fields are merged deeply for known keys.
+ *
+ * @param {Object} baseObject - Existing geometry object.
+ * @param {Object} patchObject - Partial update patch.
+ * @returns {Object} Merged geometry object.
+ */
 const mergeGeometryObject = (baseObject, patchObject) => {
   if (!baseObject) {
     return patchObject;
@@ -41,6 +49,7 @@ const mergeGeometryObject = (baseObject, patchObject) => {
  * @param {string} selectedGeometry - Currently selected geometry
  * @param {Function} updateAssembliesFunc - Function to update assemblies
  * @param {Function} propagateCompoundIdToDescendants - Function to propagate compound ID
+ * @returns {void}
  */
 export const updateGeometry = (
   geometries, 
@@ -212,14 +221,6 @@ export const updateGeometry = (
 };
 
 /**
- * Generate a unique ID
- * @returns {string} A unique ID
- */
-/*export const generateId = () => {
-  return `id-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-}; */
-
-/**
  * Add a new geometry
  * @param {Object} newGeometry - The new geometry to add
  * @param {Object} geometries - The current geometries state
@@ -317,6 +318,7 @@ export const addGeometry = (
  * @param {Function} setGeometries - Function to update geometries state
  * @param {Function} setSelectedGeometry - Function to update selected geometry
  * @param {string} selectedGeometry - Currently selected geometry
+ * @returns {void}
  */
 export const removeGeometry = (
   id, 

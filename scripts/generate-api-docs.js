@@ -10,39 +10,83 @@ const __dirname = path.dirname(__filename);
 // Configuration
 const sourceDir = path.resolve(__dirname, '../src');
 const outputDir = path.resolve(__dirname, '../docs/api');
+const jsdocHomeDir = path.resolve(__dirname, '../.jsdoc-home');
+
+// Ensure JSDoc temp/cache paths resolve to a writable directory in all environments.
+if (!fs.existsSync(jsdocHomeDir)) {
+  fs.mkdirSync(jsdocHomeDir, { recursive: true });
+}
+process.env.HOME = jsdocHomeDir;
 
 // Create the output directory if it doesn't exist
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
-// Components to document
-const components = [
-  { name: 'GeometryEditor', file: 'components/GeometryEditor.jsx' },
-  { name: 'ProjectManager', file: 'components/ProjectManager.jsx' },
-  // Add more components as needed
+// Files to document
+const apiModules = [
+  {
+    name: 'GeometryEditor',
+    title: 'Geometry Editor',
+    file: 'components/geometry-editor/GeometryEditor.jsx',
+    summary: 'Main editor panel for creating, selecting, and editing geometry objects.'
+  },
+  {
+    name: 'ProjectManager',
+    title: 'Project Manager',
+    file: 'components/project-manager/ProjectManager.jsx',
+    summary: 'Save/load workflow for projects and reusable geometry objects.'
+  },
+  {
+    name: 'Viewer3D',
+    title: '3D Viewer',
+    file: 'components/viewer3D/Viewer3D.jsx',
+    summary: 'Three.js-based scene viewer and transform interaction layer.'
+  },
+  {
+    name: 'MaterialsEditor',
+    title: 'Materials Editor',
+    file: 'components/material-editor/MaterialsEditor.jsx',
+    summary: 'Material creation and editing UI for NIST and custom materials.'
+  },
+  {
+    name: 'JsonViewer',
+    title: 'JSON Viewer',
+    file: 'components/json-viewer/JsonViewer.jsx',
+    summary: 'Displays and imports combined geometry/material JSON.'
+  },
+  {
+    name: 'GeometryOperations',
+    title: 'Geometry Operations',
+    file: 'components/geometry-editor/utils/GeometryOperations.js',
+    summary: 'Core add/update/remove geometry state operations used by the editor.'
+  }
 ];
 
 // Generate the API index page
 const generateApiIndex = () => {
+  const availableModules = apiModules.filter(module =>
+    fs.existsSync(path.join(sourceDir, module.file))
+  );
+
   const indexContent = `# API Reference
 
 This section contains automatically generated documentation from JSDoc comments in the codebase.
 
-## Components
+## Modules
 
-${components.map(comp => `- [${comp.name}](${comp.name}.md)`).join('\n')}
+${availableModules.map(module => `- [${module.title}](${module.name}.md): ${module.summary}`).join('\n')}
 `;
 
   fs.writeFileSync(path.join(outputDir, 'index.md'), indexContent);
   console.log('Generated API index page');
 };
 
-// Generate documentation for each component
-const generateComponentDocs = async () => {
-  for (const component of components) {
-    const inputFile = path.join(sourceDir, component.file);
-    const outputFile = path.join(outputDir, `${component.name}.md`);
+// Generate documentation for each module
+const generateModuleDocs = async () => {
+  for (const module of apiModules) {
+    const inputFile = path.join(sourceDir, module.file);
+    const outputFile = path.join(outputDir, `${module.name}.md`);
     
     try {
       const exists = fs.existsSync(inputFile);
@@ -51,38 +95,9 @@ const generateComponentDocs = async () => {
         continue;
       }
       
-      // Check if we have a manually created documentation file
-      const manualDocExists = fs.existsSync(outputFile);
-      let manualDocHeader = '';
-      
-      // If manual documentation exists, preserve the header section (everything before ## Constants or ## Functions)
-      if (manualDocExists) {
-        const existingContent = fs.readFileSync(outputFile, 'utf8');
-        const headerEndIndex = Math.max(
-          existingContent.indexOf('## Constants'),
-          existingContent.indexOf('## Functions'),
-          existingContent.indexOf('## Methods')
-        );
-        
-        if (headerEndIndex > 0) {
-          manualDocHeader = existingContent.substring(0, headerEndIndex).trim() + '\n\n';
-        } else {
-          // If no section markers found, preserve the entire content as header
-          manualDocHeader = existingContent;
-        }
-      }
-      
-      // Read the file content to add React component annotations if needed
-      const fileContent = fs.readFileSync(inputFile, 'utf8');
-      const isReactComponent = fileContent.includes('React.') || 
-                              fileContent.includes('import React') || 
-                              fileContent.includes('from "react"') || 
-                              fileContent.includes('from \'react\'');
-      
       // Generate markdown from JSDoc comments
       const markdown = await jsdoc2md.render({
         files: inputFile,
-        configure: path.resolve(__dirname, '../jsdoc.json'),
         'no-cache': true,
         'example-lang': 'javascript',
         'name-format': 'code',
@@ -93,32 +108,18 @@ const generateComponentDocs = async () => {
         'property-list-format': 'list'
       });
       
-      // Use the manual documentation header if it exists, otherwise create a default header
-      let outputContent = '';
-      
-      if (manualDocHeader) {
-        outputContent = manualDocHeader;
+      let outputContent = `# ${module.title} API\n\n${module.summary}\n\n`;
+
+      if (markdown.trim()) {
+        outputContent += markdown;
       } else {
-        outputContent = '# ' + component.name + ' Component API\n\n';
-        
-        // Add React component specific introduction if applicable
-        if (isReactComponent) {
-          outputContent += 'This documentation describes the ' + component.name + ' React component, its props, state, and methods.\n\n';
-        }
+        outputContent += 'No JSDoc content was found for this module.\n';
       }
-      
-      // Add the generated markdown
-      outputContent += markdown;
-      
-      // Add usage examples if it's a React component
-      if (isReactComponent) {
-        outputContent += '\n## Usage Example\n\n```jsx\nimport { ' + component.name + ' } from \'./components/' + component.name + '\'\n\nfunction App() {\n  return (\n    <' + component.name + ' \n      // Add appropriate props here\n    />\n  );\n}\n```\n';
-      }
-      
+
       fs.writeFileSync(outputFile, outputContent);
-      console.log(`Generated documentation for ${component.name}`);
+      console.log(`Generated documentation for ${module.name}`);
     } catch (error) {
-      console.error(`Error generating docs for ${component.name}:`, error);
+      console.error(`Error generating docs for ${module.name}:`, error);
     }
   }
 };
@@ -127,7 +128,7 @@ const generateComponentDocs = async () => {
 const main = async () => {
   console.log('Generating API documentation...');
   generateApiIndex();
-  await generateComponentDocs();
+  await generateModuleDocs();
   console.log('API documentation generation complete!');
 };
 

@@ -14,33 +14,20 @@ These JSON formats are designed to be compatible with Geant4 simulation tools, a
 
 ## JSON Format Types
 
-The Geant4 Geometry Editor supports several JSON format types:
+The current JSON workflow in the app is centered on a combined document that includes:
 
-- [Geometry JSON](geometry-json.md): Defines the geometry objects and their properties
-- [Materials JSON](materials-json.md): Defines materials and their properties
-- [Combined JSON](combined-json.md): Includes both geometry and materials in a single file
-- [Template JSON](template-json.md): Reusable templates for common geometries
+- `geometries`: the `world` object and `volumes` array
+- `materials`: material definitions keyed by material name
+- optional `hitCollections`: detector hit collection definitions
 
 ## JSON Viewer
 
 The application includes a [JSON Viewer](json-viewer.md) that allows you to:
 
-- View the JSON representation of your current design
-- Copy JSON to clipboard
-- Download JSON files
-- Validate JSON against the expected schema
-
-## JSON Schema
-
-Each JSON format follows a specific schema that defines the structure and required fields. Understanding these schemas is important for:
-
-- Creating valid JSON files manually
-- Parsing JSON files in external applications
-- Extending the functionality of the Geant4 Geometry Editor
+- View the generated combined JSON in real time
+- Download the current JSON to a file
+- Import a JSON file back into the editor state
 
 ## Next Steps
 
-Explore the detailed documentation for each JSON format:
-
-- [Geometry JSON](geometry-json.md)
-- [Materials JSON](materials-json.md)
+See [JSON Viewer](json-viewer.md) for import/export behavior and practical usage.

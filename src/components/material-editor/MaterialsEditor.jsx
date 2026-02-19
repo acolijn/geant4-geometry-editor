@@ -30,6 +30,14 @@ import ColorPicker from './components/ColorPicker';
 // Import the material handlers
 import { createMaterialHandlers } from './utils/materialHandlers';
 
+/**
+ * Material editor for browsing, creating, and updating material definitions.
+ *
+ * @param {Object} props - Component props.
+ * @param {Object} props.materials - Material map keyed by material name.
+ * @param {Function} props.onUpdateMaterials - Callback that receives updated materials.
+ * @returns {JSX.Element} Materials editor UI.
+ */
 const MaterialsEditor = ({ materials, onUpdateMaterials }) => {
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
