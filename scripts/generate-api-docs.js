@@ -41,7 +41,7 @@ const apiModules = [
     name: 'Viewer3D',
     title: '3D Viewer',
     file: 'components/viewer3D/Viewer3D.jsx',
-    summary: 'Three.js-based scene viewer and transform interaction layer.'
+    summary: 'Three.js-based scene viewer and transform interaction layer....'
   },
   {
     name: 'MaterialsEditor',

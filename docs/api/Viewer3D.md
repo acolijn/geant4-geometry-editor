@@ -1,6 +1,6 @@
 # 3D Viewer API
 
-Three.js-based scene viewer and transform interaction layer.
+Three.js-based scene viewer and transform interaction layer....
 
 <a name="Viewer3D"></a>
 
