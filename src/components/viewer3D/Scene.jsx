@@ -265,6 +265,38 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     }
   };
   
+  // Build a set of volume names that are descendants of assembly-type volumes.
+  // These will be rendered by AssemblyObject instead of individually.
+  const assemblyDescendantNames = React.useMemo(() => {
+    const names = new Set();
+    if (!geometries.volumes) return names;
+    const assemblyNames = new Set(
+      geometries.volumes.filter(v => v.type === 'assembly').map(v => v.name)
+    );
+    if (assemblyNames.size === 0) return names;
+
+    // BFS from each assembly to collect all descendants via mother_volume
+    const childrenOf = {};
+    geometries.volumes.forEach(v => {
+      if (!v.mother_volume) return;
+      if (!childrenOf[v.mother_volume]) childrenOf[v.mother_volume] = [];
+      childrenOf[v.mother_volume].push(v);
+    });
+    const queue = [...assemblyNames];
+    while (queue.length > 0) {
+      const parentName = queue.shift();
+      const children = childrenOf[parentName];
+      if (!children) continue;
+      children.forEach(child => {
+        if (!names.has(child.name)) {
+          names.add(child.name);
+          queue.push(child.name);
+        }
+      });
+    }
+    return names;
+  }, [geometries.volumes]);
+
   // Render all volumes in a flat structure
   const renderVolumes = () => {
     if (!geometries.volumes) return null;
@@ -284,6 +316,13 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
         } else {
           debugLog(`Scene: Rendering selected boolean component ${volume.name}`);
           // Continue rendering this component since it's selected
+        }
+      }
+      // Skip rendering descendants of assemblies – AssemblyObject renders them
+      if (assemblyDescendantNames.has(volume.name) && volume.type !== 'assembly') {
+        const isSelected = selectedGeometry === `volume-${index}`;
+        if (!isSelected) {
+          return null;
         }
       }
       const key = `volume-${index}`;

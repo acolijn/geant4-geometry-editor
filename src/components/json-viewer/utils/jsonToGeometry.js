@@ -205,6 +205,11 @@ function createAssembly(volume, geometry) {
                 newComponent._boolean_parent = assemblyName;
             }
 
+            // Preserve hitsCollectionName for active components
+            if (component.hitsCollectionName !== undefined) {
+                newComponent.hitsCollectionName = component.hitsCollectionName;
+            }
+
             setDimensions(newComponent, component);
 
             geometry.geometries.volumes.push(newComponent);

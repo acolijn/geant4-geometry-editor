@@ -1,34 +1,168 @@
 /**
  * AssemblyObject Component
  * 
- * This component renders an assembly with an optional wireframe box and a label.
- * Assemblies are containers for other objects and can be visualized with minimal
- * visual elements to avoid cluttering the scene while still being identifiable.
+ * This component renders an assembly (compound object) by drawing all its
+ * descendant volumes as meshes inside a single group.  The parent
+ * TransformableObject still controls the world position / rotation of the
+ * assembly itself; here we only deal with the *local* positions of the
+ * children relative to the assembly origin.
+ *
+ * Supported child types: box, cylinder, sphere, trapezoid, torus, ellipsoid,
+ * polycone, cone.
  */
 import React, { forwardRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 
-// Default size for assemblies
-const DEFAULT_SIZE = 100;
+// ---------------------------------------------------------------------------
+// Helper – material colour
+// ---------------------------------------------------------------------------
+const getMaterialColor = (materialName, materials) => {
+  const fallback = new THREE.Color(0.4, 0.4, 1.0);   // blueish default
+  if (!materialName || !materials) return fallback;
+  const mat = materials[materialName];
+  if (mat && Array.isArray(mat.color)) {
+    return new THREE.Color(mat.color[0], mat.color[1], mat.color[2]);
+  }
+  return fallback;
+};
 
-// Global setting for wireframe visibility
-// Set to false to hide wireframes for all assemblies
-const SHOW_WIREFRAMES = false;
+const getMaterialOpacity = (materialName, materials) => {
+  if (!materialName || !materials) return 0.7;
+  const mat = materials[materialName];
+  if (mat && Array.isArray(mat.color) && mat.color.length >= 4) {
+    return mat.color[3];
+  }
+  return 0.7;
+};
 
-/**
- * Create a text label for the assembly
- * 
- * @param {string} text - The text to display
- * @param {Object} props - Additional props for the label
- * @returns {JSX.Element} - The Html component for the label
- */
-const Label = ({ text, ...props }) => (
-  <Html
-    position={[0, DEFAULT_SIZE/2 + 10, 0]}
-    center
-    {...props}
-  >
+// ---------------------------------------------------------------------------
+// Helper – create THREE geometry from a volume's properties
+// ---------------------------------------------------------------------------
+const createGeometryForVolume = (vol) => {
+  switch (vol.type) {
+    case 'box': {
+      const sx = vol.size?.x || 10;
+      const sy = vol.size?.y || 10;
+      const sz = vol.size?.z || 10;
+      return new THREE.BoxGeometry(sx, sy, sz);
+    }
+    case 'cylinder': {
+      const r = vol.radius || 5;
+      const h = vol.height || 10;
+      const geom = new THREE.CylinderGeometry(r, r, h, 32);
+      geom.rotateX(Math.PI / 2);          // Geant4 convention: height along z
+      return geom;
+    }
+    case 'sphere': {
+      const r = vol.radius || 5;
+      return new THREE.SphereGeometry(r, 32, 32);
+    }
+    case 'trapezoid': {
+      // Approximate as a box using average half-widths
+      const dx1 = vol.dx1 || 50;
+      const dx2 = vol.dx2 || 50;
+      const dy1 = vol.dy1 || 50;
+      const dy2 = vol.dy2 || 50;
+      const dz  = vol.dz  || 50;
+      return new THREE.BoxGeometry(dx1 + dx2, dy1 + dy2, dz);
+    }
+    case 'torus': {
+      const R = vol.majorRadius || 50;
+      const r = vol.minorRadius || 10;
+      return new THREE.TorusGeometry(R, r, 16, 48);
+    }
+    case 'ellipsoid': {
+      const geom = new THREE.SphereGeometry(1, 32, 16);
+      geom.scale(vol.xRadius || 50, vol.yRadius || 30, vol.zRadius || 40);
+      return geom;
+    }
+    case 'polycone': {
+      // Simple polycone: build from z-sections using LatheGeometry
+      const sections = vol.zSections;
+      if (sections && sections.length >= 2) {
+        const points = sections.map(s => new THREE.Vector2(s.rMax || 0, s.z || 0));
+        return new THREE.LatheGeometry(points, 48);
+      }
+      return new THREE.CylinderGeometry(30, 50, 100, 32);
+    }
+    case 'cone': {
+      const rTop = vol.radiusTop ?? 0;
+      const rBot = vol.radiusBottom ?? 50;
+      const h = vol.height || 100;
+      const geom = new THREE.CylinderGeometry(rTop, rBot, h, 32);
+      geom.rotateX(Math.PI / 2);
+      return geom;
+    }
+    default:
+      return new THREE.BoxGeometry(10, 10, 10);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Collect all descendants of an assembly (BFS via mother_volume chain)
+// Returns volumes with their *cumulative* local position/rotation relative
+// to the assembly origin.
+// ---------------------------------------------------------------------------
+const collectDescendants = (assemblyName, volumes) => {
+  if (!volumes) return [];
+
+  // Build a map: name -> [child volumes]
+  const childrenOf = {};
+  volumes.forEach(v => {
+    if (!v.mother_volume) return;
+    if (!childrenOf[v.mother_volume]) childrenOf[v.mother_volume] = [];
+    childrenOf[v.mother_volume].push(v);
+  });
+
+  // BFS starting from assemblyName, accumulating transforms
+  const result = [];
+  const queue = [{ parentName: assemblyName, parentPos: [0, 0, 0], parentRot: [0, 0, 0] }];
+
+  while (queue.length > 0) {
+    const { parentName, parentPos, parentRot } = queue.shift();
+    const children = childrenOf[parentName];
+    if (!children) continue;
+
+    children.forEach(child => {
+      // Skip assembly or union children – they have their own renderers
+      if (child.type === 'assembly' || child.type === 'union') return;
+
+      // Local position / rotation of the child relative to its direct parent
+      const lx = child.position?.x || 0;
+      const ly = child.position?.y || 0;
+      const lz = child.position?.z || 0;
+      const lr = child.rotation || { x: 0, y: 0, z: 0 };
+
+      // Compose: parentWorld = parentPos + parentRot * localPos
+      const parentQuat = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(parentRot[0], parentRot[1], parentRot[2], 'XYZ')
+      );
+      const localVec = new THREE.Vector3(lx, ly, lz).applyQuaternion(parentQuat);
+      const worldPos = [parentPos[0] + localVec.x, parentPos[1] + localVec.y, parentPos[2] + localVec.z];
+
+      const localQuat = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(lr.x || 0, lr.y || 0, lr.z || 0, 'XYZ')
+      );
+      const worldQuat = parentQuat.clone().multiply(localQuat);
+      const worldEuler = new THREE.Euler().setFromQuaternion(worldQuat, 'XYZ');
+      const worldRot = [worldEuler.x, worldEuler.y, worldEuler.z];
+
+      result.push({ volume: child, position: worldPos, rotation: worldRot });
+
+      // Continue BFS for grandchildren
+      queue.push({ parentName: child.name, parentPos: worldPos, parentRot: worldRot });
+    });
+  }
+
+  return result;
+};
+
+// ---------------------------------------------------------------------------
+// Label (shown when selected)
+// ---------------------------------------------------------------------------
+const Label = ({ text }) => (
+  <Html position={[0, 0, 0]} center>
     <div style={{
       padding: '6px 10px',
       borderRadius: '4px',
@@ -45,73 +179,57 @@ const Label = ({ text, ...props }) => (
   </Html>
 );
 
-/**
- * AssemblyObject component
- * 
- * @param {Object} props - Component props
- * @param {Object} props.object - The assembly object with properties
- * @param {boolean} props.isSelected - Whether the assembly is selected
- * @param {Function} props.onClick - Function to call when the assembly is clicked
- * @returns {JSX.Element} - The rendered assembly
- */
-const AssemblyObject = forwardRef(({ object, isSelected, onClick }, ref) => {
-  // Create a wireframe box to represent the assembly
-  const size = DEFAULT_SIZE;
-  
-  // Create a wireframe material with the object's color or a default color
-  const color = useMemo(() => {
-    if (object.color) {
-      if (Array.isArray(object.color)) {
-        return new THREE.Color(object.color[0], object.color[1], object.color[2]);
-      } else if (object.color.r !== undefined) {
-        return new THREE.Color(object.color.r, object.color.g, object.color.b);
-      }
-    }
-    return new THREE.Color(0, 0.7, 0); // Default green color for assemblies
-  }, [object.color]);
-  
-  // Create materials for the wireframe
-  const lineMaterial = useMemo(() => {
-    return new THREE.LineBasicMaterial({
-      color: color,
-      transparent: true,
-      opacity: isSelected ? 0.8 : 0.4,
-      depthTest: true,
-      depthWrite: false
+// ---------------------------------------------------------------------------
+// AssemblyObject
+// ---------------------------------------------------------------------------
+const AssemblyObject = forwardRef(({ object, volumes, isSelected, onClick, materials }, ref) => {
+
+  // Collect all descendant volumes with their positions relative to assembly
+  const descendants = useMemo(
+    () => {
+      const result = collectDescendants(object.name, volumes);
+      console.log(`AssemblyObject "${object.name}": found ${result.length} descendants`, result);
+      return result;
+    },
+    [object.name, volumes]
+  );
+
+  // Build mesh data for each descendant
+  const meshData = useMemo(() => {
+    return descendants.map(({ volume, position, rotation }) => {
+      const geometry = createGeometryForVolume(volume);
+      const color = getMaterialColor(volume.material, materials);
+      const opacity = getMaterialOpacity(volume.material, materials);
+      console.log(`AssemblyObject mesh: ${volume.name} type=${volume.type} pos=${position} size=${JSON.stringify(volume.size)} radius=${volume.radius} height=${volume.height}`);
+      return { geometry, color, opacity, position, rotation, name: volume.name };
     });
-  }, [color, isSelected]);
-  
-  // Create a box geometry for the wireframe
-  const boxGeometry = useMemo(() => new THREE.BoxGeometry(size, size, size), [size]);
-  
-  // Create edges geometry for the wireframe
-  const edgesGeometry = useMemo(() => new THREE.EdgesGeometry(boxGeometry), [boxGeometry]);
-  
+  }, [descendants, materials]);
+
   return (
-    <group ref={ref} onClick={onClick}>
-      {/* Wireframe box - only shown when SHOW_WIREFRAMES is true or the assembly is selected */}
-{/*       {(SHOW_WIREFRAMES || isSelected) && (
-        <lineSegments 
-          geometry={edgesGeometry} 
-          material={lineMaterial} 
-        />
-      )} */}
-      {SHOW_WIREFRAMES && (
-        <lineSegments 
-          geometry={edgesGeometry} 
-          material={lineMaterial} 
-        />      
-      )}
-      {/* Invisible box for better click detection */}
-      <mesh visible={false}>
-        <boxGeometry args={[size, size, size]} />
-        <meshBasicMaterial transparent opacity={0} />
-      </mesh>
-      
-      {/* Label showing the assembly name - only visible when selected */}
-      {isSelected && (
-        <Label text={object.g4name || object.name || 'Assembly'} />
-      )}
+    <group ref={ref} onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}>
+      {/* Render each descendant volume as a mesh */}
+      {meshData.map((m, i) => (
+        <mesh key={m.name || i} position={m.position} rotation={m.rotation}>
+          <primitive object={m.geometry} attach="geometry" />
+          <meshStandardMaterial
+            color={m.color}
+            transparent
+            opacity={m.opacity}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+
+      {/* Selection highlight: wireframes on all descendants */}
+      {isSelected && meshData.map((m, i) => (
+        <lineSegments key={`edge-${m.name || i}`} position={m.position} rotation={m.rotation}>
+          <edgesGeometry attach="geometry" args={[m.geometry]} />
+          <lineBasicMaterial attach="material" color="#ffff00" />
+        </lineSegments>
+      ))}
+
+      {/* Label when selected */}
+      {isSelected && <Label text={object.g4name || object.name || 'Assembly'} />}
     </group>
   );
 });
