@@ -327,6 +327,9 @@ function createVolume(volume, placement, geometry, placementIndex = 0) {
     if (volume._componentId !== undefined) {
         newVolume._componentId = volume._componentId;
     }
+    if (volume.hitsCollectionName !== undefined) {
+        newVolume.hitsCollectionName = volume.hitsCollectionName;
+    }
 
     // set the dimensions of the new volume
     setDimensions(newVolume, volume);

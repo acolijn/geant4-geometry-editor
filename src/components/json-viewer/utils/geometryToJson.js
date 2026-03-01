@@ -163,10 +163,20 @@ function initializeAssemblies(assemblies, geometry) {
   // add components: 
   // 1. loop over the assemblies...
   Object.keys(assemblies).forEach(_compoundId => {
-    // 2. get a list of volumes with this _compoundId
-    let selectedVolumes = geometry.volumes.filter(volume => volume._compoundId === _compoundId);
-    // 3. exclude the type==assembly and type==union
-    selectedVolumes = selectedVolumes.filter(volume => volume.type !== 'assembly' && volume.type !== 'union');
+    const assemblyEntry = assemblies[_compoundId];
+    // 2. get a list of volumes with this _compoundId, OR whose mother_volume points to
+    //    this assembly (handles JSONs where components were saved as top-level volumes)
+    let selectedVolumes = geometry.volumes.filter(volume => {
+      if (volume.type === 'assembly' || volume.type === 'union') return false;
+      if (volume._compoundId === _compoundId) return true;
+      // also match by mother_volume in case _compoundId was not set correctly
+      return volume.mother_volume === _compoundId ||
+             (assemblyEntry && volume.mother_volume === assemblyEntry.name);
+    });
+    // fix up _compoundId on any volumes matched by mother_volume so that
+    // generateJson will correctly skip them as top-level standalone volumes
+    selectedVolumes.forEach(volume => { volume._compoundId = _compoundId; });
+    // 3. exclude the type==assembly and type==union (already handled above)
     // 4. from the list of volumes select the first one with each _componentId
     const seen = new Set();
     selectedVolumes = selectedVolumes.filter(volume => {
