@@ -173,6 +173,23 @@ function initializeAssemblies(assemblies, geometry) {
       return volume.mother_volume === _compoundId ||
              (assemblyEntry && volume.mother_volume === assemblyEntry.name);
     });
+    // 2b. Recursively collect descendant volumes whose mother_volume is a
+    //     component already collected (e.g. a cylinder placed inside a box
+    //     that is itself a component of the assembly).
+    const collectedNames = new Set(selectedVolumes.map(v => v.name));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      geometry.volumes.forEach(volume => {
+        if (volume.type === 'assembly' || volume.type === 'union') return;
+        if (collectedNames.has(volume.name)) return;
+        if (volume.mother_volume && collectedNames.has(volume.mother_volume)) {
+          selectedVolumes.push(volume);
+          collectedNames.add(volume.name);
+          changed = true;
+        }
+      });
+    }
     // fix up _compoundId on any volumes matched by mother_volume so that
     // generateJson will correctly skip them as top-level standalone volumes
     selectedVolumes.forEach(volume => { volume._compoundId = _compoundId; });

@@ -36,11 +36,6 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
   // Check if File System Access API is supported
   const isFileSystemAccessSupported = 'showDirectoryPicker' in window;
 
-  // Check initialization on mount
-  useEffect(() => {
-    checkInitialization();
-  }, [checkInitialization]);
-
   // Check if any storage manager is initialized
   const checkInitialization = useCallback(async () => {
     if (storageManager) {
@@ -64,6 +59,11 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
     setStorageMode('none');
     return false;
   }, [storageManager]);
+
+  // Check initialization on mount
+  useEffect(() => {
+    checkInitialization();
+  }, [checkInitialization]);
 
   // Initialize File System storage
   const initializeFileSystem = useCallback(async () => {
