@@ -54,8 +54,7 @@ export const icons = {
  * @param {boolean} isActive - Whether the volume is active
  * @returns {string} The icon character
  */
-export const getGeometryIcon = (type, isActive = false) => {
-  
+export const getGeometryIcon = (type) => {
   const iconType = icons[type] ? type : 'default';
   // Always use outline (regular) icon; green color is applied via styling when active
   return icons[iconType].regular;
@@ -67,6 +66,6 @@ export const getGeometryIcon = (type, isActive = false) => {
  * @param {boolean} isActive - Whether the volume is active
  * @returns {string} The icon character
  */
-export const getVolumeIcon = (volume, isActive = false) => {
-  return getGeometryIcon(volume.type, isActive);
+export const getVolumeIcon = (volume) => {
+  return getGeometryIcon(volume.type);
 };

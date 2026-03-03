@@ -19,14 +19,7 @@ const tabsSx = {
   }
 };
 
-const AppHeader = ({
-  tabValue,
-  onChangeTab,
-  geometries,
-  materials,
-  hitCollections,
-  onLoadProject
-}) => {
+const AppHeader = ({ tabValue, onChangeTab }) => {
   return (
     <AppBar position="static">
       <Toolbar>
@@ -44,13 +37,7 @@ const AppHeader = ({
           <Tab label="JSON" />
         </Tabs>
         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
-          <ProjectManager
-            geometries={geometries}
-            materials={materials}
-            hitCollections={hitCollections}
-            onLoadProject={onLoadProject}
-            compactMode={true}
-          />
+          <ProjectManager compactMode={true} />
         </Box>
       </Toolbar>
     </AppBar>

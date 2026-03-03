@@ -21,40 +21,32 @@ import UpdateObjectsDialog from './components/UpdateObjectsDialog';
 import ImportObjectDialog from './components/ImportObjectDialog';
 import HitCollectionsDialog from './components/HitCollectionsDialog';
 
+// Import context
+import { useAppContext } from '../../contexts/useAppContext';
+
 /**
  * Main GeometryEditor component - Refactored Version
  * 
  * This component provides a comprehensive interface for creating, editing, and managing
  * geometries for Geant4 simulations.
  * 
- * @param {Object} props - Component props
- * @param {Object} props.geometries - The geometry objects (world and volumes)
- * @param {Array} props.materials - List of available materials
- * @param {string} props.selectedGeometry - ID of the currently selected geometry
- * @param {Array} props.hitCollections - List of hit collections for the detector
- * @param {Function} props.onUpdateHitCollections - Callback to update hit collections
- * @param {Function} props.onUpdateGeometry - Callback to update a geometry object
- * @param {Function} props.onAddGeometry - Callback to add a new geometry object
- * @param {Function} props.onRemoveGeometry - Callback to remove a geometry object
- * @param {Object} props.updateDialogData - Data for the update dialog
- * @param {boolean} props.updateDialogOpen - State of the update dialog
- * @param {Function} props.setUpdateDialogOpen - Callback to set the update dialog state
+ * All state is consumed from AppStateContext.
  */
-const RefactoredGeometryEditor = ({
-  geometries,
-  materials,
-  selectedGeometry,
-  hitCollections,
-  onUpdateHitCollections,
-  onUpdateGeometry,
-  onAddGeometry,
-  onRemoveGeometry,
-  handleImportGeometries,
-  handleImportMaterials,
-  externalUpdateDialogData,
-  updateDialogOpen,
-  setUpdateDialogOpen
-}) => {
+const RefactoredGeometryEditor = () => {
+  const {
+    geometries,
+    materials,
+    selectedGeometry,
+    hitCollections,
+    setHitCollections: onUpdateHitCollections,
+    handleUpdateGeometry: onUpdateGeometry,
+    handleAddGeometry: onAddGeometry,
+    handleRemoveGeometry: onRemoveGeometry,
+    handleImportGeometries,
+    handleImportMaterials,
+    updateDialogOpen,
+    setUpdateDialogOpen,
+  } = useAppContext();
   // ===== Refs =====
   // Reference to the file input for importing object JSON files
   const fileInputRef = useRef(null);
@@ -209,7 +201,7 @@ const RefactoredGeometryEditor = ({
         onClose={() => setUpdateDialogOpen(false)}
         onUpdate={handleUpdateObjects}
         geometries={geometries}
-        preSelectedData={externalUpdateDialogData}
+        preSelectedData={null}
         directUpdateFunc={updateAssemblies}
       />
       

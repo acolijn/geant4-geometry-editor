@@ -12,19 +12,18 @@ const PolyconeObject = React.forwardRef(({ object, isSelected, onClick, material
     object.position.z
   ] : [0, 0, 0];
   
-  // Extract z-sections from the object
-  const zSections = object.zSections || [
-    { z: -5, rMin: 0, rMax: 3 },
-    { z: 0, rMin: 0, rMax: 5 },
-    { z: 5, rMin: 0, rMax: 2 }
-  ];
-  
   // The rotation is already handled by the parent TransformableObject component
   // We don't need to apply any rotation here as the mesh is already properly oriented
   // Note: No need to convert from degrees to radians as the values are already in radians
 
   // Create a custom polycone geometry with axis along z-direction
   const geometry = useMemo(() => {
+    // Extract z-sections from the object (default if missing)
+    const zSections = object.zSections || [
+      { z: -5, rMin: 0, rMax: 3 },
+      { z: 0, rMin: 0, rMax: 5 },
+      { z: 5, rMin: 0, rMax: 2 }
+    ];
     // Sort sections by z-coordinate
     const sortedSections = [...zSections].sort((a, b) => a.z - b.z);
     
@@ -63,7 +62,7 @@ const PolyconeObject = React.forwardRef(({ object, isSelected, onClick, material
     latheGeometry.rotateX(Math.PI / 2);
     
     return latheGeometry;
-  }, [zSections]);
+  }, [object.zSections]);
 
   return (
     <mesh

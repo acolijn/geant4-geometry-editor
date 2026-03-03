@@ -20,6 +20,14 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { toInternalUnit, fromInternalUnit } from '../utils/UnitConverter';
 import { getSelectedGeometryObject } from '../utils/GeometryUtils';
 
+// Shared props to prevent click events on Select dropdowns from bubbling up
+// to the geometry tree (which would deselect the current object).
+const stop = (e) => e.stopPropagation();
+const selectStopProps = {
+  onClick: stop,
+  MenuProps: { onClick: stop, PaperProps: { onClick: stop } },
+};
+
 /**
  * PropertyEditor Component
  * 
@@ -147,11 +155,7 @@ const PropertyEditor = ({
               e.stopPropagation();
               handlePropertyChange('material', e.target.value, true, true);
             }}
-            onClick={(e) => e.stopPropagation()}
-            MenuProps={{
-              onClick: (e) => e.stopPropagation(),
-              PaperProps: { onClick: (e) => e.stopPropagation() }
-            }}
+            {...selectStopProps}
           >
             {Object.keys(materials).map((material) => (
               <MenuItem key={material} value={material}>
@@ -193,11 +197,7 @@ const PropertyEditor = ({
               
               onUpdateGeometry(selectedGeometry, updatedObject);
             }}
-            onClick={(e) => e.stopPropagation()}
-            MenuProps={{
-              onClick: (e) => e.stopPropagation(),
-              PaperProps: { onClick: (e) => e.stopPropagation() }
-            }}
+            {...selectStopProps}
           >
             <MenuItem value="Inactive">Inactive</MenuItem>
             {hitCollections.map((collection) => (
@@ -317,11 +317,7 @@ const PropertyEditor = ({
                     
                     onUpdateGeometry(selectedGeometry, updatedObject);
                   }}
-                  onClick={(e) => e.stopPropagation()}
-                  MenuProps={{
-                    onClick: (e) => e.stopPropagation(),
-                    PaperProps: { onClick: (e) => e.stopPropagation() }
-                  }}
+                  {...selectStopProps}
                 >
                   <MenuItem value="none">Not a boolean component</MenuItem>
                   {potentialParentUnions.map((union) => (
@@ -353,11 +349,7 @@ const PropertyEditor = ({
                           updatedObject.boolean_operation = value;
                           onUpdateGeometry(selectedGeometry, updatedObject);
                         }}
-                        onClick={(e) => e.stopPropagation()}
-                        MenuProps={{
-                          onClick: (e) => e.stopPropagation(),
-                          PaperProps: { onClick: (e) => e.stopPropagation() }
-                        }}
+                        {...selectStopProps}
                       >
                         <MenuItem value="union">Add (Union)</MenuItem>
                         <MenuItem value="subtract">Subtract</MenuItem>

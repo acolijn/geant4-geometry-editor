@@ -18,9 +18,9 @@ describe('geometryIcons', () => {
       expect(getGeometryIcon('box')).toBe(icons.box.regular);
     });
 
-    it('returns outline icon even when isActive is true', () => {
+    it('returns outline icon regardless of extra args', () => {
       // After our refactor, icons always return regular (outline)
-      expect(getGeometryIcon('box', true)).toBe(icons.box.regular);
+      expect(getGeometryIcon('box')).toBe(icons.box.regular);
     });
 
     it('returns default icon for unknown type', () => {

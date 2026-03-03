@@ -394,7 +394,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               color: isActive ? '#4caf50' : (selectedGeometry === key ? '#fff' : 'inherit'),
               textShadow: isActive ? '0 0 1px #4caf50, 0 0 1px #4caf50, 0 0 2px #4caf50, 0 0 2px #4caf50' : 'none', // Much thicker green outline for active elements
               fontSize: '16px'
-            }}>{getVolumeIcon(volume, isActive)}</span>
+            }}>{getVolumeIcon(volume)}</span>
             <span style={{ display: 'flex', alignItems: 'center' }}>
               {/* Display the Geant4 name (g4name) if available, otherwise fall back to internal name */}
               {volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}

@@ -31,18 +31,24 @@ import {
 // Import custom hook
 import { useProjectStorage } from './hooks/useProjectStorage';
 
+// Import context
+import { useAppContext } from '../../contexts/useAppContext';
+
 /**
  * Toolbar actions and dialogs for project/object persistence.
+ * Geometry, material and hit-collection state is consumed from AppStateContext.
  *
  * @param {Object} props - Component props.
- * @param {Object} props.geometries - Current geometry state.
- * @param {Object} props.materials - Current material definitions.
- * @param {Array} props.hitCollections - Current hit collection definitions.
- * @param {Function} props.onLoadProject - Callback invoked after loading a project.
  * @param {boolean} [props.compactMode=false] - Whether to render compact controls.
  * @returns {JSX.Element} Project manager UI.
  */
-const ProjectManager = ({ geometries, materials, hitCollections, onLoadProject, compactMode = false }) => {
+const ProjectManager = ({ compactMode = false }) => {
+  const {
+    geometries,
+    materials,
+    hitCollections,
+    handleLoadProject: onLoadProject,
+  } = useAppContext();
   // Use custom storage hook
   const storage = useProjectStorage(geometries, materials, hitCollections, onLoadProject);
   

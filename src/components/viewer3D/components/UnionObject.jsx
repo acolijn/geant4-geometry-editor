@@ -136,6 +136,7 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       side: THREE.DoubleSide
     });
     return material;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSelected, object.material, materials, object.name]);
   
   // Create meshes for all components - this should only run when componentVolumes changes
@@ -315,6 +316,8 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
     } catch (err) {
       console.error('Error creating union mesh:', err);
     }
+    // componentVolumes and object.name are stable references captured indirectly via componentMeshes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [componentMeshes, unionMaterial]);
   
   // The TransformableObject component expects to control the position of this group

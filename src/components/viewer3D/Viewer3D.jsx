@@ -5,19 +5,20 @@ import Scene from './Scene';
 import GeometryTree from './GeometryTree';
 import CameraSetup from './components/CameraSetup';
 import { debugLog } from '../../utils/logger';
+import { useAppContext } from '../../contexts/useAppContext';
 
 /**
  * 3D viewer and geometry tree panel.
- *
- * @param {Object} props - Component props.
- * @param {Object} props.geometries - Geometry state with `world` and `volumes`.
- * @param {string|null} props.selectedGeometry - Currently selected geometry id.
- * @param {Function} props.onSelect - Selection callback.
- * @param {Function} props.onUpdateGeometry - Geometry update callback.
- * @param {Object} props.materials - Material map used for rendering.
- * @returns {JSX.Element} Viewer3D UI.
+ * All geometry/material state is consumed from AppStateContext.
  */
-const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, materials }) => {
+const Viewer3D = () => {
+  const {
+    geometries,
+    selectedGeometry,
+    setSelectedGeometry: onSelect,
+    handleUpdateGeometry: onUpdateGeometry,
+    materials,
+  } = useAppContext();
   const [transformMode, setTransformMode] = useState('translate');
   const [cameraControls, setCameraControls] = useState(null);
   

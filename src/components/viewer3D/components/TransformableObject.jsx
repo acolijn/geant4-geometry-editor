@@ -228,7 +228,7 @@ export default function TransformableObject({
       controls.removeEventListener('mouseDown', handleMouseDown);
       controls.removeEventListener('mouseUp', handleMouseUp);
     };
-  }, [gl, isSelected, object, onTransformEnd, isDragging, objectKey]);
+  }, [gl, isSelected, object, onTransformEnd, isDragging, objectKey, isMotherVolume, isSourceObject]);
 
   // Create a group for the transform controls
   const renderObject = () => {

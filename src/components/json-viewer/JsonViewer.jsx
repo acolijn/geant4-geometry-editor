@@ -14,18 +14,19 @@ import {
   importJsonGeometry
 } from './utils/jsonHandlers';
 import { debugLog } from '../../utils/logger';
+import { useAppContext } from '../../contexts/useAppContext';
 
 /**
  * JSON viewer for exporting and importing combined geometry/material state.
- *
- * @param {Object} props - Component props.
- * @param {Object} props.geometries - Current geometry state.
- * @param {Object} props.materials - Current material definitions.
- * @param {Function} props.onImportGeometries - Callback to replace geometries after import.
- * @param {Function} props.onImportMaterials - Callback to replace materials after import.
- * @returns {JSX.Element} JSON viewer UI.
+ * State is consumed from AppStateContext.
  */
-const JsonViewer = ({ geometries, materials, onImportGeometries, onImportMaterials }) => {
+const JsonViewer = () => {
+  const {
+    geometries,
+    materials,
+    handleImportGeometries: onImportGeometries,
+    handleImportMaterials: onImportMaterials,
+  } = useAppContext();
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
   
 
