@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { 
   Box, 
   Paper, 
@@ -13,6 +13,7 @@ import {
   handleFileUpload,
   importJsonGeometry
 } from './utils/jsonHandlers';
+import { JsonTree } from './components/JsonTreeNode';
 import { debugLog } from '../../utils/logger';
 import { useAppContext } from '../../contexts/useAppContext';
 
@@ -28,10 +29,17 @@ const JsonViewer = () => {
     handleImportMaterials: onImportMaterials,
   } = useAppContext();
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
+  // Tree expansion depth: bump this key to force a full re-mount with new depth
+  const [expandDepth, setExpandDepth] = useState(1);
+  const [treeKey, setTreeKey] = useState(0);
   
 
   
   const combinedJson = generateGeometryJson(geometries, materials);
+  const parsedData = useMemo(() => {
+    try { return JSON.parse(combinedJson); }
+    catch { return null; }
+  }, [combinedJson]);
   // Handle importing geometry from JSON file
   const handleImportGeometry = async (event) => {
     debugLog('handleImportGeometry:: Import button clicked');
@@ -126,9 +134,25 @@ const JsonViewer = () => {
             onClick={scrollToTop} 
             size="small" 
             variant="outlined"
-            sx={{ marginLeft: 'auto' }} 
+            sx={{ ml: 1 }} 
           >
             Top
+          </Button>
+
+          <Button
+            onClick={() => { setExpandDepth(100); setTreeKey(k => k + 1); }}
+            size="small"
+            variant="outlined"
+            sx={{ ml: 'auto' }}
+          >
+            Expand All
+          </Button>
+          <Button
+            onClick={() => { setExpandDepth(0); setTreeKey(k => k + 1); }}
+            size="small"
+            variant="outlined"
+          >
+            Collapse All
           </Button>
         </Box>
         
@@ -138,30 +162,32 @@ const JsonViewer = () => {
             flexGrow: 1, 
             overflow: 'auto', 
             p: 2,
+            m: 0,
             backgroundColor: '#f5f5f5',
+            color: '#333',
+            border: '1px solid #ddd',
             borderRadius: 1,
             mx: 2,
             mb: 2,
-            fontFamily: 'monospace',
-            fontSize: '0.875rem',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word',
             '&::-webkit-scrollbar': {
               width: '8px',
               height: '8px',
             },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: '#bdbdbd',
+              backgroundColor: '#bbb',
               borderRadius: '4px',
             },
             '&::-webkit-scrollbar-track': {
-              backgroundColor: '#e0e0e0',
+              backgroundColor: '#e8e8e8',
               borderRadius: '4px',
             },
           }}
         >
-          {combinedJson}
+          {parsedData !== null ? (
+            <JsonTree key={treeKey} data={parsedData} defaultOpen={expandDepth} />
+          ) : (
+            <pre style={{ margin: 0 }}>{combinedJson}</pre>
+          )}
         </Box>
       </Paper>
       
