@@ -342,8 +342,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       const { volume, key, index, isBooleanComponent } = item;
       const hasChildren = volumesByParent[key] && volumesByParent[key].length > 0;
       
-      // Check if volume is active (has isActive flag and hitsCollectionName)
-      const isActive = volume.isActive && volume.hitsCollectionName;
+      // Check if volume is active (has a hits collection connected)
+      const isActive = Boolean(volume.hitsCollectionName);
       
       return (
         <React.Fragment key={key}>

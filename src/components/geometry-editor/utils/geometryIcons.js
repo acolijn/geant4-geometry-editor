@@ -57,7 +57,8 @@ export const icons = {
 export const getGeometryIcon = (type, isActive = false) => {
   
   const iconType = icons[type] ? type : 'default';
-  return isActive ? icons[iconType].filled : icons[iconType].regular;
+  // Always use outline (regular) icon; green color is applied via styling when active
+  return icons[iconType].regular;
 };
 
 /**
