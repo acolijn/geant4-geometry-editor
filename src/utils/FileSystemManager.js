@@ -3,6 +3,8 @@
  * Handles interactions with the local file system using the File System Access API
  */
 
+import { debugLog, debugWarn } from './logger.js';
+
 // Default base directory structure
 const DEFAULT_STRUCTURE = {
   projects: {},
@@ -29,7 +31,7 @@ class FileSystemManager {
         throw new Error('File System Access API is not supported in this browser. Please use Chrome, Edge, or another compatible browser.');
       }
 
-      console.log('Initializing File System Manager - requesting directory access...');
+      debugLog('Initializing File System Manager - requesting directory access...');
       
       // Request a directory from the user with simplified options
       // Some browsers might not support all options
@@ -40,7 +42,7 @@ class FileSystemManager {
         });
       } catch (e) {
         // Fallback to basic options if the above fails
-        console.warn('Using fallback directory picker options:', e);
+        debugWarn('Using fallback directory picker options:', e);
         this.directoryHandle = await window.showDirectoryPicker();
       }
       
@@ -48,7 +50,7 @@ class FileSystemManager {
         throw new Error('Failed to get directory handle. User may have cancelled the selection.');
       }
       
-      console.log('Directory selected:', this.directoryHandle);
+      debugLog('Directory selected:', this.directoryHandle);
       
       // Verify we have write access
       const verifyPermission = async (fileHandle, readWrite) => {
@@ -79,10 +81,10 @@ class FileSystemManager {
       this.initialized = true;
       
       // Create the default directory structure if it doesn't exist
-      console.log('Creating directory structure...');
+      debugLog('Creating directory structure...');
       await this.ensureDirectoryStructure();
       
-      console.log('File System Manager initialized successfully!');
+      debugLog('File System Manager initialized successfully!');
       return true;
     } catch (error) {
       console.error('Failed to initialize file system:', error);
@@ -351,7 +353,7 @@ class FileSystemManager {
       
       // Delete the object file
       await objectsDir.removeEntry(`${name}.json`);
-      console.log(`Deleted object: ${name}.json`);
+      debugLog(`Deleted object: ${name}.json`);
       
       return true;
     } catch (error) {
@@ -395,9 +397,9 @@ class FileSystemManager {
       // Store the parent directory for future use
       try {
         this.lastUsedDirectory = await fileHandle.getParentDirectory();
-        console.log('Set last used directory:', this.lastUsedDirectory);
+        debugLog('Set last used directory:', this.lastUsedDirectory);
       } catch (e) {
-        console.warn('Could not get parent directory:', e);
+        debugWarn('Could not get parent directory:', e);
       }
       
       return fileHandle;
@@ -421,9 +423,9 @@ class FileSystemManager {
       let objectsDir;
       try {
         objectsDir = await this.baseDirectory.getDirectoryHandle('objects', { create: true });
-        console.log('Using objects directory for file picker');
+        debugLog('Using objects directory for file picker');
       } catch (error) {
-        console.warn('Could not access objects directory, using base directory instead:', error);
+        debugWarn('Could not access objects directory, using base directory instead:', error);
         objectsDir = this.baseDirectory;
       }
       

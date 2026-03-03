@@ -5,6 +5,8 @@
  * Contains helper functions for working with geometries
  */
 
+import { debugLog } from '../../../utils/logger.js';
+
 /**
  * Propagate a compound ID to all descendants of a given object
  * @param {string} parentName - The name of the parent object
@@ -36,7 +38,7 @@ export const propagateCompoundIdToDescendants = (parentName, compoundId, volumes
         _compoundId: compoundId
       };
       
-      console.log(`Propagated _compoundId ${compoundId} to child ${child.name}`);
+      debugLog(`Propagated _compoundId ${compoundId} to child ${child.name}`);
       
       // Recursively update the child's descendants
       const childName = updatedVolumes[childIndex].name;
@@ -120,11 +122,11 @@ export const extractObjectWithDescendants = (objectIdentifier, geometries) => {
   // Find all descendants recursively using the helper function
   const descendants = findAllDescendants(mainObject.name, geometries.volumes);
   
-  console.log('extractObjectWithDescendants:: volumes', geometries);
-  console.log('extractObjectWithDescendants:: objectIdentifier', objectIdentifier);
-  console.log('extractObjectWithDescendants:: mainObject', mainObject);
-  console.log('extractObjectWithDescendants:: descendants', descendants);
-  console.log('extractObjectWithDescendants:: isWorld', isWorld);
+  debugLog('extractObjectWithDescendants:: volumes', geometries);
+  debugLog('extractObjectWithDescendants:: objectIdentifier', objectIdentifier);
+  debugLog('extractObjectWithDescendants:: mainObject', mainObject);
+  debugLog('extractObjectWithDescendants:: descendants', descendants);
+  debugLog('extractObjectWithDescendants:: isWorld', isWorld);
 
   // Return the object and its descendants
   return {

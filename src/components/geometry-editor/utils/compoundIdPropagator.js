@@ -6,6 +6,8 @@
  * share the same _compoundId, making them identifiable as part of the same assembly type.
  */
 
+import { debugLog } from '../../../utils/logger.js';
+
 /**
  * Recursively propagate a compound ID to an object and all its descendants
  * 
@@ -22,7 +24,7 @@ export const propagateCompoundId = (object, compoundId) => {
   
   // Add the compound ID to the object
   updatedObject._compoundId = compoundId;
-  console.log(`Propagated _compoundId ${compoundId} to object ${updatedObject.name}`);
+  debugLog(`Propagated _compoundId ${compoundId} to object ${updatedObject.name}`);
   
   return updatedObject;
 };
@@ -38,7 +40,7 @@ export const propagateCompoundId = (object, compoundId) => {
 export const propagateCompoundIdToDescendants = (parentName, compoundId, allVolumes) => {
   if (!parentName || !compoundId || !allVolumes) return allVolumes;
   
-  console.log(`Propagating _compoundId ${compoundId} to descendants of ${parentName}`);
+  debugLog(`Propagating _compoundId ${compoundId} to descendants of ${parentName}`);
   // Create a copy of all volumes to avoid mutating the original
   const updatedVolumes = [...allVolumes];
   
@@ -54,7 +56,7 @@ export const propagateCompoundIdToDescendants = (parentName, compoundId, allVolu
         ...updatedVolumes[childIndex],
         _compoundId: compoundId
       };
-      console.log(`Propagated _compoundId ${compoundId} to direct child ${child.name}`);
+      debugLog(`Propagated _compoundId ${compoundId} to direct child ${child.name}`);
       
       // Recursively propagate to all descendants of this child
       const childDescendants = findAllDescendants(child.name, updatedVolumes);
@@ -66,7 +68,7 @@ export const propagateCompoundIdToDescendants = (parentName, compoundId, allVolu
             ...updatedVolumes[descendantIndex],
             _compoundId: compoundId
           };
-          console.log(`Propagated _compoundId ${compoundId} to descendant ${descendant.name}`);
+          debugLog(`Propagated _compoundId ${compoundId} to descendant ${descendant.name}`);
         }
       });
     }

@@ -5,7 +5,6 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import bodyParser from 'body-parser';
 
 // ES modules fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -18,7 +17,7 @@ const PORT = process.env.PORT || 3001;
 const BASE_PATH = process.env.BASE_PATH || '';
 
 // Middleware
-app.use(bodyParser.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Serve static files with proper base path handling
 if (BASE_PATH) {

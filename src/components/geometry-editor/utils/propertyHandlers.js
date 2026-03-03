@@ -6,6 +6,7 @@
  */
 
 import { getSelectedGeometryObject } from './GeometryUtils';
+import { debugLog } from '../../../utils/logger.js';
 
 /**
  * Creates property handler functions with access to state and setState
@@ -50,7 +51,7 @@ export const createPropertyHandlers = (props) => {
    */
   const handlePropertyChange = (property, value, unit = 'cm') => {
     // Get the currently selected geometry object
-    console.log(`handlePropertyChange called for property ${property} with value ${value} and unit ${unit}`);
+    debugLog(`handlePropertyChange called for property ${property} with value ${value} and unit ${unit}`);
     const selectedObject = getSelectedGeometryObjectLocal();
     if (!selectedObject) return;
     
@@ -91,7 +92,7 @@ export const createPropertyHandlers = (props) => {
           updatedObject.size = {};
         }
         updatedObject.size[child] = finalValue;
-        console.log(`Updated box ${child} dimension to ${finalValue} and synchronized with size property`);
+        debugLog(`Updated box ${child} dimension to ${finalValue} and synchronized with size property`);
       }
       
       // Also handle the reverse case - if size is updated, update dimensions too
@@ -101,7 +102,7 @@ export const createPropertyHandlers = (props) => {
           updatedObject.dimensions = {};
         }
         updatedObject.dimensions[child] = finalValue;
-        console.log(`Updated box ${child} size to ${finalValue} and synchronized with dimensions property`);
+        debugLog(`Updated box ${child} size to ${finalValue} and synchronized with dimensions property`);
       }
     } else {
       // Handle direct properties

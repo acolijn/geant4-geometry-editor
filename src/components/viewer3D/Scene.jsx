@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey } from './utils/geometryUtils';
 import * as THREE from 'three';
-// Instance tracking functionality has been removed for a cleaner implementation
 import TransformableObject from './components/TransformableObject';
 import CoordinateSystem from './components/CoordinateSystem';
 import CameraSetup from './components/CameraSetup';
@@ -14,18 +13,11 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
   // Track which objects are source objects (objects that have been loaded from files)
   const [sourceObjects, setSourceObjects] = useState({});
   
-  // Instance tracking functionality has been removed for a cleaner implementation
-  // Source object tracking will be reimplemented in a simpler way
   useEffect(() => {
-    // Simple placeholder for now - we'll implement a better solution later
-    const newSourceObjects = {};
-    
-    // For now, we'll just consider all objects as non-source objects
-    // This will be replaced with a proper tracking mechanism
-    
-    setSourceObjects(newSourceObjects);
+    // Source object tracking: currently all objects are treated as non-source
+    setSourceObjects({});
   }, [geometries]);
-  // Debug the selected geometry to help diagnose issues
+
   React.useEffect(() => {
     if (selectedGeometry) {
       debugLog(`Selected geometry: ${selectedGeometry}`);

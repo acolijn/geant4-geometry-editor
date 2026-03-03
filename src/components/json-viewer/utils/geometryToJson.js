@@ -5,13 +5,15 @@
  * that's optimized for Geant4 simulation. 
  */
 
+import { debugLog, debugWarn } from '../../../utils/logger.js';
+
 /**
  * 
  * @param {*} world 
  * @returns 
  */
 function generateWorldVolume(world) {
-  console.log('generateWorldVolume:: geometry.world', world);
+  debugLog('generateWorldVolume:: geometry.world', world);
 
   const worldJson = {
     name: world.name || 'World',
@@ -47,9 +49,9 @@ function generateWorldVolume(world) {
 function processAssembly(assemblies, volume) {
 
   // append placement
-  console.log('processAssembly:: volume', volume);
-  console.log('processAssembly:: assemblies', assemblies);
-  console.log('processAssembly:: assemblies[volume._compoundId]', assemblies[volume._compoundId]);
+  debugLog('processAssembly:: volume', volume);
+  debugLog('processAssembly:: assemblies', assemblies);
+  debugLog('processAssembly:: assemblies[volume._compoundId]', assemblies[volume._compoundId]);
   
   if (volume._write_full_geometry) {
     assemblies[volume._compoundId].placements.push({
@@ -90,7 +92,7 @@ function processAssembly(assemblies, volume) {
  * @returns 
  */
 function processVolume(volume) {
-  console.log('processVolume:: add standard volume', volume);
+  debugLog('processVolume:: add standard volume', volume);
 
   return {
     name: volume.name,
@@ -133,15 +135,15 @@ function processVolume(volume) {
  * @returns 
  */
 function initializeAssemblies(assemblies, geometry) {
-  console.log('initializeAssemblies:: geometry', geometry);
+  debugLog('initializeAssemblies:: geometry', geometry);
 
   // loop over the volumes
   geometry.volumes.forEach(volume => {
     // new assembly...... add it to the assemblies object
     if (!assemblies[volume._compoundId] && 
         (volume.type === 'assembly' || volume.type === 'union')) {
-      console.log('processAssembly:: new assembly', volume);
-      console.log('processAssembly::  g4name', volume.g4name);
+      debugLog('processAssembly:: new assembly', volume);
+      debugLog('processAssembly::  g4name', volume.g4name);
 
 
       assemblies[volume._compoundId] = {
@@ -282,11 +284,11 @@ function initializeAssemblies(assemblies, geometry) {
  * @returns {Object} - The generated JSON
  */
 export function generateJson(geometry){
-  console.log('generateJson:: geometry', geometry);
+  debugLog('generateJson:: geometry', geometry);
   
   // Validate geometry input
   if (!geometry) {
-    console.warn('generateJson:: Geometry is null or undefined');
+    debugWarn('generateJson:: Geometry is null or undefined');
     geometry = { world: null, volumes: [] };
   }
   
@@ -312,7 +314,7 @@ export function generateJson(geometry){
     geometry.volumes.forEach(volume => {
       volume._write_full_geometry = _write_full_geometry;
       if (volume && (volume.type === 'assembly' || volume.type === 'union')) {
-        console.log('generateJson:: processing assembly', volume);
+        debugLog('generateJson:: processing assembly', volume);
         processAssembly(assemblies, volume); 
       } else if (volume) {
         // standard volume
@@ -336,7 +338,7 @@ export function generateJson(geometry){
     volumes: volumes
   };
 
-  console.log('generateJson:: outputStructure', outputStructure);
+  debugLog('generateJson:: outputStructure', outputStructure);
 
   return outputStructure;
 }; 
@@ -348,7 +350,7 @@ export function generateJson(geometry){
  */
 /* export function convertToMultiplePlacements(geometry) {
   // generate the output
-  console.log('convertToMultiplePlacements:: geometry', geometry);
+  debugLog('convertToMultiplePlacements:: geometry', geometry);
 
   const json = generateJson(geometry);
 
@@ -440,7 +442,7 @@ function convertDimensions(volume) {
  */
 export function generateTemplateJson(geometry, compoundId, rootName = null) {
   if (!geometry || !compoundId) {
-    console.warn('generateTemplateJson:: Invalid input parameters');
+    debugWarn('generateTemplateJson:: Invalid input parameters');
     return null;
   }
 
@@ -451,7 +453,7 @@ export function generateTemplateJson(geometry, compoundId, rootName = null) {
     : geometry.volumes.find((volume) => volume._compoundId === compoundId);
 
   if (!rootVolume) {
-    console.warn('generateTemplateJson:: Could not find root volume');
+    debugWarn('generateTemplateJson:: Could not find root volume');
     return null;
   }
 
@@ -477,7 +479,7 @@ export function generateTemplateJson(geometry, compoundId, rootName = null) {
       .map((volume) => ({ ...volume }))
   };
 
-  console.log('generateTemplateJson:: filteredGeometry', filteredGeometry);
+  debugLog('generateTemplateJson:: filteredGeometry', filteredGeometry);
 
   // Use the existing generateJson function to create the JSON structure
   const templateJson = generateJson(filteredGeometry);

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-// Instance tracking functionality has been removed for a cleaner implementation
 import Scene from './Scene';
 import GeometryTree from './GeometryTree';
 import CameraSetup from './components/CameraSetup';
@@ -134,10 +133,8 @@ const Viewer3D = ({ geometries, selectedGeometry, onSelect, onUpdateGeometry, ma
       });
     }
     
-    // Instance tracking functionality has been removed for a cleaner implementation
-    // Source object tracking and updating will be reimplemented in a simpler way
     if (isSourceUpdate) {
-      debugLog('Source update from transform operation - functionality will be reimplemented');
+      debugLog('Source update from transform operation');
     }
     
     // If this is a parent object, handle parent-child relationships

@@ -13,6 +13,7 @@
 import React, { forwardRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
+import { debugLog } from '../../../utils/logger.js';
 
 // ---------------------------------------------------------------------------
 // Helper – material colour
@@ -188,7 +189,7 @@ const AssemblyObject = forwardRef(({ object, volumes, isSelected, onClick, mater
   const descendants = useMemo(
     () => {
       const result = collectDescendants(object.name, volumes);
-      console.log(`AssemblyObject "${object.name}": found ${result.length} descendants`, result);
+      debugLog(`AssemblyObject "${object.name}": found ${result.length} descendants`, result);
       return result;
     },
     [object.name, volumes]
@@ -200,7 +201,7 @@ const AssemblyObject = forwardRef(({ object, volumes, isSelected, onClick, mater
       const geometry = createGeometryForVolume(volume);
       const color = getMaterialColor(volume.material, materials);
       const opacity = getMaterialOpacity(volume.material, materials);
-      console.log(`AssemblyObject mesh: ${volume.name} type=${volume.type} pos=${position} size=${JSON.stringify(volume.size)} radius=${volume.radius} height=${volume.height}`);
+      debugLog(`AssemblyObject mesh: ${volume.name} type=${volume.type} pos=${position} size=${JSON.stringify(volume.size)} radius=${volume.radius} height=${volume.height}`);
       return { geometry, color, opacity, position, rotation, name: volume.name };
     });
   }, [descendants, materials]);

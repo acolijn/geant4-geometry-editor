@@ -144,7 +144,7 @@ export default function TransformableObject({
       }, isIntermediateObject, true); // Keep intermediate objects selected during dragging
       
       // Debug the transformation (for development purposes only)
-      // console.log(`Transform change for ${objectKey} (${object.type})`, {
+      // debugLog(`Transform change for ${objectKey} (${object.type})`, {
       //   position: [group.position.x, group.position.y, group.position.z],
       //   rotation: [radToDeg(group.rotation.x), radToDeg(group.rotation.y), radToDeg(group.rotation.z)]
       // });

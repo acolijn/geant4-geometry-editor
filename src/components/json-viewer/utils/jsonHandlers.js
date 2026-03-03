@@ -7,6 +7,7 @@
 
 import { generateJson } from './geometryToJson';
 import { jsonToGeometry } from './jsonToGeometry';
+import { debugLog } from '../../../utils/logger.js';
 
 /**
  * Format JSON data with proper indentation for display
@@ -54,7 +55,7 @@ export const ensureOrderedZPlanes = (volume) => {
         volume.dimensions.z = sortedZ;
         volume.dimensions.rmax = sortedRmax;
         
-        console.log(`Sorted z-planes for ${volume.name} (${volume.type})`);
+        debugLog(`Sorted z-planes for ${volume.name} (${volume.type})`);
       }
     }
   }
@@ -117,15 +118,15 @@ export const handleDownload = (content, filename) => {
  * @returns {Promise<Object>} Parsed JSON object
  */
 export const handleFileUpload = (file) => {
-  console.log('handleFileUpload:: Starting file upload for:', file.name);
+  debugLog('handleFileUpload:: Starting file upload for:', file.name);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
     reader.onload = (event) => {
       try {
-        console.log('handleFileUpload:: File read successfully, parsing JSON');
+        debugLog('handleFileUpload:: File read successfully, parsing JSON');
         const jsonContent = JSON.parse(event.target.result);
-        console.log('handleFileUpload:: JSON parsed successfully:', jsonContent);
+        debugLog('handleFileUpload:: JSON parsed successfully:', jsonContent);
         resolve(jsonContent);
       } catch (error) {
         console.error('handleFileUpload:: Error parsing JSON:', error);
@@ -150,8 +151,8 @@ export const handleFileUpload = (file) => {
  * @returns {Object} - The updated geometry object
  */
 export const importJsonGeometry = (jsonData, currentGeometry = null) => {
-  console.log('importJsonGeometry:: Starting import with data:', jsonData);
-  console.log('importJsonGeometry:: Current geometry:', currentGeometry);
+  debugLog('importJsonGeometry:: Starting import with data:', jsonData);
+  debugLog('importJsonGeometry:: Current geometry:', currentGeometry);
   
   // Initialize an empty geometry if none provided
   const geometry = currentGeometry || {
@@ -162,10 +163,10 @@ export const importJsonGeometry = (jsonData, currentGeometry = null) => {
     materials: []
   };
   
-  console.log('importJsonGeometry:: Using geometry structure:', geometry);
+  debugLog('importJsonGeometry:: Using geometry structure:', geometry);
   
   // Use the jsonToGeometry function to convert the JSON data
   const result = jsonToGeometry(jsonData, geometry);
-  console.log('importJsonGeometry:: Conversion complete, result:', result);
+  debugLog('importJsonGeometry:: Conversion complete, result:', result);
   return result;
 };

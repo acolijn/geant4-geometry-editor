@@ -1,18 +1,8 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { getMaterialColor } from '../utils/materialColorUtils';
 
-// Helper function to get color from material
-const getMaterialColor = (materialName, materials) => {
-  const defaultColor = "rgba(255, 180, 100, 0.7)";
-  if (!materialName || !materials || Object.keys(materials).length === 0) {
-    return defaultColor;
-  }
-  const material = materials[materialName];
-  if (material && material.color) {
-    return `rgba(${Math.floor(material.color[0] * 255)}, ${Math.floor(material.color[1] * 255)}, ${Math.floor(material.color[2] * 255)}, ${material.color[3] || 0.7})`;
-  }
-  return defaultColor;
-};
+const DEFAULT_COLOR = 'rgba(255, 180, 100, 0.7)';
 
 // Trapezoid Object Component
 const TrapezoidObject = React.forwardRef(({ object, isSelected, onClick, materials }, ref) => {
@@ -98,7 +88,7 @@ const TrapezoidObject = React.forwardRef(({ object, isSelected, onClick, materia
     >
       <primitive object={geometry} />
       <meshStandardMaterial 
-        color={getMaterialColor(object.material, materials)} 
+        color={getMaterialColor(object.material, materials, DEFAULT_COLOR)} 
         transparent={true}
         opacity={0.7}
       />

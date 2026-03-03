@@ -7,6 +7,8 @@
  * various display units that can be selected in the UI.
  */
 
+import { debugWarn } from '../../../utils/logger.js';
+
 // Length conversion factors to mm (internal unit)
 const LENGTH_CONVERSION_FACTORS = {
   //micrometer
@@ -41,7 +43,7 @@ export const toInternalUnit = (value, fromUnit, type = 'length') => {
   const factor = conversionFactors[fromUnit];
   
   if (!factor) {
-    console.warn(`Unknown unit: ${fromUnit}. Using value as is.`);
+    debugWarn(`Unknown unit: ${fromUnit}. Using value as is.`);
     return value;
   }
   
@@ -66,7 +68,7 @@ export const fromInternalUnit = (value, toUnit, type = 'length') => {
   const factor = conversionFactors[toUnit];
   
   if (!factor) {
-    console.warn(`Unknown unit: ${toUnit}. Using value as is.`);
+    debugWarn(`Unknown unit: ${toUnit}. Using value as is.`);
     return value;
   }
   

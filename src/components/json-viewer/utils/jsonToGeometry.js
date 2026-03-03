@@ -7,6 +7,8 @@
  * @returns {Object} The standard geometry format
  */
 
+import { debugLog, debugWarn } from '../../../utils/logger.js';
+
 //import { generateUniqueName } from '../../geometry-editor/utils/geometryHandlers';
 
 /**
@@ -15,23 +17,23 @@
  */
 
 export function jsonToGeometry(json, geometry) {
-    console.log('jsonToGeometry:: json', json);
-    console.log('jsonToGeometry:: geometry', geometry);
+    debugLog('jsonToGeometry:: json', json);
+    debugLog('jsonToGeometry:: geometry', geometry);
 
     // Validate input parameters
     if (!json) {
-        console.warn('jsonToGeometry:: json is null or undefined');
+        debugWarn('jsonToGeometry:: json is null or undefined');
         return geometry;
     }
 
     // check if json has world: if so update the world in geometry
     let _middle_id = "";
     if (json.world) {
-        console.log('jsonToGeometry:: json has world - create new geometry');
+        debugLog('jsonToGeometry:: json has world - create new geometry');
         geometry = createNewGeometry(json);
     } else {
         _middle_id = `${Date.now()}`;
-        console.log('jsonToGeometry:: json has no world - use middle_id:', _middle_id);
+        debugLog('jsonToGeometry:: json has no world - use middle_id:', _middle_id);
     }
 
     // check if json has volumes: if so add them to the geometry
@@ -44,7 +46,7 @@ export function jsonToGeometry(json, geometry) {
         createMaterials(json.materials, geometry);
     }
 
-    console.log('jsonToGeometry:: created/updated geometry::', geometry);
+    debugLog('jsonToGeometry:: created/updated geometry::', geometry);
 
     return geometry;
 }
@@ -55,7 +57,7 @@ export function jsonToGeometry(json, geometry) {
  * @returns {Object} The standard geometry format
  */
 function createNewGeometry(json) {
-    console.log('createNewGeometry:: json', json.world);
+    debugLog('createNewGeometry:: json', json.world);
     const geometry = {
         geometries: {
             world: json.world,
@@ -92,7 +94,7 @@ function createVolumes(volumes, geometry, _middle_id) {
     
     // Validate volumes is an array
     if (!Array.isArray(volumes)) {
-        console.warn('createVolumes:: volumes is not an array');
+        debugWarn('createVolumes:: volumes is not an array');
         return;
     }
     
@@ -100,7 +102,7 @@ function createVolumes(volumes, geometry, _middle_id) {
     let _iplacement = 0;
     volumes.forEach(volume => {
         if (!volume) {
-            console.warn('createVolumes:: volume is null or undefined');
+            debugWarn('createVolumes:: volume is null or undefined');
             return;
         }
         
@@ -112,7 +114,7 @@ function createVolumes(volumes, geometry, _middle_id) {
         } else if (volume.placements && Array.isArray(volume.placements)) {
             createStandardVolume(volume, geometry);
         } else {
-            console.warn(`createVolumes:: volume ${volume.name} has no placements or invalid placements`);
+            debugWarn(`createVolumes:: volume ${volume.name} has no placements or invalid placements`);
         }
         _iplacement++;
     });
@@ -120,9 +122,9 @@ function createVolumes(volumes, geometry, _middle_id) {
 
 function createStandardVolume(volume, geometry) {
     // convert the standard volume to the standard geometry format
-    console.log('createStandardVolume:: volume', volume);
-    console.log('createStandardVolume:: volume.type', volume.type);
-    console.log('createStandardVolume:: volume.placements', volume.placements);
+    debugLog('createStandardVolume:: volume', volume);
+    debugLog('createStandardVolume:: volume.type', volume.type);
+    debugLog('createStandardVolume:: volume.placements', volume.placements);
 
     // loop through the placements and create a volume for each placement
     volume.placements.forEach((placement, placementIndex) => {
@@ -134,9 +136,9 @@ function createStandardVolume(volume, geometry) {
 
 function createAssembly(volume, geometry) {
     // convert the assembly to the standard geometry format
-    console.log('createAssembly:: volume', volume);
-    console.log('createAssembly:: volume.type', volume.type);
-    console.log('createAssembly:: volume.placements', volume.placements);
+    debugLog('createAssembly:: volume', volume);
+    debugLog('createAssembly:: volume.type', volume.type);
+    debugLog('createAssembly:: volume.placements', volume.placements);
 
 
     // loop through the placements and create an assembly for each placement
@@ -165,11 +167,11 @@ function createAssembly(volume, geometry) {
         if (instanceId) {
             assembly._instanceId = instanceId;
         }
-        console.log('createAssembly:: assembly', assembly);
+        debugLog('createAssembly:: assembly', assembly);
         geometry.geometries.volumes.push(assembly);
 
         // add the components
-        console.log('createAssembly:: volume.components', volume.components);
+        debugLog('createAssembly:: volume.components', volume.components);
         const seenComponents = new Set();
         volume.components.forEach(component => {
             const componentKey = component?._componentId || `${component?.name || 'unnamed'}:${component?.type || 'unknown'}`;
@@ -181,8 +183,8 @@ function createAssembly(volume, geometry) {
             // create the component
             let placement = component.placements[0];
             let newName = convertName(nextName(placement.name, iPlacement), volume._middle_id);
-            console.log('createAssembly:: newName', newName);
-            console.log('createAssembly:: placement', placement);
+            debugLog('createAssembly:: newName', newName);
+            debugLog('createAssembly:: placement', placement);
             const newComponent = {
                 name: newName,
                 g4name: newName,
@@ -213,7 +215,7 @@ function createAssembly(volume, geometry) {
             setDimensions(newComponent, component);
 
             geometry.geometries.volumes.push(newComponent);
-            console.log('createAssembly:: done');     
+            debugLog('createAssembly:: done');     
         });
 
         iPlacement++;
@@ -251,7 +253,7 @@ function convertName(name, _middle_id) {
         return name;
     } else {
         // split name by _
-        console.log('convertName:: name', name);
+        debugLog('convertName:: name', name);
         let parts = name.split('_');
         if (parts.length < 2) {
             return name;
@@ -299,11 +301,11 @@ function nextName(name, increment) {
 
 function createVolume(volume, placement, geometry, placementIndex = 0) {
     // convert the volume to the standard geometry format
-    console.log('createVolume:: volume', volume);
-    console.log('createVolume:: volume.type', volume.type);
-    console.log('createVolume:: volume.placements', volume.placements);
-    console.log('createVolume:: volume.material', volume.material);
-    console.log('createVolume:: volume.dimensions', volume.dimensions);
+    debugLog('createVolume:: volume', volume);
+    debugLog('createVolume:: volume.type', volume.type);
+    debugLog('createVolume:: volume.placements', volume.placements);
+    debugLog('createVolume:: volume.material', volume.material);
+    debugLog('createVolume:: volume.dimensions', volume.dimensions);
     // if placement_number is 0 then mother_volume: placement.parent else mother_volume: convertName(placement.parent, _middle_id)
     let _iplacement = volume._iplacement;
     let mother_volume = _iplacement === 0 ? placement.parent : convertName(placement.parent, volume._middle_id);
@@ -345,10 +347,10 @@ function createVolume(volume, placement, geometry, placementIndex = 0) {
 function setDimensions(newVolume, volume) {
     // Inverse operation of convertDimensions from geometryToJson.js
     // Map dimensions from JSON format to internal geometry format
-    console.log('setDimensions:: volume', volume);
+    debugLog('setDimensions:: volume', volume);
     
     if (!volume.dimensions) {
-        console.warn('setDimensions:: No dimensions found for volume:', volume.name);
+        debugWarn('setDimensions:: No dimensions found for volume:', volume.name);
         return;
     }
     
@@ -415,14 +417,14 @@ function setDimensions(newVolume, volume) {
             }
     }
     
-    console.log('setDimensions:: newVolume after setting dimensions', newVolume);
+    debugLog('setDimensions:: newVolume after setting dimensions', newVolume);
 }
     
 
 function createMaterials(materials, geometry) {
     // Make sure materials object exists
-    console.log('createMaterials:: geometry', geometry);
-    console.log('createMaterials:: materials', materials);
+    debugLog('createMaterials:: geometry', geometry);
+    debugLog('createMaterials:: materials', materials);
     
     // Initialize materials as an object, not an array
     geometry.materials = {};
@@ -439,16 +441,16 @@ function createMaterials(materials, geometry) {
         const { name: _name, ...materialWithoutName } = processedMaterial;
         
         // Add to materials object with name as key
-        console.log('createMaterials:: materialWithoutName', materialWithoutName);
-        console.log('createMaterials:: material name', materialName);
+        debugLog('createMaterials:: materialWithoutName', materialWithoutName);
+        debugLog('createMaterials:: material name', materialName);
         geometry.materials[materialName] = materialWithoutName;
     });
-    console.log('createMaterials:: geometry.materials', geometry.materials);
+    debugLog('createMaterials:: geometry.materials', geometry.materials);
 }
 
 function createMaterial(material) {
     // convert the material to the standard geometry format
-    console.log('createMaterial:: material', material);
+    debugLog('createMaterial:: material', material);
     
     const newMaterial = {
         name: material.name,

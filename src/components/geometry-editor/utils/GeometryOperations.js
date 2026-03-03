@@ -5,6 +5,8 @@
  * Contains functions for updating, adding, and removing geometries
  */
 
+import { debugLog } from '../../../utils/logger.js';
+
 /**
  * Merge a partial geometry patch into an existing geometry object.
  * Nested transform/dimension fields are merged deeply for known keys.
@@ -64,12 +66,9 @@ export const updateGeometry = (
   updateAssembliesFunc,
   _propagateCompoundIdToDescendants
 ) => {
-  void _isLiveUpdate;
-  void _propagateCompoundIdToDescendants;
-
   // Handle special case for assembly update via dialog
   if (extraData && id === null && updatedObject === null) {
-    console.log('App: Handling assembly update via dialog', extraData);
+    debugLog('App: Handling assembly update via dialog', extraData);
     if (updateAssembliesFunc && typeof updateAssembliesFunc === 'function') {
       updateAssembliesFunc(extraData.updateData, extraData.objectDefinition);
     }
@@ -95,7 +94,7 @@ export const updateGeometry = (
     let newMotherVolume = updatedObject.mother_volume;
     let isParentChanged = false;
 
-    console.log(`updatState:: id: ${id}`);
+    debugLog(`updatState:: id: ${id}`);
     
     if (id === 'world') {
       // First update the geometry
@@ -159,9 +158,9 @@ export const updateGeometry = (
         }
         
         // If parent changed and new parent is an assembly, propagate the _compoundId
-        console.log(`isParentChanged: ${isParentChanged}`);
-        console.log(`newMotherVolume: ${newMotherVolume}`);
-        console.log(`oldMotherVolume: ${oldMotherVolume}`);
+        debugLog(`isParentChanged: ${isParentChanged}`);
+        debugLog(`newMotherVolume: ${newMotherVolume}`);
+        debugLog(`oldMotherVolume: ${oldMotherVolume}`);
         if (isParentChanged && newMotherVolume) {
           // Find the new parent object
           const newParentIndex = updatedVolumes.findIndex(vol => vol.name === newMotherVolume);
@@ -170,12 +169,12 @@ export const updateGeometry = (
           
           // IMPORTANT CHANGE: Only propagate _compoundId for union components, not for regular parent-child relationships
           if (newParent && newParent._compoundId && newParent.type === 'union' && updatedObject._is_boolean_component === true) {
-            console.log(`Parent changed to union ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
-            console.log(`This is a boolean component of the union, propagating _compoundId`);
+            debugLog(`Parent changed to union ${newMotherVolume} with _compoundId ${newParent._compoundId}`);
+            debugLog(`This is a boolean component of the union, propagating _compoundId`);
             
             // Add _compoundId to the updated object since it's a boolean component of a union
             updatedVolumes[index]._compoundId = newParent._compoundId;
-            console.log(`Added _compoundId ${newParent._compoundId} to boolean component ${updatedObject.name}`);
+            debugLog(`Added _compoundId ${newParent._compoundId} to boolean component ${updatedObject.name}`);
             
             // No need to propagate _compoundId to descendants for boolean components
             return {
@@ -185,10 +184,10 @@ export const updateGeometry = (
           } else {
             // For regular parent-child relationships or non-boolean components of unions,
             // DO NOT propagate the _compoundId
-            console.log(`Parent changed to ${newMotherVolume}, but not propagating _compoundId because it's not a boolean component of a union`);
+            debugLog(`Parent changed to ${newMotherVolume}, but not propagating _compoundId because it's not a boolean component of a union`);
             
             // Keep the original _compoundId or leave it undefined
-            console.log(`Preserved original _compoundId for ${updatedObject.name}: ${updatedVolumes[index]._compoundId || 'undefined'}`);
+            debugLog(`Preserved original _compoundId for ${updatedObject.name}: ${updatedVolumes[index]._compoundId || 'undefined'}`);
             
             return {
               ...prevGeometries,
@@ -213,10 +212,10 @@ export const updateGeometry = (
   if (keepSelected) {
     // Only change selection when explicitly requested
     setSelectedGeometry(id);
-    console.log(`Setting selection to ${id} as requested`);
+    debugLog(`Setting selection to ${id} as requested`);
   } else {
     // When keepSelected is false, maintain the current selection
-    console.log(`Keeping current selection (${currentSelection}) as requested`);
+    debugLog(`Keeping current selection (${currentSelection}) as requested`);
   }
 };
 
@@ -254,7 +253,7 @@ export const addGeometry = (
     //if (parentVolume && parentVolume.type === 'assembly' && parentVolume._compoundId) {
     if (parentVolume && parentVolume._compoundId) {
 
-      console.log(`New object's parent is compound ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
+      debugLog(`New object's parent is compound ${parentVolume.name} with _compoundId ${parentVolume._compoundId}`);
       newGeometry._compoundId = parentVolume._compoundId;
       
       // Store the original type information before it gets overridden
@@ -262,15 +261,15 @@ export const addGeometry = (
       if (newGeometry.type === 'assembly') {
         // Only store _originalType for assemblies since that's where the issue occurs
         newGeometry._originalType = newGeometry.g4name || newGeometry.name;
-        console.log(`Preserved original type ${newGeometry._originalType} for new assembly ${newGeometry.name}`);
+        debugLog(`Preserved original type ${newGeometry._originalType} for new assembly ${newGeometry.name}`);
       }
       
-      console.log(`Added _compoundId ${parentVolume._compoundId} to new object ${newGeometry.name}`);
+      debugLog(`Added _compoundId ${parentVolume._compoundId} to new object ${newGeometry.name}`);
     }
   }
   
   // Log the geometry being added
-  console.log('Adding geometry:', newGeometry);
+  debugLog('Adding geometry:', newGeometry);
   
   // Get the index that the new volume will have
   const newVolumeIndex = geometries.volumes.length;
@@ -303,7 +302,7 @@ export const addGeometry = (
   // Use a small timeout to ensure the geometry is added to the DOM before selecting
   // This ensures the transform controls appear immediately
   setTimeout(() => {
-    console.log(`Selecting newly created object: ${newVolumeKey}`);
+    debugLog(`Selecting newly created object: ${newVolumeKey}`);
     setSelectedGeometry(newVolumeKey);
   }, 50);
   
@@ -356,7 +355,7 @@ export const removeGeometry = (
     // Find all descendants
     findDescendants(volumeToRemove.name);
     
-    console.log(`Removing volume ${volumeToRemove.name} with ${volumesToRemove.length - 1} descendants`);
+    debugLog(`Removing volume ${volumeToRemove.name} with ${volumesToRemove.length - 1} descendants`);
     
     // Remove all volumes in the volumesToRemove array
     setGeometries(prevGeometries => {

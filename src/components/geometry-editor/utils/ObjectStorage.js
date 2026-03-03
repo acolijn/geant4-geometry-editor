@@ -11,6 +11,7 @@
 // Import the storage managers
 import FileSystemManager from '../../../utils/FileSystemManager';
 import IndexedDBManager from '../../../utils/IndexedDBManager';
+import { debugLog, debugWarn } from '../../../utils/logger.js';
 
 /**
  * Get the active storage manager (whichever is initialized)
@@ -41,10 +42,10 @@ const getStorageManager = () => {
  * @returns {Promise<Object>} - Result of the save operation
  */
 export const saveObject = async (name, description, objectData, preserveComponentIds = false) => {
-  console.log('ObjectStorage::saveObject:: name', name);
-  console.log('ObjectStorage::saveObject:: description', description);
-  console.log('ObjectStorage::saveObject:: objectData', objectData);
-  console.log('ObjectStorage::saveObject:: preserveComponentIds', preserveComponentIds);
+  debugLog('ObjectStorage::saveObject:: name', name);
+  debugLog('ObjectStorage::saveObject:: description', description);
+  debugLog('ObjectStorage::saveObject:: objectData', objectData);
+  debugLog('ObjectStorage::saveObject:: preserveComponentIds', preserveComponentIds);
   try {
     // Get the active storage manager
     let storageManager = getStorageManager();
@@ -72,7 +73,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
     // Check if we have a templateJson from geometryToJson
     let dataToProcess;
     if (objectData.templateJson) {
-      console.log('ObjectStorage::saveObject:: Using templateJson for old formatting');
+      debugLog('ObjectStorage::saveObject:: Using templateJson for old formatting');
       dataToProcess = {
         object: objectData.object,
         descendants: objectData.descendants || [],
@@ -80,21 +81,21 @@ export const saveObject = async (name, description, objectData, preserveComponen
       };
     } else {
       dataToProcess = objectData;
-      console.log('ObjectStorage::saveObject:: dataToProcess', dataToProcess);
-      console.log('ObjectStorage::saveObject:: objectData', objectData.descendants);
+      debugLog('ObjectStorage::saveObject:: dataToProcess', dataToProcess);
+      debugLog('ObjectStorage::saveObject:: objectData', objectData.descendants);
     }
     
     // If preserveComponentIds is true, check if the object already exists and preserve component IDs
     let dataToSave;
     
     if (preserveComponentIds) {
-      console.log(`ObjectStorage::saveObject:: Preserving component IDs for "${name}"`);
+      debugLog(`ObjectStorage::saveObject:: Preserving component IDs for "${name}"`);
       try {
         // Try to load the existing object
         const existingObject = await storageManager.loadObject(sanitizedName);
         
         if (existingObject) {
-          console.log(`Existing object found. Preserving component IDs for "${name}"`);
+          debugLog(`Existing object found. Preserving component IDs for "${name}"`);
           
           // Create maps of components by _componentId for both existing and new data
           const existingComponentsMap = new Map();
@@ -121,7 +122,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
             // First, try to match by _componentId if it exists
             dataToProcess.descendants.forEach(component => {
               if (component._componentId && existingComponentsMap.has(component._componentId)) {
-                console.log(`Matched component by ID: ${component.name} (${component._componentId})`);
+                debugLog(`Matched component by ID: ${component.name} (${component._componentId})`);
                 // Component already has a matching ID, no need to do anything
               } else {
                 // If component doesn't have an ID or it's not in the existing map,
@@ -129,13 +130,13 @@ export const saveObject = async (name, description, objectData, preserveComponen
                 const timestamp = Date.now();
                 const randomSuffix = Math.random().toString(36).substring(2, 10);
                 component._componentId = `component_${timestamp}_${randomSuffix}`;
-                console.log(`Generated new _componentId ${component._componentId} for component ${component.name}`);
+                debugLog(`Generated new _componentId ${component._componentId} for component ${component.name}`);
               }
             });
           }
         }
       } catch (error) {
-        console.warn(`No existing object found for "${name}". Creating new object with fresh component IDs.`, error);
+        debugWarn(`No existing object found for "${name}". Creating new object with fresh component IDs.`, error);
         // If there's an error loading the existing object, just continue with the new data
       }
     }
@@ -165,7 +166,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
       throw new Error('Failed to save object to file system');
     }
     
-    console.log(`Object "${name}" saved successfully to objects/${sanitizedName}.json in standardized format`);
+    debugLog(`Object "${name}" saved successfully to objects/${sanitizedName}.json in standardized format`);
     
     return {
       success: true,
@@ -192,7 +193,7 @@ export const listObjects = async () => {
     
     // If no storage manager is initialized, return empty array
     if (!storageManager) {
-      console.warn('No storage manager initialized');
+      debugWarn('No storage manager initialized');
       return [];
     }
     
@@ -231,7 +232,7 @@ export const listObjects = async () => {
             category: category || 'unknown'
           };
         } catch (err) {
-          console.warn(`Error reading object ${name}${category ? ` in ${category}` : ''}:`, err);
+          debugWarn(`Error reading object ${name}${category ? ` in ${category}` : ''}:`, err);
           return {
             name,
             description: 'Error reading metadata',
@@ -256,7 +257,7 @@ export const listObjects = async () => {
           fileName: `${name}.json`
         };
       } catch (err) {
-        console.warn(`Error reading object ${name}:`, err);
+        debugWarn(`Error reading object ${name}:`, err);
         return {
           name,
           description: 'Error reading metadata',
@@ -319,8 +320,8 @@ export const loadObject = async (fileName) => {
     }
     
     // We assume all objects are in the standardized format
-    console.log(`Object "${fileName}" loaded successfully in standardized format`);
-    console.log('Object data:', data);
+    debugLog(`Object "${fileName}" loaded successfully in standardized format`);
+    debugLog('Object data:', data);
     
     return {
       success: true,
@@ -383,7 +384,7 @@ export const deleteObject = async (fileName) => {
       throw new Error(`Failed to delete object "${fileName}"`);
     }
     
-    console.log(`Object "${fileName}" deleted successfully`);
+    debugLog(`Object "${fileName}" deleted successfully`);
     
     return {
       success: true,

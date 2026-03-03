@@ -4,6 +4,8 @@
  * This module contains handler functions for creating and managing geometry objects.
  */
 
+import { debugLog, debugWarn } from '../../../utils/logger.js';
+
 export const generateUniqueName = (type) => {
   return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 };
@@ -38,10 +40,6 @@ export const createGeometryHandlers = (props, state) => {
   const {
     newGeometryType,
     newMotherVolume
-    ////firstSolid,
-    ////secondSolid,
-    ////additionalComponents,
-    ////additionalComponentsValues
   } = state;
 
   /**
@@ -51,28 +49,6 @@ export const createGeometryHandlers = (props, state) => {
    * @param {string} type - Type of the object
    * @returns {string} A unique name for the object
    */
-/*   const generateInternalName = (baseName, type) => {
-    // Start with the base name and type
-    console.log('generateInternalName:', baseName, type);
-    let name = `${baseName}_${type}`;
-    let counter = 1;
-    
-    // Check if the name already exists in world or volumes
-    const nameExists = (testName) => {
-      if (geometries.world.name === testName) return true;
-      
-      return geometries.volumes.some(volume => volume.name === testName);
-    };
-    
-    // Add a counter to the name until it's unique
-    while (nameExists(name)) {
-      name = `${baseName}_${type}_${counter}`;
-      counter++;
-    }
-    
-    return name;
-  }; */
-
   /**
    * Add a new geometry object to the scene
    * 
@@ -92,7 +68,6 @@ export const createGeometryHandlers = (props, state) => {
     const uniqueName = generateUniqueName(newGeometryType);
 
     const newObject = {
-      //name: generateInternalName(newGeometryType.charAt(0).toUpperCase() + newGeometryType.slice(1), 'volume'),
       name: uniqueName,
       type: newGeometryType,
       material: defaultMaterial,
@@ -190,7 +165,7 @@ export const createGeometryHandlers = (props, state) => {
         
       default:
         // Print a warning for unknown geometry types
-        console.warn(`Unknown geometry type: ${newGeometryType}`);
+        debugWarn(`Unknown geometry type: ${newGeometryType}`);
     }
     
     // Add the new object to the scene
@@ -233,7 +208,7 @@ export const createGeometryHandlers = (props, state) => {
         }
         
         if (!instance) {
-          console.warn(`Instance ${instanceId} not found`);
+          debugWarn(`Instance ${instanceId} not found`);
           return;
         }
         
@@ -249,7 +224,7 @@ export const createGeometryHandlers = (props, state) => {
         // Preserve compound ID if this is an assembly
         if (instance.type === 'assembly' && instance._compoundId) {
           updatedObject._compoundId = instance._compoundId;
-          console.log(`Preserving compound ID during update: ${instance._compoundId}`);
+          debugLog(`Preserving compound ID during update: ${instance._compoundId}`);
         }
         
         // Update the instance

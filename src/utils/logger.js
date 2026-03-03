@@ -5,3 +5,9 @@ export const debugLog = (...args) => {
     console.log(...args);
   }
 };
+
+export const debugWarn = (...args) => {
+  if (isDebugEnabled) {
+    console.warn(...args);
+  }
+};

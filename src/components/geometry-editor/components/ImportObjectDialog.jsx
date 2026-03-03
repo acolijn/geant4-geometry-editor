@@ -26,6 +26,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import { debugLog } from '../../../utils/logger.js';
 
 /**
  * Dialog for importing a JSON object from the objects directory
@@ -163,8 +164,8 @@ const ImportObjectDialog = ({
         };
         
         // Convert the object data to geometry
-        console.log('handleImport:: result.data', result.data);
-        console.log('handleImport:: currentGeometry', currentGeometry);
+        debugLog('handleImport:: result.data', result.data);
+        debugLog('handleImport:: currentGeometry', currentGeometry);
         const updatedGeometry = jsonToGeometry(result.data, currentGeometry);
         
         // Call the import callbacks with the updated geometry and materials

@@ -4,6 +4,8 @@
  * (Firefox, Safari, older browsers, etc.)
  */
 
+import { debugLog } from './logger.js';
+
 const DB_NAME = 'geant4-geometry-editor';
 const DB_VERSION = 1;
 
@@ -29,7 +31,7 @@ class IndexedDBManager {
   async initialize() {
     return new Promise((resolve, reject) => {
       try {
-        console.log('Initializing IndexedDB Manager...');
+        debugLog('Initializing IndexedDB Manager...');
         
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         
@@ -43,12 +45,12 @@ class IndexedDBManager {
           this.db = event.target.result;
           this.initialized = true;
           this.baseDirectory = { name: 'IndexedDB Storage' }; // For compatibility
-          console.log('IndexedDB initialized successfully');
+          debugLog('IndexedDB initialized successfully');
           resolve(true);
         };
         
         request.onupgradeneeded = (event) => {
-          console.log('IndexedDB upgrade needed, creating stores...');
+          debugLog('IndexedDB upgrade needed, creating stores...');
           const db = event.target.result;
           
           // Create projects store
@@ -139,7 +141,7 @@ class IndexedDBManager {
         const request = store.put(projectData);
         
         request.onsuccess = () => {
-          console.log(`Project "${name}" saved successfully`);
+          debugLog(`Project "${name}" saved successfully`);
           resolve(true);
         };
         
@@ -244,7 +246,7 @@ class IndexedDBManager {
         const request = store.delete(name);
         
         request.onsuccess = () => {
-          console.log(`Project "${name}" deleted successfully`);
+          debugLog(`Project "${name}" deleted successfully`);
           resolve(true);
         };
         
@@ -287,7 +289,7 @@ class IndexedDBManager {
         const request = store.put(objectData);
         
         request.onsuccess = () => {
-          console.log(`Object "${name}" saved successfully in category "${category}"`);
+          debugLog(`Object "${name}" saved successfully in category "${category}"`);
           resolve(true);
         };
         
@@ -419,7 +421,7 @@ class IndexedDBManager {
         const request = store.delete(`${category}/${name}`);
         
         request.onsuccess = () => {
-          console.log(`Object "${name}" deleted successfully`);
+          debugLog(`Object "${name}" deleted successfully`);
           resolve(true);
         };
         
@@ -523,7 +525,7 @@ class IndexedDBManager {
           const request = store.delete(name);
           
           request.onsuccess = () => {
-            console.log(`Category "${name}" deleted successfully`);
+            debugLog(`Category "${name}" deleted successfully`);
             resolve(true);
           };
           

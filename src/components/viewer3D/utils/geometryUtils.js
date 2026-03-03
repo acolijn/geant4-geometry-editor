@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import { debugWarn } from '../../../utils/logger.js';
 
 // Function to calculate the world position of a volume based on its parent hierarchy
 // We use a visited set to prevent circular references
 export const calculateWorldPosition = (volume, visited = new Set(), geometries, volumeNameToIndex) => {
   if (!volume) {
-    console.warn('Invalid volume passed to calculateWorldPosition');
+    debugWarn('Invalid volume passed to calculateWorldPosition');
     return {
       position: [0, 0, 0],
       rotation: [0, 0, 0]
@@ -13,7 +14,7 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
 
   // Check for circular references
   if (visited.has(volume.name)) {
-    console.warn(`Circular reference detected for volume: ${volume.name}`);
+    debugWarn(`Circular reference detected for volume: ${volume.name}`);
     return {
       position: volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0],
       rotation: volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0]
@@ -69,7 +70,7 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
       if (assemblyParentIndex !== undefined) {
         // Check for circular reference between parent and child
         if (parentVolume.mother_volume === volume.name) {
-          console.warn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);
+          debugWarn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);
           // Use local position to break the circular reference
           assemblyWorld = {
             position: parentVolume.position ? 
@@ -189,7 +190,7 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
   // Get parent's world position recursively
   // Check for circular reference between parent and child
   if (parentVolume.mother_volume === volume.name) {
-    console.warn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);
+    debugWarn(`Circular parent-child reference detected: ${volume.name} <-> ${parentVolume.name}`);
     // Use local position to break the circular reference
     return {
       position: volume.position ? 

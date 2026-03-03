@@ -6,6 +6,7 @@ import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
 import { findAllDescendants, getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
 import { saveObject } from '../geometry-editor/utils/ObjectStorage';
 import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdateUtils';
+import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
@@ -15,11 +16,11 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
 
   // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
   const handleExportObject = async (objectKey = selectedGeometry) => {
-    console.log('handleExportObject:: geometries');
+    debugLog('handleExportObject:: geometries');
     
     // Get the currently selected geometry object
     const selectedObject = getSelectedGeometryObject(objectKey, geometries);
-    console.log('handleExportObject:: selectedObject', selectedObject);
+    debugLog('handleExportObject:: selectedObject', selectedObject);
     
     if (!selectedObject) {
       alert('Please select a geometry object to export');
@@ -69,7 +70,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         return;
       }
       
-      console.log('templateJson::', templateJson);
+      debugLog('templateJson::', templateJson);
       
       // Set the object to save and open the dialog
       setObjectToSave(templateJson);
@@ -429,8 +430,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             const fileName = name || objectToSave.object.name || 'geometry';
             
             // Apply structured naming if needed
-            console.log('GeometryTree:: objectToSave', objectToSave);
-            console.log('GeometryTree:: preserveComponentIds', preserveComponentIds);
+            debugLog('GeometryTree:: objectToSave', objectToSave);
+            debugLog('GeometryTree:: preserveComponentIds', preserveComponentIds);
             // const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
             const dataToSave = objectToSave;
             // Save the object to the library

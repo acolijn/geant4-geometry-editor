@@ -24,6 +24,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import InfoIcon from '@mui/icons-material/Info';
 import UpdateIcon from '@mui/icons-material/Update';
+import { debugLog, debugWarn } from '../../../utils/logger.js';
 
 /**
  * Dialog for updating instances of objects in the scene
@@ -138,10 +139,10 @@ const UpdateObjectsDialog = ({
         const result = await loadObject(objectType.fileName);
         if (result.success && result.data) {
           objectDefinition = result.data;
-          console.log('Loaded object definition:', objectDefinition);
+          debugLog('Loaded object definition:', objectDefinition);
         }
       } catch (err) {
-        console.warn('Could not load object definition:', err);
+        debugWarn('Could not load object definition:', err);
       }
       
       // Only proceed with the standardized object definition shape.

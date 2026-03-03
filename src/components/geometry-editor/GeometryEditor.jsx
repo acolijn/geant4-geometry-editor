@@ -73,9 +73,6 @@ const RefactoredGeometryEditor = ({
   const [newMotherVolume, setNewMotherVolume] = useState('World');
 
   // ===== Dialog States =====
-  // Load Object Dialog
-  const [, setLoadObjectDialogOpen] = useState(false);
-  
   // Import Object Dialog
   const [importObjectDialogOpen, setImportObjectDialogOpen] = useState(false);
   
@@ -168,7 +165,6 @@ const RefactoredGeometryEditor = ({
         fileInputRef={fileInputRef}
         importAlert={importAlert}
         handleCloseAlert={handleCloseAlert}
-        setLoadObjectDialogOpen={setLoadObjectDialogOpen}
         setImportObjectDialogOpen={setImportObjectDialogOpen}
         setHitCollectionsDialogOpen={setHitCollectionsDialogOpen}
         setUpdateObjectsDialogOpen={setUpdateDialogOpen}
@@ -216,9 +212,6 @@ const RefactoredGeometryEditor = ({
         preSelectedData={externalUpdateDialogData}
         directUpdateFunc={updateAssemblies}
       />
-      
-      {/* Load Object Dialog */}
-
       
       {/* Import Object Dialog */}
       <ImportObjectDialog

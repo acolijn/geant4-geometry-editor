@@ -9,6 +9,7 @@ import fileSystemManager from '../../../utils/FileSystemManager';
 import indexedDBManager from '../../../utils/IndexedDBManager';
 import { generateJson } from '../../json-viewer/utils/geometryToJson';
 import { jsonToGeometry } from '../../json-viewer/utils/jsonToGeometry';
+import { debugLog, debugWarn } from '../../../utils/logger.js';
 
 /**
  * Custom hook for project storage management
@@ -69,11 +70,11 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
   const initializeFileSystem = useCallback(async () => {
     setIsLoading(true);
     try {
-      console.log('Starting file system initialization...');
+      debugLog('Starting file system initialization...');
       const success = await fileSystemManager.initialize();
       
       if (success && fileSystemManager.initialized) {
-        console.log('File system initialization successful');
+        debugLog('File system initialization successful');
         setStorageManager(fileSystemManager);
         setStorageMode('filesystem');
         setIsInitialized(true);
@@ -83,7 +84,7 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
           dirPath = fileSystemManager.baseDirectory ? 
             await fileSystemManager.baseDirectory.name : '';
         } catch (e) {
-          console.warn('Could not get directory name:', e);
+          debugWarn('Could not get directory name:', e);
         }
         
         setAlert({
@@ -119,11 +120,11 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
   const initializeIndexedDB = useCallback(async () => {
     setIsLoading(true);
     try {
-      console.log('Starting IndexedDB initialization...');
+      debugLog('Starting IndexedDB initialization...');
       const success = await indexedDBManager.initialize();
       
       if (success && indexedDBManager.initialized) {
-        console.log('IndexedDB initialization successful');
+        debugLog('IndexedDB initialization successful');
         setStorageManager(indexedDBManager);
         setStorageMode('indexeddb');
         setIsInitialized(true);

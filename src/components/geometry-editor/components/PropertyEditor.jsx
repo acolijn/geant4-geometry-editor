@@ -15,8 +15,9 @@ import {
 import TreeSelect from './TreeSelect';
 import { renderMotherVolumeTree } from './motherVolumeUtils.jsx';
 import NumericInput from './NumericInput';
+import UnitSelector from './UnitSelector';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { toInternalUnit, fromInternalUnit, getAvailableUnits } from '../utils/UnitConverter';
+import { toInternalUnit, fromInternalUnit } from '../utils/UnitConverter';
 import { getSelectedGeometryObject } from '../utils/GeometryUtils';
 
 /**
@@ -396,19 +397,7 @@ const PropertyEditor = ({
           onUpdate={(newValue) => handlePropertyChange('position.z', newValue)}
           onFocus={handleInputFocus}
         />
-        <FormControl size="small" sx={{ minWidth: '90px' }}>
-          <InputLabel>Unit</InputLabel>
-          <Select
-            value={lengthUnit}
-            label="Unit"
-            onChange={(e) => setLengthUnit(e.target.value)}
-            size="small"
-          >
-            {getAvailableUnits('length').map(unit => (
-              <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
       </Box>
       
       <Typography variant="subtitle1" sx={{ mt: 2 }}>Rotation</Typography>
@@ -440,19 +429,7 @@ const PropertyEditor = ({
           onUpdate={(newValue) => handlePropertyChange('rotation.z', newValue)}
           onFocus={handleInputFocus}
         />
-        <FormControl size="small" sx={{ minWidth: '90px' }}>
-          <InputLabel>Unit</InputLabel>
-          <Select
-            value={angleUnit}
-            label="Unit"
-            onChange={(e) => setAngleUnit(e.target.value)}
-            size="small"
-          >
-            {getAvailableUnits('angle').map(unit => (
-              <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <UnitSelector type="angle" value={angleUnit} onChange={setAngleUnit} />
       </Box>
       
       {/* Render type-specific properties */}
@@ -499,19 +476,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('dimensions.z', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
         </>
       )}
@@ -536,19 +501,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('height', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <NumericInput
@@ -559,19 +512,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('innerRadius', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
         </>
       )}
@@ -588,19 +529,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('radius', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
         </>
       )}
@@ -625,19 +554,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('dx2', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <NumericInput
@@ -656,19 +573,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('dy2', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
             <NumericInput
@@ -679,19 +584,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('dz', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
         </>
       )}
@@ -736,19 +629,7 @@ const PropertyEditor = ({
               size="small"
               inputProps={{ step: 'any', min: 0 }}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
         </>
       )}
@@ -773,19 +654,7 @@ const PropertyEditor = ({
               onUpdate={(newValue) => handlePropertyChange('minorRadius', newValue)}
               onFocus={handleInputFocus}
             />
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
         </>
       )}
@@ -797,19 +666,7 @@ const PropertyEditor = ({
             Define the sections of the polycone along the z-axis
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-            <FormControl size="small" sx={{ minWidth: '90px' }}>
-              <InputLabel>Unit</InputLabel>
-              <Select
-                value={lengthUnit}
-                label="Unit"
-                onChange={(e) => setLengthUnit(e.target.value)}
-                size="small"
-              >
-                {getAvailableUnits('length').map(unit => (
-                  <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <UnitSelector type="length" value={lengthUnit} onChange={setLengthUnit} />
           </Box>
           {selectedObject?.zSections && selectedObject?.zSections.map((section, index) => (
             <Box key={`section-${index}`} sx={{ display: 'flex', gap: 1, mb: 1, border: '1px solid #eee', p: 1, borderRadius: '4px' }}>
