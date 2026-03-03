@@ -1,81 +1,39 @@
 # Save and Load
 
-The Geant4 Geometry Editor provides comprehensive save and load functionality to ensure your work is preserved and can be easily shared or continued later.
+The Geant4 Geometry Editor provides save and load functionality through the **Project Manager** (accessible via the button in the top-right header).
 
 ## Overview
 
-The save and load features allow you to:
+Your work can be saved and loaded in two ways:
 
-- Save your current geometry design to local storage
-- Export your design to JSON files
-- Import previously saved designs
-- Share designs with other users
+- **Server storage** — save to / load from the Express backend (persisted on disk as JSON files)
+- **JSON file export / import** — download the geometry + materials as a JSON file, or import a previously exported file
 
-## Automatic Saving
+## Server Storage
 
-The Geant4 Geometry Editor includes an automatic saving feature:
+The Project Manager dialog lets you:
 
-- **Local Storage**: Your work is automatically saved to the browser's local storage
-- **Frequency**: Saves occur after each significant change
-- **Recovery**: Automatically recovers your work if the browser is closed unexpectedly
+- **Save** — saves the current geometry, materials, and hit-collection settings to the server under a project name
+- **Load** — lists all projects saved on the server and loads the selected one
+- **Delete** — removes a saved project from the server
 
-## Manual Saving
+Projects are stored in the `server-data/` directory on the backend.
 
-You can manually save your work in several ways:
+## JSON Export / Import
 
-- **Save Button**: Click the Save button in the toolbar to save to local storage
-- **Save As**: Save your design with a specific name
-- **Export to JSON**: Save your design as a JSON file on your computer
-- **Export Selected**: Save only the selected objects and their children
+From the **JSON tab** you can:
 
-## Loading Designs
+- **Download Geometry JSON** — exports the full geometry (world + volumes) and materials as a single JSON file compatible with the [geant4-simulation](https://github.com/acolijn/geant4-simulation) geometry parser
+- **Import JSON** — upload a previously exported JSON file to replace the current geometry and/or materials
 
-To load a previously saved design:
+## Automatic Local Storage
 
-1. Click the Load button in the toolbar
-2. Select from:
-   - **Recent Designs**: Designs saved in local storage
-   - **Import from File**: Load a design from a JSON file
-   - **Templates**: Start from a predefined template
+The editor automatically saves the current state to the browser's `localStorage` after each change. If you close the browser and re-open the editor, your most recent work is restored automatically.
 
-## File Management
-
-The Geant4 Geometry Editor provides tools for managing your saved designs:
-
-- **Design List**: View and manage all saved designs
-- **Rename**: Change the name of a saved design
-- **Delete**: Remove saved designs you no longer need
-- **Duplicate**: Create a copy of an existing design
-
-## Version Control
-
-For advanced users, the Geant4 Geometry Editor supports basic version control:
-
-- **Snapshots**: Create named snapshots of your design at important milestones
-- **History**: View the history of changes to your design
-- **Revert**: Return to a previous snapshot if needed
-
-## Cloud Storage
-
-If configured, the Geant4 Geometry Editor can save designs to cloud storage:
-
-- **User Authentication**: Sign in to access your designs from any device
-- **Shared Designs**: Collaborate with other users on the same design
-- **Access Control**: Control who can view and edit your designs
-
-## Backup and Recovery
-
-To prevent data loss, the Geant4 Geometry Editor includes backup and recovery features:
-
-- **Automatic Backups**: Regular backups of your work
-- **Recovery Points**: Restore from specific points in time
-- **Export Backups**: Save backup files to your computer
+> **Note:** localStorage is per-browser and per-origin. To share work across machines, use server storage or JSON export.
 
 ## Best Practices
 
-For optimal use of the save and load features:
-
-- **Regular Saves**: Manually save important milestones in your design
-- **Descriptive Names**: Use clear, descriptive names for your saved designs
-- **Export Important Work**: Export critical designs as JSON files for safekeeping
-- **Version Naming**: Use a consistent naming scheme for different versions
+- **Save regularly** to the server for important design milestones
+- **Export JSON** before large changes so you can revert if needed
+- **Use descriptive project names** to keep track of different detector versions

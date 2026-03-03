@@ -6,17 +6,15 @@ This guide will walk you through the process of installing and setting up the Ge
 
 Before installing the Geant4 Geometry Editor, ensure you have the following:
 
-- [Node.js](https://nodejs.org/) (v14.0.0 or higher)
-- [npm](https://www.npmjs.com/) (v6.0.0 or higher)
+- [Node.js](https://nodejs.org/) (v18.0.0 or higher)
+- [npm](https://www.npmjs.com/) (v9.0.0 or higher)
 - A modern web browser (Chrome, Firefox, Safari, or Edge)
 
 ## Installation
 
-### Option 1: Clone from GitHub
-
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-organization/geant4-geometry-editor.git
+   git clone https://github.com/acolijn/geant4-geometry-editor.git
    cd geant4-geometry-editor
    ```
 
@@ -30,29 +28,26 @@ Before installing the Geant4 Geometry Editor, ensure you have the following:
    npm run dev
    ```
 
-4. Open your browser and navigate to `http://localhost:3000` (or the port shown in your terminal).
-
-### Option 2: Using npm
-
-1. Install the package globally:
-   ```bash
-   npm install -g geant4-geometry-editor
-   ```
-
-2. Run the editor:
-   ```bash
-   geant4-geometry-editor
-   ```
+4. Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`).
 
 ## Building for Production
 
-To build the application for production:
+To build the application for production and serve it:
 
 ```bash
 npm run build
+npm start
 ```
 
-The built files will be in the `dist` directory and can be served using any static file server.
+The production server runs on port 3001 by default and serves the built app plus a JSON file-storage API.
+
+## Running Tests
+
+```bash
+npm test
+```
+
+This runs all Vitest unit tests (116 tests across 8 test files covering unit conversion, material colours, geometry icons, geometry operations, compound-ID propagation, property handlers, geometry handlers, and JSON import / export).
 
 ## Troubleshooting
 
@@ -73,4 +68,4 @@ The built files will be in the `dist` directory and can be served using any stat
    - Try a different browser
    - Check if WebGL is enabled in your browser
 
-For more help, please [open an issue](https://github.com/your-organization/geant4-geometry-editor/issues) on our GitHub repository.
+For more help, please [open an issue](https://github.com/acolijn/geant4-geometry-editor/issues) on our GitHub repository.
