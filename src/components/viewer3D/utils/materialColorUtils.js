@@ -14,7 +14,7 @@ export const getMaterialColor = (materialName, materials, defaultColor = 'rgba(1
   const material = materials[materialName];
 
   if (material && material.color) {
-    return `rgba(${Math.floor(material.color[0] * 255)}, ${Math.floor(material.color[1] * 255)}, ${Math.floor(material.color[2] * 255)}, ${material.color[3] || 0.7})`;
+    return `rgba(${Math.floor(material.color[0] * 255)}, ${Math.floor(material.color[1] * 255)}, ${Math.floor(material.color[2] * 255)}, ${material.color[3] ?? 0.7})`;
   }
 
   return defaultColor;

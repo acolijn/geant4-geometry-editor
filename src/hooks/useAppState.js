@@ -4,13 +4,7 @@ import { defaultGeometry, defaultMaterials } from '../utils/defaults';
 import { propagateCompoundIdToDescendants } from '../components/geometry-editor/utils/compoundIdPropagator';
 import { debugLog } from '../utils/logger';
 
-const cloneData = (data) => {
-  if (typeof structuredClone === 'function') {
-    return structuredClone(data);
-  }
-
-  return JSON.parse(JSON.stringify(data));
-};
+const cloneData = (data) => structuredClone(data);
 
 const isValidMaterialsMap = (value) => {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

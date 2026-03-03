@@ -147,7 +147,7 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
     // We'll create completely isolated meshes for each component
     return componentVolumes.map((component) => {
       // Create a deep clone of the component to avoid reference issues
-      const componentClone = JSON.parse(JSON.stringify(component));
+      const componentClone = structuredClone(component);
       
       // Create geometry for this component based on its type and dimensions
       const geometry = createGeometry(componentClone);

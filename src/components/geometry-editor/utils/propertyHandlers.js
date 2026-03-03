@@ -56,7 +56,7 @@ export const createPropertyHandlers = (props) => {
     if (!selectedObject) return;
     
     // Create a deep copy of the selected object to avoid mutating the original
-    const updatedObject = JSON.parse(JSON.stringify(selectedObject));
+    const updatedObject = structuredClone(selectedObject);
     
     // Parse the value if it's a number
     let finalValue = value;
@@ -125,7 +125,7 @@ export const createPropertyHandlers = (props) => {
     if (!selectedObject) return;
     
     // Create a deep copy of the selected object to avoid mutating the original
-    const updatedObject = JSON.parse(JSON.stringify(selectedObject));
+    const updatedObject = structuredClone(selectedObject);
     
     // Ensure the rotation property exists
     if (!updatedObject.rotation) {
@@ -155,7 +155,7 @@ export const createPropertyHandlers = (props) => {
     if (!selectedObject || selectedObject.type !== 'union') return;
     
     // Create a deep copy of the selected object to avoid mutating the original
-    const updatedObject = JSON.parse(JSON.stringify(selectedObject));
+    const updatedObject = structuredClone(selectedObject);
     
     // Ensure the relative_position property exists
     if (!updatedObject.relative_position) {
@@ -185,7 +185,7 @@ export const createPropertyHandlers = (props) => {
     if (!selectedObject || selectedObject.type !== 'union') return;
     
     // Create a deep copy of the selected object to avoid mutating the original
-    const updatedObject = JSON.parse(JSON.stringify(selectedObject));
+    const updatedObject = structuredClone(selectedObject);
     
     // Ensure the relative_rotation property exists
     if (!updatedObject.relative_rotation) {

@@ -8,6 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "node server.js",
     "prod": "npm run build && npm run start",
     "docs:api": "node scripts/generate-api-docs.js",
@@ -39,6 +41,7 @@
     "globals": "^16.0.0",
     "jsdoc": "^4.0.4",
     "jsdoc-to-markdown": "^9.1.1",
-    "vite": "^6.3.1"
+    "vite": "^6.3.1",
+    "vitest": "^4.0.18"
   }
 }
