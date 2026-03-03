@@ -25,6 +25,17 @@ const mergeGeometryObject = (baseObject, patchObject) => {
     ...patchObject
   };
 
+  // Keys that can be explicitly removed by deleting them from the patch.
+  // If the key existed on base but is absent from patch, remove it from
+  // the merged result so that e.g. clearing a hits collection actually
+  // takes effect instead of silently keeping the old value.
+  const removableKeys = ['hitsCollectionName', 'isActive'];
+  removableKeys.forEach((key) => {
+    if (key in baseObject && !(key in patchObject)) {
+      delete merged[key];
+    }
+  });
+
   const nestedKeys = ['position', 'rotation', 'size', 'dimensions'];
   nestedKeys.forEach((key) => {
     if (baseObject[key] && patchObject[key] && typeof patchObject[key] === 'object') {

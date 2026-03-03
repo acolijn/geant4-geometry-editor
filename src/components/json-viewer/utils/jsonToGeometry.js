@@ -167,6 +167,9 @@ function createAssembly(volume, geometry) {
         if (instanceId) {
             assembly._instanceId = instanceId;
         }
+        if (volume.hitsCollectionName !== undefined) {
+            assembly.hitsCollectionName = volume.hitsCollectionName;
+        }
         debugLog('createAssembly:: assembly', assembly);
         geometry.geometries.volumes.push(assembly);
 
