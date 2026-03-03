@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import Scene from './Scene';
 import GeometryTree from './GeometryTree';
 import CameraSetup from './components/CameraSetup';
+import ErrorBoundary from '../app/ErrorBoundary';
 import { debugLog } from '../../utils/logger';
 import { useAppContext } from '../../contexts/useAppContext';
 
@@ -256,6 +257,10 @@ const Viewer3D = () => {
           </button>
         </div>
         
+        <ErrorBoundary
+          title="3D Viewer Error"
+          message="The 3D renderer encountered an error. This may be caused by invalid geometry data or a WebGL issue."
+        >
         <Canvas 
           style={{ background: '#f0f0f0' }} 
           onClick={handleCanvasClick}
@@ -283,6 +288,7 @@ const Viewer3D = () => {
             maxDistance={20000} // Default value, CameraSetup will handle proper scaling
           />
         </Canvas>
+        </ErrorBoundary>
       </div>
     </div>
   );

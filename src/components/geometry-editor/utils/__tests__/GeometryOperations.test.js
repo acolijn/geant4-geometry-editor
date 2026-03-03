@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { updateGeometry, addGeometry, removeGeometry } from '../GeometryOperations';
 
 // Mock debugLog
@@ -11,8 +11,10 @@ describe('GeometryOperations', () => {
   let setGeometries;
   let setSelectedGeometry;
   let baseGeometries;
+  let consoleErrorSpy;
 
   beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setGeometries = vi.fn((updater) => {
       // Execute the updater if it's a function to test the logic inside
       if (typeof updater === 'function') {
@@ -28,6 +30,10 @@ describe('GeometryOperations', () => {
         { name: 'Child1', type: 'sphere', radius: 2, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, mother_volume: 'Box1' },
       ]
     };
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('updateGeometry', () => {

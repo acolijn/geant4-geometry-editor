@@ -3,6 +3,7 @@ import AppHeader from './components/app/AppHeader';
 import GeometryTab from './components/app/tabs/GeometryTab';
 import MaterialsTab from './components/app/tabs/MaterialsTab';
 import JsonTab from './components/app/tabs/JsonTab';
+import ErrorBoundary from './components/app/ErrorBoundary';
 import { AppStateProvider } from './contexts/AppStateContext';
 import { useAppContext } from './contexts/useAppContext';
 import './App.css';
@@ -40,9 +41,15 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppStateProvider>
-        <AppContent />
-      </AppStateProvider>
+      <ErrorBoundary
+        title="Application Error"
+        message="An unexpected error occurred. Click below to reload."
+        onReset={() => window.location.reload()}
+      >
+        <AppStateProvider>
+          <AppContent />
+        </AppStateProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

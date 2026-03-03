@@ -139,6 +139,7 @@ function initializeAssemblies(assemblies, geometry) {
 
   // loop over the volumes
   geometry.volumes.forEach(volume => {
+    if (!volume) return; // skip null/undefined entries
     // new assembly...... add it to the assemblies object
     if (!assemblies[volume._compoundId] && 
         (volume.type === 'assembly' || volume.type === 'union')) {
@@ -312,8 +313,9 @@ export function generateJson(geometry){
   // loop over the volumes
   if (geometry.volumes && Array.isArray(geometry.volumes)) {
     geometry.volumes.forEach(volume => {
+      if (!volume) return; // skip null/undefined entries
       volume._write_full_geometry = _write_full_geometry;
-      if (volume && (volume.type === 'assembly' || volume.type === 'union')) {
+      if (volume.type === 'assembly' || volume.type === 'union') {
         debugLog('generateJson:: processing assembly', volume);
         processAssembly(assemblies, volume); 
       } else if (volume) {
@@ -464,6 +466,7 @@ export function generateTemplateJson(geometry, compoundId, rootName = null) {
   while (queue.length > 0) {
     const parentName = queue.shift();
     geometry.volumes.forEach((volume) => {
+      if (!volume) return;
       const sameInstance = !rootInstanceId || volume._instanceId === rootInstanceId;
       if (sameInstance && volume.mother_volume === parentName && !selectedNames.has(volume.name)) {
         selectedNames.add(volume.name);

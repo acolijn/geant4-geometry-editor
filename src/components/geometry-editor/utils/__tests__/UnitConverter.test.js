@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { toInternalUnit, fromInternalUnit, getAvailableUnits, formatValueWithUnit } from '../UnitConverter';
+
+// Silence expected console.warn from unknown-unit tests
+vi.mock('../../../../utils/logger.js', () => ({
+  debugLog: vi.fn(),
+  debugWarn: vi.fn(),
+}));
 
 describe('UnitConverter', () => {
   // ── toInternalUnit ──────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createGeometryHandlers, generateUniqueName } from '../geometryHandlers';
 
 // Mock logger
@@ -8,6 +8,11 @@ vi.mock('../../../../utils/logger.js', () => ({
 }));
 
 describe('geometryHandlers', () => {
+  // Silence expected console.error from validation tests
+  let consoleErrorSpy;
+  beforeEach(() => { consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {}); });
+  afterEach(() => { consoleErrorSpy.mockRestore(); });
+
   describe('generateUniqueName', () => {
     it('generates a name with the type prefix', () => {
       const name = generateUniqueName('box');
