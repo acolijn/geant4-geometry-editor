@@ -317,6 +317,10 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           return null;
         }
       }
+      // Skip rendering volumes marked as invisible
+      if (volume.visible === false) {
+        return null;
+      }
       const key = `volume-${index}`;
       const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
       

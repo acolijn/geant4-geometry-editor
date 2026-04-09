@@ -395,11 +395,29 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               textShadow: isActive ? '0 0 1px #4caf50, 0 0 1px #4caf50, 0 0 2px #4caf50, 0 0 2px #4caf50' : 'none', // Much thicker green outline for active elements
               fontSize: '16px'
             }}>{getVolumeIcon(volume)}</span>
-            <span style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
               {/* Display the Geant4 name (g4name) if available, otherwise fall back to internal name */}
               {volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
               
               {/* Active elements are now indicated by the green icon outline */}
+            </span>
+            {/* Visibility toggle eye icon */}
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                const updatedVolume = { ...volume, visible: volume.visible === false ? true : false };
+                onUpdateGeometry(key, updatedVolume);
+              }}
+              style={{
+                marginLeft: 'auto',
+                cursor: 'pointer',
+                opacity: volume.visible === false ? 0.3 : 0.7,
+                fontSize: '14px',
+                padding: '0 4px',
+              }}
+              title={volume.visible === false ? 'Show' : 'Hide'}
+            >
+              {volume.visible === false ? '👁️‍🗨️' : '👁️'}
             </span>
           </div>
           {/* Only render children if node is expanded */}

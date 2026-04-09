@@ -4,12 +4,14 @@ import {
   Typography,
   TextField,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
   Button,
   IconButton,
   Menu,
+  Switch,
   Tooltip
 } from '@mui/material';
 import TreeSelect from './TreeSelect';
@@ -212,6 +214,26 @@ const PropertyEditor = ({
         <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
           Hits Collection is determined by the parent union volume.
         </Typography>
+      )}
+
+      {/* Visibility toggle */}
+      {selectedGeometry !== 'world' && (
+        <FormControlLabel
+          control={
+            <Switch
+              checked={selectedObject?.visible !== false}
+              onChange={(e) => {
+                e.stopPropagation();
+                handlePropertyChange('visible', e.target.checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              size="small"
+            />
+          }
+          label="Visible"
+          sx={{ mt: 1, mb: 1 }}
+          onClick={(e) => e.stopPropagation()}
+        />
       )}
       
       {/* Mother Volume selector - only show for non-world volumes that are not part of a union */}
