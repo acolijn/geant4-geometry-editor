@@ -83,7 +83,9 @@ const createGeometryForVolume = (vol) => {
       const sections = vol.zSections;
       if (sections && sections.length >= 2) {
         const points = sections.map(s => new THREE.Vector2(s.rMax || 0, s.z || 0));
-        return new THREE.LatheGeometry(points, 48);
+        const geom = new THREE.LatheGeometry(points, 48);
+        geom.rotateX(Math.PI / 2);        // Geant4 convention: axis along z
+        return geom;
       }
       return new THREE.CylinderGeometry(30, 50, 100, 32);
     }
