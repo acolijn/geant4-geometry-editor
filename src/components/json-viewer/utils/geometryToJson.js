@@ -198,12 +198,17 @@ function initializeAssemblies(assemblies, geometry) {
     selectedVolumes.forEach(volume => { volume._compoundId = _compoundId; });
     // 3. exclude the type==assembly and type==union (already handled above)
     // 4. from the list of volumes select the first one with each _componentId
+    //    If _componentId is not set, do not deduplicate (keep all unique components)
     const seen = new Set();
     selectedVolumes = selectedVolumes.filter(volume => {
-      if (seen.has(volume._componentId)) {
+      const key = volume._componentId;
+      if (key === undefined || key === null) {
+        return true; // Don't deduplicate volumes without _componentId
+      }
+      if (seen.has(key)) {
         return false;
       } else {
-        seen.add(volume._componentId);
+        seen.add(key);
         return true;
       }
     });

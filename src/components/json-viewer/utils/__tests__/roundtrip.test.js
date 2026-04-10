@@ -299,4 +299,130 @@ describe('JSON round-trip (geometryToJson → jsonToGeometry)', () => {
     const result = roundTrip(geo);
     expect(result.geometries.volumes[0].hitsCollectionName).toBeUndefined();
   });
+
+  it('round-trips a multi-placement assembly preserving all components', () => {
+    // Simulates the mc-master PMT pattern: one assembly with N placements and M components
+    const inputJson = {
+      world: { name: 'World', type: 'box', dimensions: { x: 2000, y: 2000, z: 2000 },
+        material: 'G4_AIR' },
+      volumes: [{
+        name: 'PMTArray',
+        g4name: 'PMTArray',
+        type: 'assembly',
+        material: 'LXe',
+        placements: [
+          { name: 'PMT_0', x: 0, y: 0, z: 10, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+          { name: 'PMT_1', x: 50, y: 0, z: 10, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+          { name: 'PMT_2', x: 100, y: 0, z: 10, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+        ],
+        components: [
+          {
+            name: 'Body_0', g4name: 'Body', type: 'cylinder',
+            dimensions: { radius: 20, height: 50 },
+            material: 'Kovar',
+            placements: [{ name: 'Body_0', x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: '' }],
+          },
+          {
+            name: 'Window_0', g4name: 'Window', type: 'cylinder',
+            dimensions: { radius: 18, height: 3 },
+            material: 'Quartz',
+            placements: [{ name: 'Window_0', x: 0, y: 0, z: -23, rotation: { x: 0, y: 0, z: 0 }, parent: '' }],
+          },
+          {
+            name: 'Cathode_0', g4name: 'Cathode', type: 'cylinder',
+            dimensions: { radius: 16, height: 0.1 },
+            material: 'Aluminium',
+            placements: [{ name: 'Cathode_0', x: 0, y: 0, z: -22.5, rotation: { x: 0, y: 0, z: 0 }, parent: '' }],
+          },
+        ],
+      }],
+    };
+
+    // Import → internal → export roundtrip
+    const imported = jsonToGeometry(inputJson, emptyGeo());
+    
+    // After import: should have 3 assembly instances × (1 root + 3 components) = 12 flat volumes
+    const assemblies = imported.geometries.volumes.filter(v => v.type === 'assembly');
+    const components = imported.geometries.volumes.filter(v => v.type !== 'assembly');
+    expect(assemblies).toHaveLength(3);
+    expect(components).toHaveLength(9); // 3 components × 3 instances
+
+    // All instances should share the same _compoundId
+    const compoundIds = new Set(assemblies.map(a => a._compoundId));
+    expect(compoundIds.size).toBe(1);
+
+    // Components should have _componentId set
+    components.forEach(c => {
+      expect(c._componentId).toBeTruthy();
+    });
+
+    // Export back to JSON
+    const exported = generateJson({
+      world: imported.geometries.world,
+      volumes: imported.geometries.volumes,
+    });
+
+    // Should produce ONE assembly volume with 3 placements and 3 components
+    const asmVolumes = exported.volumes.filter(v => v.type === 'assembly');
+    expect(asmVolumes).toHaveLength(1);
+    expect(asmVolumes[0].placements).toHaveLength(3);
+    expect(asmVolumes[0].components).toHaveLength(3);
+
+    // Verify component types are preserved
+    const compTypes = asmVolumes[0].components.map(c => c.type);
+    expect(compTypes).toContain('cylinder');
+    expect(asmVolumes[0].components.length).toBe(3);
+  });
+
+  it('round-trips assembly components without _componentId (legacy format)', () => {
+    // Tests that components without _componentId are not incorrectly deduplicated
+    const geo = {
+      world: { name: 'W', type: 'box', size: { x: 1000, y: 1000, z: 1000 },
+        position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } },
+      volumes: [
+        {
+          name: 'Asm1', g4name: 'Asm1', type: 'assembly',
+          material: 'G4_AIR',
+          position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 },
+          mother_volume: 'W',
+          _compoundId: 'asm_1',
+          // Note: no _componentId set (legacy/imported data)
+        },
+        {
+          name: 'Part1', g4name: 'Part1', type: 'box',
+          size: { x: 5, y: 5, z: 5 },
+          position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 },
+          mother_volume: 'Asm1',
+          _compoundId: 'asm_1',
+          material: 'G4_AIR', visible: true,
+          // No _componentId
+        },
+        {
+          name: 'Part2', g4name: 'Part2', type: 'cylinder',
+          radius: 3, height: 10,
+          position: { x: 10, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 },
+          mother_volume: 'Asm1',
+          _compoundId: 'asm_1',
+          material: 'G4_WATER', visible: true,
+          // No _componentId
+        },
+        {
+          name: 'Part3', g4name: 'Part3', type: 'sphere',
+          radius: 2,
+          position: { x: -10, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 },
+          mother_volume: 'Asm1',
+          _compoundId: 'asm_1',
+          material: 'G4_AIR', visible: true,
+          // No _componentId
+        },
+      ],
+    };
+
+    const exported = generateJson(geo);
+    const asm = exported.volumes.find(v => v.type === 'assembly');
+    expect(asm).toBeTruthy();
+    // All 3 components must survive (previously only 1 survived due to undefined dedup bug)
+    expect(asm.components).toHaveLength(3);
+    expect(asm.components.map(c => c.type).sort()).toEqual(['box', 'cylinder', 'sphere']);
+  });
 });

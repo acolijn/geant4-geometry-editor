@@ -141,12 +141,20 @@ function createAssembly(volume, geometry) {
     debugLog('createAssembly:: volume.placements', volume.placements);
 
 
+    // Determine a shared _compoundId for all instances of this assembly.
+    // This ensures they are grouped back into a single assembly with multiple
+    // placements during export, preserving the original structure.
+    const sharedCompoundId = volume._compoundId ||
+        (volume._middle_id
+            ? `${volume.name || 'assembly'}_${volume._middle_id}`
+            : (volume.g4name || volume.name || 'assembly'));
+
     // loop through the placements and create an assembly for each placement
     let iPlacement = 0;
     volume.placements.forEach(placement => {
         const instanceId = volume._middle_id
             ? `${volume._middle_id}_${iPlacement}`
-            : volume._instanceId;
+            : (volume._instanceId || `inst_${iPlacement}`);
 
         let assemblyName = convertName(placement.name, volume._middle_id);
 
@@ -160,7 +168,7 @@ function createAssembly(volume, geometry) {
             material: volume.material || undefined,
             position: {x: placement.x, y: placement.y, z: placement.z},
             rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
-            _compoundId: volume._compoundId || assemblyName,
+            _compoundId: sharedCompoundId,
             _componentId: volume._componentId,
             mother_volume: placement.parent || "World"
         };
@@ -195,8 +203,8 @@ function createAssembly(volume, geometry) {
                 position: {x: placement.x, y: placement.y, z: placement.z},
                 rotation: {x: placement.rotation.x, y: placement.rotation.y, z: placement.rotation.z},
                 material: component.material || undefined,
-                _compoundId: volume._compoundId || assemblyName,
-                _componentId: component._componentId,
+                _compoundId: sharedCompoundId,
+                _componentId: component._componentId || component.g4name || component.name,
                 // if parent name not "" then use it as mother_volume else use assemblyName
                 mother_volume: placement.parent !== '' ? convertName(nextName(placement.parent, iPlacement), volume._middle_id) : assemblyName
             };
