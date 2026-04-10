@@ -44,60 +44,34 @@ export const propagateCompoundIdToDescendants = (parentName, compoundId, allVolu
   // Create a copy of all volumes to avoid mutating the original
   const updatedVolumes = [...allVolumes];
   
-  // Find all direct children of the parent
-  const directChildren = updatedVolumes.filter(volume => volume.mother_volume === parentName);
-  
-  // Process each direct child
-  directChildren.forEach(child => {
-    const childIndex = updatedVolumes.findIndex(vol => vol.name === child.name);
-    if (childIndex !== -1) {
-      // Add the compound ID to the child
-      updatedVolumes[childIndex] = {
-        ...updatedVolumes[childIndex],
+  // Iterate with actual array indices to correctly handle duplicate volume names.
+  // The old findIndex-by-name approach returned the first volume with a given name,
+  // which was wrong when multiple assemblies share component names (e.g. TopPMTArray
+  // and BotPMTArray both having "PMTBody_0").
+  for (let i = 0; i < updatedVolumes.length; i++) {
+    if (updatedVolumes[i].mother_volume === parentName) {
+      updatedVolumes[i] = {
+        ...updatedVolumes[i],
         _compoundId: compoundId
       };
-      debugLog(`Propagated _compoundId ${compoundId} to direct child ${child.name}`);
+      debugLog(`Propagated _compoundId ${compoundId} to child ${updatedVolumes[i].name} at index ${i}`);
       
-      // Recursively propagate to all descendants of this child
-      const childDescendants = findAllDescendants(child.name, updatedVolumes);
-      childDescendants.forEach(descendant => {
-        const descendantIndex = updatedVolumes.findIndex(vol => vol.name === descendant.name);
-        if (descendantIndex !== -1) {
-          // Add the compound ID to the descendant
-          updatedVolumes[descendantIndex] = {
-            ...updatedVolumes[descendantIndex],
-            _compoundId: compoundId
-          };
-          debugLog(`Propagated _compoundId ${compoundId} to descendant ${descendant.name}`);
-        }
-      });
+      // Recursively propagate to descendants of this child
+      propagateByIndex(updatedVolumes[i].name, compoundId, updatedVolumes);
     }
-  });
+  }
   
   return updatedVolumes;
 };
 
 /**
- * Find all descendants of an object recursively
- * 
- * @param {string} parentName - The name of the parent object
- * @param {Array} allVolumes - All volumes in the geometry
- * @returns {Array} Array of descendant objects
+ * Internal helper: recursively propagate _compoundId using index-based iteration
  */
-const findAllDescendants = (parentName, allVolumes) => {
-  // Find direct children
-  const directChildren = allVolumes.filter(volume => volume.mother_volume === parentName);
-  
-  // Start with direct children
-  let allDescendants = [...directChildren];
-  
-  // Recursively find descendants of each direct child
-  directChildren.forEach(child => {
-    const childDescendants = findAllDescendants(child.name, allVolumes);
-    if (childDescendants.length > 0) {
-      allDescendants = [...allDescendants, ...childDescendants];
+function propagateByIndex(parentName, compoundId, volumes) {
+  for (let i = 0; i < volumes.length; i++) {
+    if (volumes[i].mother_volume === parentName) {
+      volumes[i] = { ...volumes[i], _compoundId: compoundId };
+      propagateByIndex(volumes[i].name, compoundId, volumes);
     }
-  });
-  
-  return allDescendants;
-};
+  }
+}

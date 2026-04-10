@@ -95,5 +95,34 @@ describe('compoundIdPropagator', () => {
       expect(result[2]._compoundId).toBe('deep_id');
       expect(result[3]._compoundId).toBe('deep_id');
     });
+
+    it('does not corrupt _compoundId when multiple assemblies share component names', () => {
+      // Simulates TopPMTArray and BotPMTArray both having "PMTBody_0" components
+      const volumes = [
+        { name: 'TopPMT_0', type: 'assembly', _compoundId: 'TopPMTArray', mother_volume: 'World' },
+        { name: 'PMTBody_0', type: 'polycone', _compoundId: 'TopPMTArray', mother_volume: 'TopPMT_0' },
+        { name: 'PMTWindow_0', type: 'cylinder', _compoundId: 'TopPMTArray', mother_volume: 'TopPMT_0' },
+        { name: 'BotPMT_0', type: 'assembly', _compoundId: 'BotPMTArray', mother_volume: 'World' },
+        { name: 'PMTBody_0', type: 'polycone', _compoundId: 'BotPMTArray', mother_volume: 'BotPMT_0' },
+        { name: 'PMTWindow_0', type: 'cylinder', _compoundId: 'BotPMTArray', mother_volume: 'BotPMT_0' },
+      ];
+
+      // Propagate TopPMTArray first
+      let result = propagateCompoundIdToDescendants('TopPMT_0', 'TopPMTArray', volumes);
+      // Then propagate BotPMTArray
+      result = propagateCompoundIdToDescendants('BotPMT_0', 'BotPMTArray', result);
+
+      // TopPMT_0's children must still have TopPMTArray, not BotPMTArray
+      expect(result[1]._compoundId).toBe('TopPMTArray');
+      expect(result[1].mother_volume).toBe('TopPMT_0');
+      expect(result[2]._compoundId).toBe('TopPMTArray');
+      expect(result[2].mother_volume).toBe('TopPMT_0');
+
+      // BotPMT_0's children must have BotPMTArray
+      expect(result[4]._compoundId).toBe('BotPMTArray');
+      expect(result[4].mother_volume).toBe('BotPMT_0');
+      expect(result[5]._compoundId).toBe('BotPMTArray');
+      expect(result[5].mother_volume).toBe('BotPMT_0');
+    });
   });
 });

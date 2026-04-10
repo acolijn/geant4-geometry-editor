@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { generateJson } from '../geometryToJson';
 import { jsonToGeometry } from '../jsonToGeometry';
+import { propagateCompoundIdToDescendants } from '../../../../components/geometry-editor/utils/compoundIdPropagator';
 import fs from 'fs';
 import path from 'path';
 
@@ -127,5 +128,125 @@ describe('Save→Load with real mc-master data', () => {
         console.log(`  ${a.name}: ${a.placements?.length} placements, ${a.components?.length} components`);
       }
     });
+
+    // Step 5: Verify name uniqueness (critical for GeometryTree parent resolution)
+    const allNames = loaded.geometries.volumes.map(v => v.name);
+    const nameCounts = {};
+    allNames.forEach(n => { nameCounts[n] = (nameCounts[n] || 0) + 1; });
+    const duplicates = Object.entries(nameCounts).filter(([_, count]) => count > 1);
+    if (duplicates.length > 0) {
+      console.log(`\nWARNING: ${duplicates.length} duplicate names found!`);
+      duplicates.slice(0, 10).forEach(([name, count]) => {
+        console.log(`  "${name}" appears ${count} times`);
+      });
+    } else {
+      console.log('\nNo duplicate names - all volume names are unique');
+    }
+
+    // Step 6: Verify parent resolution (every volume's mother_volume must exist)
+    const allNameSet = new Set(allNames);
+    const orphans = loaded.geometries.volumes.filter(v => 
+      v.mother_volume && v.mother_volume !== 'World' && !allNameSet.has(v.mother_volume)
+    );
+    if (orphans.length > 0) {
+      console.log(`\nWARNING: ${orphans.length} orphaned volumes (mother_volume not found)!`);
+      orphans.slice(0, 10).forEach(v => {
+        console.log(`  "${v.name}" → mother="${v.mother_volume}" (NOT FOUND)`);
+      });
+    } else {
+      console.log('All parent references resolve correctly');
+    }
+  });
+
+  it('propagateCompoundIdToDescendants does not corrupt _compoundId with duplicate names', () => {
+    // Load actual mc-master geometry
+    const mcMasterPath = path.resolve(__dirname, '../../../../../../mc-master/xenonnt_geometry.json');
+    const mcMasterJson = JSON.parse(fs.readFileSync(mcMasterPath, 'utf8'));
+
+    // Step 1: Import
+    const imported = jsonToGeometry(mcMasterJson, emptyGeo());
+    const volumes = imported.geometries.volumes;
+
+    // Verify initial _compoundId correctness
+    const topPMTs = volumes.filter(v => v.type === 'assembly' && v.name?.startsWith('TopPMT'));
+    const botPMTs = volumes.filter(v => v.type === 'assembly' && v.name?.startsWith('BotPMT'));
+
+    // All TopPMT components should have _compoundId = "TopPMTArray"
+    const topPMT0Children = volumes.filter(v => v.mother_volume === 'TopPMT_0');
+    const botPMT0Children = volumes.filter(v => v.mother_volume === 'BotPMT_0');
+    console.log(`Before propagation: TopPMT_0 children _compoundIds:`, 
+      topPMT0Children.map(c => `${c.name}:${c._compoundId}`));
+    console.log(`Before propagation: BotPMT_0 children _compoundIds:`, 
+      botPMT0Children.map(c => `${c.name}:${c._compoundId}`));
+
+    // All should be TopPMTArray / BotPMTArray respectively
+    topPMT0Children.forEach(c => {
+      expect(c._compoundId).toBe('TopPMTArray');
+    });
+    botPMT0Children.forEach(c => {
+      expect(c._compoundId).toBe('BotPMTArray');
+    });
+
+    // Step 2: Simulate handleImportGeometries / handleLoadProject propagation
+    let updatedVolumes = [...volumes];
+    volumes.forEach((volume, index) => {
+      if (volume.type === 'assembly' || volume.type === 'union') {
+        if (!volume._compoundId) {
+          updatedVolumes[index] = { ...volume, _compoundId: volume.name };
+        }
+        const compoundId = updatedVolumes[index]._compoundId;
+        updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
+      }
+    });
+
+    // Step 3: Check _compoundId after propagation
+    const topPMT0ChildrenAfter = updatedVolumes.filter(v => v.mother_volume === 'TopPMT_0');
+    const botPMT0ChildrenAfter = updatedVolumes.filter(v => v.mother_volume === 'BotPMT_0');
+    console.log(`\nAfter propagation: TopPMT_0 children _compoundIds:`, 
+      topPMT0ChildrenAfter.map(c => `${c.name}:${c._compoundId}`));
+    console.log(`After propagation: BotPMT_0 children _compoundIds:`, 
+      botPMT0ChildrenAfter.map(c => `${c.name}:${c._compoundId}`));
+
+    // CRITICAL: TopPMT_0's children must still have _compoundId "TopPMTArray"
+    // not "BotPMTArray" (the bug would cause BotPMT propagation to overwrite it)
+    topPMT0ChildrenAfter.forEach(c => {
+      expect(c._compoundId).toBe('TopPMTArray');
+    });
+    botPMT0ChildrenAfter.forEach(c => {
+      expect(c._compoundId).toBe('BotPMTArray');
+    });
+
+    // Also check a few more instances
+    const topPMT100ChildrenAfter = updatedVolumes.filter(v => v.mother_volume === 'TopPMT_100');
+    topPMT100ChildrenAfter.forEach(c => {
+      expect(c._compoundId).toBe('TopPMTArray');
+    });
+
+    // Step 4: Verify save after propagation produces correct output
+    const savedJson = generateJson({
+      world: imported.geometries.world,
+      volumes: updatedVolumes,
+    });
+
+    const savedAsm = savedJson.volumes.filter(v => v.type === 'assembly');
+    console.log(`\nAfter propagation + save: ${savedAsm.length} assemblies`);
+    savedAsm.forEach(a => {
+      if (a.type === 'assembly') {
+        console.log(`  ${a.name} (_compoundId=${a._compoundId}): ${a.placements?.length} placements, ${a.components?.length} components`);
+      }
+    });
+
+    // Should have exactly 2 PMT assemblies, not more
+    const pmtAssemblies = savedAsm.filter(a => a.name?.includes('PMT'));
+    expect(pmtAssemblies.length).toBe(2);
+    
+    const savedTop = pmtAssemblies.find(a => a._compoundId === 'TopPMTArray');
+    const savedBot = pmtAssemblies.find(a => a._compoundId === 'BotPMTArray');
+    expect(savedTop).toBeDefined();
+    expect(savedBot).toBeDefined();
+    expect(savedTop.placements).toHaveLength(253);
+    expect(savedBot.placements).toHaveLength(241);
+    expect(savedTop.components).toHaveLength(5);
+    expect(savedBot.components).toHaveLength(5);
   });
 });
