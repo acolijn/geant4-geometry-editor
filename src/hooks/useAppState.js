@@ -103,7 +103,21 @@ export const useAppState = () => {
   };
 
   const handleLoadProject = (loadedGeometries, loadedMaterials, loadedHitCollections) => {
-    setGeometries(loadedGeometries);
+    // Ensure _compoundId is propagated to all descendants, same as handleImportGeometries
+    const geometriesCopy = cloneData(loadedGeometries);
+    let updatedVolumes = [...geometriesCopy.volumes];
+    geometriesCopy.volumes.forEach((volume, index) => {
+      if (volume.type === 'assembly' || volume.type === 'union') {
+        if (!volume._compoundId) {
+          updatedVolumes[index] = { ...volume, _compoundId: volume.name };
+        }
+        const compoundId = updatedVolumes[index]._compoundId;
+        updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
+      }
+    });
+    geometriesCopy.volumes = updatedVolumes;
+
+    setGeometries(geometriesCopy);
     setMaterials(loadedMaterials);
 
     if (loadedHitCollections && Array.isArray(loadedHitCollections)) {

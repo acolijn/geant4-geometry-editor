@@ -425,4 +425,119 @@ describe('JSON round-trip (geometryToJson → jsonToGeometry)', () => {
     expect(asm.components).toHaveLength(3);
     expect(asm.components.map(c => c.type).sort()).toEqual(['box', 'cylinder', 'sphere']);
   });
+
+  it('save→load roundtrip preserves assembly structure (PMT pattern)', () => {
+    // Simulates exact save→load cycle:
+    // 1. Import mc-master JSON → flat internal format
+    // 2. Save: generateJson → stored JSON
+    // 3. Load: jsonToGeometry on stored JSON → flat internal format
+    // 4. Verify structure is the same as after step 1
+
+    const mcMasterJson = {
+      world: { name: 'World', type: 'box', dimensions: { x: 2000, y: 2000, z: 2000 },
+        material: 'G4_AIR' },
+      volumes: [{
+        name: 'PMTArray',
+        g4name: 'PMTArray',
+        type: 'assembly',
+        material: 'LXe',
+        placements: [
+          { name: 'PMT_0', x: 0, y: 0, z: 10, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+          { name: 'PMT_1', x: 50, y: 0, z: 10, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+          { name: 'PMT_2', x: 100, y: 0, z: 10, rotation: { x: Math.PI, y: 0, z: 0 }, parent: 'World' },
+        ],
+        components: [
+          { name: 'Body_0', g4name: 'Body', type: 'polycone',
+            dimensions: { z: [-57, 57], rmin: [0, 0], rmax: [38, 26.65] },
+            material: 'Kovar',
+            placements: [{ name: 'Body_0', x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: '' }] },
+          { name: 'Window_0', g4name: 'Window', type: 'cylinder',
+            dimensions: { radius: 35, height: 3.5 },
+            material: 'Quartz',
+            placements: [{ name: 'Window_0', x: 0, y: 0, z: -55.25, rotation: { x: 0, y: 0, z: 0 }, parent: '' }] },
+          { name: 'Vacuum_0', g4name: 'Vacuum', type: 'polycone',
+            dimensions: { z: [-53.5, 0], rmin: [0, 0], rmax: [25.65, 37] },
+            material: 'Vacuum', visible: false,
+            placements: [{ name: 'Vacuum_0', x: 0, y: 0, z: -53.5, rotation: { x: 0, y: 0, z: 0 }, parent: '' }] },
+          { name: 'Cathode_0', g4name: 'Cathode', type: 'cylinder',
+            dimensions: { radius: 32, height: 0.1 },
+            material: 'PhotoCathodeAluminium',
+            placements: [{ name: 'Cathode_0', x: 0, y: 0, z: -53.45, rotation: { x: 0, y: 0, z: 0 }, parent: '' }] },
+          { name: 'Ceramic_0', g4name: 'Ceramic', type: 'cylinder',
+            dimensions: { radius: 21.65, height: 4.0 },
+            material: 'Ceramic',
+            placements: [{ name: 'Ceramic_0', x: 0, y: 0, z: 55.0, rotation: { x: 0, y: 0, z: 0 }, parent: '' }] },
+        ],
+      }],
+    };
+
+    // Step 1: Import
+    const imported = jsonToGeometry(mcMasterJson, emptyGeo());
+    const importedAssemblies = imported.geometries.volumes.filter(v => v.type === 'assembly');
+    const importedComponents = imported.geometries.volumes.filter(v => v.type !== 'assembly');
+    expect(importedAssemblies).toHaveLength(3);
+    expect(importedComponents).toHaveLength(15); // 5 components × 3 instances
+
+    // Each assembly root should have 5 children
+    importedAssemblies.forEach(asm => {
+      const children = importedComponents.filter(c => c.mother_volume === asm.name);
+      expect(children).toHaveLength(5);
+    });
+
+    // Step 2: Save (generateJson)
+    const savedJson = generateJson({
+      world: imported.geometries.world,
+      volumes: imported.geometries.volumes,
+    });
+    expect(savedJson.volumes).toHaveLength(1);
+    expect(savedJson.volumes[0].placements).toHaveLength(3);
+    expect(savedJson.volumes[0].components).toHaveLength(5);
+
+    // Step 3: Load (jsonToGeometry on saved JSON)
+    const loaded = jsonToGeometry(savedJson, emptyGeo());
+    const loadedAssemblies = loaded.geometries.volumes.filter(v => v.type === 'assembly');
+    const loadedComponents = loaded.geometries.volumes.filter(v => v.type !== 'assembly');
+
+    // Must have same structure as after initial import
+    expect(loadedAssemblies).toHaveLength(3);
+    expect(loadedComponents).toHaveLength(15); // 5 × 3
+
+    // All share the same _compoundId
+    const compoundIds = new Set(loaded.geometries.volumes.map(v => v._compoundId));
+    expect(compoundIds.size).toBe(1);
+
+    // Each assembly root has 5 children
+    loadedAssemblies.forEach(asm => {
+      const children = loadedComponents.filter(c => c.mother_volume === asm.name);
+      expect(children).toHaveLength(5);
+    });
+
+    // Verify positions are preserved
+    expect(loadedAssemblies[0].position.x).toBe(0);
+    expect(loadedAssemblies[1].position.x).toBe(50);
+    expect(loadedAssemblies[2].position.x).toBe(100);
+
+    // Verify rotation is preserved
+    expect(loadedAssemblies[2].rotation.x).toBeCloseTo(Math.PI);
+
+    // Step 4: Second save→load cycle (the acid test)
+    const savedJson2 = generateJson({
+      world: loaded.geometries.world,
+      volumes: loaded.geometries.volumes,
+    });
+    expect(savedJson2.volumes).toHaveLength(1);
+    expect(savedJson2.volumes[0].placements).toHaveLength(3);
+    expect(savedJson2.volumes[0].components).toHaveLength(5);
+
+    const loaded2 = jsonToGeometry(savedJson2, emptyGeo());
+    const loaded2Assemblies = loaded2.geometries.volumes.filter(v => v.type === 'assembly');
+    const loaded2Components = loaded2.geometries.volumes.filter(v => v.type !== 'assembly');
+    expect(loaded2Assemblies).toHaveLength(3);
+    expect(loaded2Components).toHaveLength(15);
+
+    loaded2Assemblies.forEach(asm => {
+      const children = loaded2Components.filter(c => c.mother_volume === asm.name);
+      expect(children).toHaveLength(5);
+    });
+  });
 });
