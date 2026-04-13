@@ -401,6 +401,11 @@ function convertDimensions(volume) {
       dimensions.x_radius = volume.xRadius || 5;
       dimensions.y_radius = volume.yRadius || 3;
       dimensions.z_radius = volume.zRadius || 4;
+      dimensions.ax = dimensions.x_radius;
+      dimensions.by = dimensions.y_radius;
+      dimensions.cz = dimensions.z_radius;
+      if (volume.zcut1 !== undefined) dimensions.zcut1 = volume.zcut1;
+      if (volume.zcut2 !== undefined) dimensions.zcut2 = volume.zcut2;
       break;
       
     case 'trapezoid':

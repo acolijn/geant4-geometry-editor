@@ -387,9 +387,9 @@ function setDimensions(newVolume, volume) {
             break;
             
         case 'ellipsoid':
-            newVolume.xRadius = volume.dimensions.x_radius;
-            newVolume.yRadius = volume.dimensions.y_radius;
-            newVolume.zRadius = volume.dimensions.z_radius;
+            newVolume.xRadius = volume.dimensions.x_radius ?? volume.dimensions.ax;
+            newVolume.yRadius = volume.dimensions.y_radius ?? volume.dimensions.by;
+            newVolume.zRadius = volume.dimensions.z_radius ?? volume.dimensions.cz;
             break;
             
         case 'trapezoid':
