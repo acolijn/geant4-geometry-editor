@@ -143,13 +143,13 @@ function initializeAssemblies(assemblies, geometry) {
     if (!volume) return; // skip null/undefined entries
     // new assembly...... add it to the assemblies object
     if (!assemblies[volume._compoundId] && 
-        (volume.type === 'assembly' || volume.type === 'union')) {
+        (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction')) {
       debugLog('processAssembly:: new assembly', volume);
       debugLog('processAssembly::  g4name', volume.g4name);
 
 
       assemblies[volume._compoundId] = {
-        name: volume.type === 'union' ? volume.name : volume.g4name.split('_')[0],
+        name: (volume.type === 'union' || volume.type === 'subtraction') ? volume.name : volume.g4name.split('_')[0],
         g4name: volume.g4name,
         type: volume.type,
         material: volume.material,
@@ -171,11 +171,15 @@ function initializeAssemblies(assemblies, geometry) {
   // 1. loop over the assemblies...
   Object.keys(assemblies).forEach(_compoundId => {
     const assemblyEntry = assemblies[_compoundId];
+    const isBooleanType = assemblyEntry.type === 'union' || assemblyEntry.type === 'subtraction';
     // 2. get a list of volumes with this _compoundId, OR whose mother_volume points to
     //    this assembly (handles JSONs where components were saved as top-level volumes)
+    //    For boolean types (union/subtraction), only match by _compoundId to avoid
+    //    pulling in regular daughter volumes (e.g. air fills placed inside a subtraction).
     let selectedVolumes = geometry.volumes.filter(volume => {
-      if (volume.type === 'assembly' || volume.type === 'union') return false;
+      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') return false;
       if (volume._compoundId === _compoundId) return true;
+      if (isBooleanType) return false;
       // also match by mother_volume in case _compoundId was not set correctly
       return volume.mother_volume === _compoundId ||
              (assemblyEntry && volume.mother_volume === assemblyEntry.name);
@@ -183,19 +187,22 @@ function initializeAssemblies(assemblies, geometry) {
     // 2b. Recursively collect descendant volumes whose mother_volume is a
     //     component already collected (e.g. a cylinder placed inside a box
     //     that is itself a component of the assembly).
-    const collectedNames = new Set(selectedVolumes.map(v => v.name));
-    let changed = true;
-    while (changed) {
-      changed = false;
-      geometry.volumes.forEach(volume => {
-        if (volume.type === 'assembly' || volume.type === 'union') return;
-        if (collectedNames.has(volume.name)) return;
-        if (volume.mother_volume && collectedNames.has(volume.mother_volume)) {
-          selectedVolumes.push(volume);
-          collectedNames.add(volume.name);
-          changed = true;
-        }
-      });
+    //     Skip for boolean types — their descendants are standalone volumes.
+    if (!isBooleanType) {
+      const collectedNames = new Set(selectedVolumes.map(v => v.name));
+      let changed = true;
+      while (changed) {
+        changed = false;
+        geometry.volumes.forEach(volume => {
+          if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') return;
+          if (collectedNames.has(volume.name)) return;
+          if (volume.mother_volume && collectedNames.has(volume.mother_volume)) {
+            selectedVolumes.push(volume);
+            collectedNames.add(volume.name);
+            changed = true;
+          }
+        });
+      }
     }
     // fix up _compoundId on any volumes matched by mother_volume so that
     // generateJson will correctly skip them as top-level standalone volumes
@@ -224,7 +231,7 @@ function initializeAssemblies(assemblies, geometry) {
     // wrong parent names during reload.
     const assemblyPlacementNames = new Set(
       geometry.volumes
-        .filter(v => (v.type === 'assembly' || v.type === 'union') && v._compoundId === _compoundId)
+        .filter(v => (v.type === 'assembly' || v.type === 'union' || v.type === 'subtraction') && v._compoundId === _compoundId)
         .map(v => v.name)
     );
 
@@ -232,7 +239,7 @@ function initializeAssemblies(assemblies, geometry) {
     
     selectedVolumes.forEach(volume => {
       // skip assemblies
-      if (volume.type === 'assembly' || volume.type === 'union') {
+      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
         return;
       }
 
@@ -242,7 +249,7 @@ function initializeAssemblies(assemblies, geometry) {
       //  - legacy "assembly*" names → ""
       //  - otherwise preserve the parent (nested component hierarchy)
       let componentParent;
-      if (assemblies[_compoundId].type === 'union') {
+      if (assemblies[_compoundId].type === 'union' || assemblies[_compoundId].type === 'subtraction') {
         componentParent = "";
       } else if (assemblyPlacementNames.has(volume.mother_volume)) {
         componentParent = "";
@@ -286,13 +293,13 @@ function initializeAssemblies(assemblies, geometry) {
         //parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
       };
       
-      // Only add material for non-union components or for assembly components
-      if (assemblies[_compoundId].type !== 'union') {
+      // Only add material for non-union/non-subtraction components
+      if (assemblies[_compoundId].type !== 'union' && assemblies[_compoundId].type !== 'subtraction') {
         componentObj.material = volume.material;
       }
       
-      // Only add hits collection for non-union components or for assembly components
-      if (assemblies[_compoundId].type !== 'union' && volume.hitsCollectionName) {
+      // Only add hits collection for non-union/non-subtraction components
+      if (assemblies[_compoundId].type !== 'union' && assemblies[_compoundId].type !== 'subtraction' && volume.hitsCollectionName) {
         componentObj.hitsCollectionName = volume.hitsCollectionName;
       }
       
@@ -352,7 +359,7 @@ export function generateJson(geometry){
     geometry.volumes.forEach(volume => {
       if (!volume) return; // skip null/undefined entries
       volume._write_full_geometry = _write_full_geometry;
-      if (volume.type === 'assembly' || volume.type === 'union') {
+      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
         debugLog('generateJson:: processing assembly', volume);
         processAssembly(assemblies, volume); 
       } else if (volume) {

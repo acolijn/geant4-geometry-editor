@@ -258,8 +258,14 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     } else {
       // Regular volume - add to its parent's children list
       // If this volume has a _displayGroup, place it under a virtual
-      // display-group folder at its parent level.
-      if (volume._displayGroup && volumesByParent[parentKey]) {
+      // display-group folder at its parent level — but only if the parent
+      // volume does NOT already have the same _displayGroup (to avoid
+      // duplicate folders at every level of the hierarchy).
+      const parentVolume = parentKey.startsWith('volume-')
+        ? geometries.volumes[parseInt(parentKey.split('-')[1])]
+        : null;
+      const parentHasSameGroup = parentVolume && parentVolume._displayGroup === volume._displayGroup;
+      if (volume._displayGroup && volumesByParent[parentKey] && !parentHasSameGroup) {
         const groupKey = `display-group-${parentKey}-${volume._displayGroup}`;
         if (!volumesByParent[groupKey]) {
           volumesByParent[groupKey] = [];

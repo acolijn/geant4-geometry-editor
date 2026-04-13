@@ -191,7 +191,7 @@ describe('nVeto/mVeto save-load cycle', () => {
 
     // No standalone volumes that should be assembly components
     const standaloneWithCompoundId = savedJson.volumes.filter(v => 
-      v.type !== 'assembly' && v._compoundId
+      v.type !== 'assembly' && v.type !== 'union' && v.type !== 'subtraction' && v._compoundId
     );
     if (standaloneWithCompoundId.length > 0) {
       console.log('LEAKED components (standalone with _compoundId):');

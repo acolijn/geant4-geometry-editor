@@ -109,7 +109,7 @@ function createVolumes(volumes, geometry, _middle_id) {
         volume._middle_id = _middle_id;
         volume._iplacement = _iplacement;
 
-        if (volume.type === 'assembly' || volume.type === 'union' ){
+        if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction'){
             createAssembly(volume, geometry);
         } else if (volume.placements && Array.isArray(volume.placements)) {
             createStandardVolume(volume, geometry);
@@ -196,7 +196,7 @@ function createAssembly(volume, geometry) {
 
             // create the component
             let placement = component.placements[0];
-            let newName = convertName(nextName(placement.name, iPlacement), volume._middle_id);
+            let newName = convertName(nextName(placement.name || component.name, iPlacement), volume._middle_id);
             debugLog('createAssembly:: newName', newName);
             debugLog('createAssembly:: placement', placement);
             const newComponent = {
@@ -209,7 +209,7 @@ function createAssembly(volume, geometry) {
                 _compoundId: sharedCompoundId,
                 _componentId: component._componentId || component.g4name || component.name,
                 // if parent name not "" then use it as mother_volume else use assemblyName
-                mother_volume: placement.parent !== '' ? convertName(nextName(placement.parent, iPlacement), volume._middle_id) : assemblyName
+                mother_volume: (placement.parent !== undefined && placement.parent !== '') ? convertName(nextName(placement.parent, iPlacement), volume._middle_id) : assemblyName
             };
             if (instanceId) {
                 newComponent._instanceId = instanceId;
