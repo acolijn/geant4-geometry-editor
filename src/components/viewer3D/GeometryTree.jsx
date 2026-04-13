@@ -257,15 +257,15 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       }
     } else {
       // Regular volume - add to its parent's children list
-      // If this volume's parent is World and it has a _displayGroup, place it
-      // under a virtual display-group folder instead.
-      if (parentKey === 'world' && volume._displayGroup) {
-        const groupKey = `display-group-${volume._displayGroup}`;
+      // If this volume has a _displayGroup, place it under a virtual
+      // display-group folder at its parent level.
+      if (volume._displayGroup && volumesByParent[parentKey]) {
+        const groupKey = `display-group-${parentKey}-${volume._displayGroup}`;
         if (!volumesByParent[groupKey]) {
           volumesByParent[groupKey] = [];
           displayGroupKeys.add(groupKey);
-          // Add the folder entry to World's children
-          volumesByParent['world'].push({
+          // Add the folder entry to the parent's children
+          volumesByParent[parentKey].push({
             isDisplayGroupFolder: true,
             key: groupKey,
             groupName: volume._displayGroup,
