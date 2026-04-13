@@ -9,7 +9,7 @@ import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdat
 import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
-export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
+export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry, cascadeVisibility, setCascadeVisibility }) {
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
@@ -263,6 +263,27 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     }
   });
   
+  // Build a set of volume names hidden by an ancestor (for cascade visibility mode)
+  const hiddenByAncestor = new Set();
+  if (cascadeVisibility && geometries.volumes) {
+    const hiddenNames = new Set();
+    geometries.volumes.forEach(v => {
+      if (v.visible === false && v.name) hiddenNames.add(v.name);
+    });
+    geometries.volumes.forEach(volume => {
+      let parent = volume.mother_volume;
+      while (parent && parent !== 'World') {
+        if (hiddenNames.has(parent)) {
+          hiddenByAncestor.add(volume.name);
+          break;
+        }
+        const parentIdx = volumeNameToIndex[parent];
+        if (parentIdx === undefined) break;
+        parent = geometries.volumes[parentIdx].mother_volume;
+      }
+    });
+  }
+  
   // Recursive function to render a volume and its children in the tree
   const renderVolumeTree = (parentKey, level = 0) => {
     // If this parent has no children, return null
@@ -411,13 +432,13 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               style={{
                 marginLeft: 'auto',
                 cursor: 'pointer',
-                opacity: volume.visible === false ? 0.3 : 0.7,
+                opacity: volume.visible === false ? 0.3 : (hiddenByAncestor.has(volume.name) ? 0.3 : 0.7),
                 fontSize: '14px',
                 padding: '0 4px',
               }}
-              title={volume.visible === false ? 'Show' : 'Hide'}
+              title={volume.visible === false ? 'Show' : (hiddenByAncestor.has(volume.name) ? 'Hidden by parent' : 'Hide')}
             >
-              {volume.visible === false ? '👁️‍🗨️' : '👁️'}
+              {volume.visible === false ? '👁️‍🗨️' : (hiddenByAncestor.has(volume.name) ? '👁️‍🗨️' : '👁️')}
             </span>
           </div>
           {/* Only render children if node is expanded */}
@@ -432,7 +453,24 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
 
   return (
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
-      <h3 style={{ margin: '0 0 10px 0' }}>Geometry Tree</h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px 0' }}>
+        <h3 style={{ margin: 0 }}>Geometry Tree</h3>
+        <button
+          onClick={() => setCascadeVisibility(!cascadeVisibility)}
+          style={{
+            backgroundColor: cascadeVisibility ? '#1976d2' : '#e0e0e0',
+            color: cascadeVisibility ? 'white' : '#333',
+            border: 'none',
+            padding: '3px 8px',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px',
+          }}
+          title={cascadeVisibility ? 'Cascade visibility ON: hiding a parent hides all children' : 'Cascade visibility OFF: each volume is independent'}
+        >
+          {cascadeVisibility ? '⬇ Cascade' : '⬇ Cascade'}
+        </button>
+      </div>
       
       {/* SaveObjectDialog for saving objects with a nicer interface - using the same component as GeometryEditor */}
       <SaveObjectDialog
