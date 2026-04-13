@@ -9,7 +9,7 @@ import { debugLog } from '../../utils/logger';
 // Scene component with all 3D elements
 
 // Simple Scene component with flat object structure
-export default function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize, materials, cascadeVisibility }) {
+export default function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize, materials }) {
   // Track which objects are source objects (objects that have been loaded from files)
   const [sourceObjects, setSourceObjects] = useState({});
   
@@ -61,29 +61,6 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
       });
     }
   });
-  
-  // Build a set of volume names whose ancestor is hidden (for cascade visibility mode)
-  const hiddenByAncestor = new Set();
-  if (cascadeVisibility && geometries.volumes) {
-    const hiddenNames = new Set();
-    geometries.volumes.forEach(v => {
-      if (v.visible === false && v.name) hiddenNames.add(v.name);
-    });
-    // Walk up the mother_volume chain for each volume
-    geometries.volumes.forEach(volume => {
-      let parent = volume.mother_volume;
-      while (parent && parent !== 'World') {
-        if (hiddenNames.has(parent)) {
-          hiddenByAncestor.add(volume.name);
-          break;
-        }
-        // Find the parent volume to continue walking up
-        const parentIdx = volumeNameToIndex[parent];
-        if (parentIdx === undefined) break;
-        parent = geometries.volumes[parentIdx].mother_volume;
-      }
-    });
-  }
   
   // Wrapper function to call the imported calculateWorldPosition with the correct parameters
   const calculateWorldPositionWrapper = (volume, visited = new Set()) => {
@@ -342,10 +319,6 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
       }
       // Skip rendering volumes marked as invisible
       if (volume.visible === false) {
-        return null;
-      }
-      // Skip rendering volumes whose ancestor is hidden (cascade mode)
-      if (cascadeVisibility && hiddenByAncestor.has(volume.name)) {
         return null;
       }
       const key = `volume-${index}`;

@@ -22,7 +22,6 @@ const Viewer3D = () => {
   } = useAppContext();
   const [transformMode, setTransformMode] = useState('translate');
   const [cameraControls, setCameraControls] = useState(null);
-  const [cascadeVisibility, setCascadeVisibility] = useState(false);
   
   // Handle canvas click to deselect
   const handleCanvasClick = (e) => {
@@ -181,8 +180,6 @@ const Viewer3D = () => {
           selectedGeometry={selectedGeometry} 
           onSelect={onSelect}
           onUpdateGeometry={onUpdateGeometry}
-          cascadeVisibility={cascadeVisibility}
-          setCascadeVisibility={setCascadeVisibility}
         />
       </div>
       
@@ -284,7 +281,6 @@ const Viewer3D = () => {
             onTransformEnd={handleTransformEnd}
             worldSize={worldSize}
             materials={materials}
-            cascadeVisibility={cascadeVisibility}
           />
           <OrbitControls 
             makeDefault 
