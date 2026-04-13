@@ -112,27 +112,145 @@ Boolean volumes have `components` instead of `dimensions`. The first component i
 
 ### Assemblies
 
-Assemblies group multiple volumes into a reusable unit. Components are placed relative to the assembly origin:
+Assemblies group multiple volumes into a reusable unit. In Geant4, an assembly (`G4AssemblyVolume`) has no material or shape of its own — it is a collection of component volumes placed relative to the assembly origin. When placed, `MakeImprint()` creates physical copies of all components inside the parent volume.
+
+**Key concepts:**
+- `components[]` — the sub-volumes that make up the assembly (defined once)
+- `placements[]` — where the assembly is stamped into the geometry (N times)
+- Each placement creates a full copy of all components at that position
+- Component positions are relative to the assembly origin
+- The `material` field on the assembly is the default for components that don't specify their own
+
+#### Real example: XENONnT PMT arrays
+
+The XENONnT detector has 4 PMT assemblies. Here is the top PMT array (253 placements in the GXe volume):
 
 ```json
 {
   "name": "TopPMTArray",
   "type": "assembly",
   "material": "GXe",
+  "_displayGroup": "PMTs",
   "components": [
     {
-      "name": "PMTBody",
-      "type": "cylinder",
+      "name": "PMTBody_0",
+      "type": "polycone",
       "material": "Kovar",
-      "dimensions": { "radius": 38.1, "height": 30 },
-      "placements": [{ "x": 0, "y": 0, "z": 0, "parent": "" }]
+      "dimensions": { "startPhi": 0, "deltaPhi": 6.283, "zPlanes": [...] },
+      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+    },
+    {
+      "name": "PMTWindow_0",
+      "type": "cylinder",
+      "material": "Quartz",
+      "dimensions": { "radius": 38.1, "height": 1.5 },
+      "placements": [{ "x": 0, "y": 0, "z": 15.0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+    },
+    {
+      "name": "PMTInnerVacuum_0",
+      "type": "polycone",
+      "material": "Vacuum",
+      "dimensions": { ... },
+      "placements": [{ "x": 0, "y": 0, "z": 0 }]
+    },
+    {
+      "name": "PMTPhotocathode_0",
+      "type": "cylinder",
+      "material": "PhotoCathodeAluminium",
+      "dimensions": { "radius": 38.0, "height": 0.05 },
+      "placements": [{ "x": 0, "y": 0, "z": 14.0 }]
+    },
+    {
+      "name": "PMTCeramic_0",
+      "type": "cylinder",
+      "material": "Ceramic",
+      "dimensions": { "radius": 25.75, "height": 5.0 },
+      "placements": [{ "x": 0, "y": 0, "z": -40.0 }]
     }
   ],
   "placements": [
-    { "name": "TopPMT_0", "x": 0, "y": 0, "z": 13.985, "parent": "GXeVolume" },
-    { "name": "TopPMT_1", "x": 76.2, "y": 0, "z": 13.985, "parent": "GXeVolume" }
+    { "name": "TopPMT_0",   "x": 0,    "y": 0.0,   "z": 13.985, "parent": "GXeVolume" },
+    { "name": "TopPMT_1",   "x": 76.2, "y": 0.0,   "z": 13.985, "parent": "GXeVolume" },
+    { "name": "TopPMT_2",   "x": 38.1, "y": 65.99, "z": 13.985, "parent": "GXeVolume" },
+    "... 250 more placements"
   ]
 }
+```
+
+The bottom array is identical in structure but placed in `LXeVolume` (241 PMTs). The muon veto and neutron veto PMT arrays have 7 components each (different PMT model) and are placed in `Water`.
+
+#### How placement works in Geant4
+
+```
+TopPMTArray (assembly definition — no physical shape)
+  ├── PMTBody_0         (polycone, Kovar, at origin)
+  ├── PMTWindow_0       (cylinder, Quartz, z=+15)
+  ├── PMTInnerVacuum_0  (polycone, Vacuum)
+  ├── PMTPhotocathode_0 (cylinder, PhotoCathodeAluminium, z=+14)
+  └── PMTCeramic_0      (cylinder, Ceramic, z=-40)
+
+placement[0]: stamp all 5 components at (0, 0, 13.985) inside GXeVolume → TopPMT_0
+placement[1]: stamp all 5 components at (76.2, 0, 13.985) inside GXeVolume → TopPMT_1
+... × 253
+```
+
+#### Creating a PMT and placing it multiple times (editor workflow)
+
+1. **Define the assembly** — create a volume with `type: "assembly"`, add components with positions relative to origin
+2. **Add placements** — each placement stamps all components into a parent volume
+3. **Edit the definition** — changing a component (e.g. PMTBody radius) updates all 253 PMTs at once
+4. **Add more placements** — `addPlacement(volumeIndex, { name: "TopPMT_253", x: ..., y: ..., z: ..., parent: "GXeVolume" })`
+
+#### Can top and bottom PMTs be merged into one definition?
+
+Yes. The `material` field on an assembly is **not used by Geant4** — `G4AssemblyVolume` has no material of its own. Looking at `GeometryParser.cc`, `CreateAssembly()` only calls `assembly->AddPlacedVolume()` for each component; the assembly material is ignored. The components (PMTBody=Kovar, PMTWindow=Quartz, etc.) carry their own materials.
+
+Since TopPMTArray and BotPMTArray have **identical components** (same R11410 PMT model), they can be merged into a single volume definition with 494 placements:
+
+```json
+{
+  "name": "R11410PMT",
+  "type": "assembly",
+  "_displayGroup": "PMTs",
+  "components": [ /* 5 components, defined once */ ],
+  "placements": [
+    { "name": "TopPMT_0",   "x": 0,    "y": 0,    "z": 13.985,  "parent": "GXeVolume" },
+    { "name": "TopPMT_1",   "x": 76.2, "y": 0,    "z": 13.985,  "parent": "GXeVolume" },
+    "... 251 more in GXeVolume ...",
+    { "name": "BotPMT_0",   "x": 0,    "y": 0,    "z": -938.3,  "parent": "LXeVolume" },
+    { "name": "BotPMT_1",   "x": 76.2, "y": 0,    "z": -938.3,  "parent": "LXeVolume" },
+    "... 239 more in LXeVolume ..."
+  ]
+}
+```
+
+The tree naturally splits them by parent volume — each gets its own display group folder:
+
+```
+├── LXeVolume
+│   ├── GXeVolume
+│   │   └── 📁 PMTs                    ← placements where parent=GXeVolume
+│   │       ├── TopPMT_0..252
+│   └── 📁 PMTs                        ← placements where parent=LXeVolume
+│       └── BotPMT_0..240
+```
+
+This works because display group folders are per-parent: all placements of one volume share the same `_displayGroup`, but the tree creates a separate folder under each parent volume that contains placements.
+
+#### When to keep separate definitions
+
+Merging only works when the components are truly identical. Keep separate definitions when:
+
+- **Different PMT model** — e.g. the veto PMTs (R11780) have 7 components vs the TPC PMTs (R11410) with 5 components. These are genuinely different objects.
+- **Different display group** — mVetoPMTArray (`_displayGroup: "Muon Veto"`) and nVetoPMTArray (`_displayGroup: "Neutron Veto"`) have identical components but serve different purposes. Since `_displayGroup` is per-volume-definition (not per-placement), merging them would put all 204 veto PMTs under one folder. Keep them separate so the tree shows them in the correct group.
+
+**Rule**: the automatic placement detection (§4) matches on `type + dimensions + material + components + _displayGroup`. Same shape but different display group → separate definition.
+
+| Scenario | Same definition? | Why |
+|----------|-----------------|-----|
+| TopPMT + BotPMT | ✅ Yes | Same R11410, same `_displayGroup: "PMTs"`, different parent splits tree |
+| mVetoPMT + nVetoPMT | ❌ No | Same R11780, but different `_displayGroup` ("Muon Veto" vs "Neutron Veto") |
+| TPC PMT + Veto PMT | ❌ No | Different component structure entirely |
 ```
 
 ### Materials
@@ -275,28 +393,49 @@ function updatePlacement(json, volumeIndex, placementIndex, patch) {
 
 ### Tree view
 
-The tree shows the parent-child hierarchy from the flat view:
+The tree reflects the actual Geant4 parent-child hierarchy. Display group folders are inserted as virtual nodes but **follow the containment structure** — they appear under the parent volume where the grouped volumes are actually placed.
+
+XENONnT hierarchy (simplified):
 
 ```
 World
 ├── 📁 Water Tank
-│   ├── WaterTank
-│   ├── Water
-│   ├── WaterCone
-│   └── AirCone
-├── 📁 Support Structure
-│   ├── FloorLeg_1         (placement 0 of FloorLeg)
-│   │   └── FloorLeg_1_air
-│   ├── FloorLeg_2         (placement 1 of FloorLeg)
-│   │   └── FloorLeg_2_air
-│   └── ...
-├── 📁 PMTs
-│   ├── TopPMT_0            (placement 0 of TopPMTArray)
-│   ├── TopPMT_1            (placement 1 of TopPMTArray)
-│   └── ...
+│   ├── WaterTank                              parent=World
+│   │   ├── Water                              parent=WaterTank
+│   │   │   ├── 📁 Cryostats
+│   │   │   │   ├── OuterCryostat               parent=Water
+│   │   │   │   │   └── OuterCryostatVacuum     parent=OuterCryostat
+│   │   │   │   │       └── InnerCryostat       parent=OuterCryostatVacuum
+│   │   │   │   │           ├── LXeVolume       parent=InnerCryostat
+│   │   │   │   │           │   ├── 📁 TPC
+│   │   │   │   │           │   │   ├── BellPlate, TPCWall, CathodeRing, ...
+│   │   │   │   │           │   │   └── FieldShaper_0..33
+│   │   │   │   │           │   ├── GXeVolume   parent=LXeVolume
+│   │   │   │   │           │   │   └── 📁 PMTs
+│   │   │   │   │           │   │       ├── TopPMT_0..252  (TopPMTArray placements)
+│   │   │   │   │           │   └── 📁 PMTs
+│   │   │   │   │           │       └── BotPMT_0..240      (BotPMTArray placements)
+│   │   │   ├── 📁 Calibration
+│   │   │   │   └── CalibrationTubes            parent=Water
+│   │   │   ├── 📁 Support Structure
+│   │   │   │   ├── FloorLeg_1                  parent=Water
+│   │   │   │   │   └── FloorLeg_1_air
+│   │   │   │   ├── FloorLeg_2                  parent=Water
+│   │   │   │   ├── HorizontalBeam_1..8         parent=Water
+│   │   │   │   └── ...
+│   │   │   ├── 📁 Muon Veto
+│   │   │   │   └── mVetoTopPMT_0..83           parent=Water (mVetoPMTArray placements)
+│   │   │   ├── 📁 Neutron Veto
+│   │   │   │   └── nVSidePMT_0..119            parent=Water (nVetoPMTArray placements)
+│   │   ├── WaterCone                           parent=WaterTank
+│   │   └── AirCone                             parent=WaterTank
 ```
 
-- **Display group folders** are virtual — driven by `_displayGroup` on the volume definition, shown only at the highest parent level.
+**Key rules:**
+- The tree structure follows `placement.parent` — if a volume is placed in `Water`, it appears under `Water` in the tree, regardless of display group.
+- Display group folders are inserted as children of the *parent volume* where the grouped volumes reside. Support Structure, Muon Veto, Neutron Veto, and Calibration all appear under `Water` because that's where their volumes are placed.
+- PMTs folders appear under `GXeVolume` and `LXeVolume` respectively.
+- A display group folder is shown only at the highest parent level (not duplicated down the hierarchy).
 - **Selecting a placement** opens the property editor with the volume definition (shared) and placement-specific fields (position, rotation, parent).
 - **Editing a shared property** (dimensions, material) updates all placements of that volume. This is the "linked" behavior.
 
@@ -335,6 +474,43 @@ addPlacement(newIndex, { name: "MyObj_1", x: 0, y: 0, z: 0, parent: "World" })
 ```
 
 Importing the same object 3 times = 1 entry in `volumes[]` with 3 entries in `placements[]`. Editing the shape updates all 3.
+
+### Automatic placement detection
+
+When the user adds a new volume, the editor checks whether an existing volume definition already matches (same type, dimensions, material, and components). If a match is found, the editor offers two options:
+
+1. **Add as placement** (default) — append a new entry to the existing volume's `placements[]` with a default position and auto-generated name
+2. **Create new definition** — create a separate volume entry (for when the user intends to modify it independently later)
+
+This avoids accidental duplication and encourages the linked-placement model.
+
+**Matching criteria** (all must match):
+- `type` — same shape type
+- `dimensions` — identical dimension values (deep equality)
+- `material` — same material name
+- `components` — for boolean/assembly types, same component structure
+- `_displayGroup` — same display group (prevents merging muon veto with neutron veto PMTs)
+
+**Name generation**: The new placement name is derived from the volume name with an incremented suffix: if the volume has placements `FloorLeg_1` through `FloorLeg_4`, the next one becomes `FloorLeg_5`.
+
+```js
+// User drags a "box, SS304LSteel, 150×150×3165" into the scene
+const match = findMatchingVolume(jsonState, newVolumeDef);
+if (match) {
+  // Prompt: "A FloorLeg with identical shape already exists (4 placements). Add as placement #5?"
+  const nextName = generateNextPlacementName(match.volume); // → "FloorLeg_5"
+  addPlacement(match.index, {
+    name: nextName,
+    x: dropX, y: dropY, z: dropZ,
+    rotation: { x: 0, y: 0, z: 0 },
+    parent: targetParentName
+  });
+} else {
+  addVolume(newVolumeDef);
+}
+```
+
+For assemblies this is especially powerful: adding a PMT to the array is just one new placement entry, not a duplication of 5 component definitions.
 
 ---
 
