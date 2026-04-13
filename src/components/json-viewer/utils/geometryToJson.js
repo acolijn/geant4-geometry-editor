@@ -213,12 +213,39 @@ function initializeAssemblies(assemblies, geometry) {
       }
     });
     // 5. First collect all volumes to be added to the assembly
+    // Collect names of all assembly placement instances for this compound so we
+    // can detect when a component's mother_volume is an assembly placement and
+    // store parent: "" (assembly-relative).  This avoids the nextName bug where
+    // mixed placement names (e.g. mVetoTopPMT_0, mVetoBotPMT_0) would produce
+    // wrong parent names during reload.
+    const assemblyPlacementNames = new Set(
+      geometry.volumes
+        .filter(v => (v.type === 'assembly' || v.type === 'union') && v._compoundId === _compoundId)
+        .map(v => v.name)
+    );
+
     const componentsToAdd = [];
     
     selectedVolumes.forEach(volume => {
       // skip assemblies
       if (volume.type === 'assembly' || volume.type === 'union') {
         return;
+      }
+
+      // Determine the component parent for JSON output:
+      //  - union components always get ""
+      //  - if the mother_volume is an assembly placement of this compound → "" (assembly-relative)
+      //  - legacy "assembly*" names → ""
+      //  - otherwise preserve the parent (nested component hierarchy)
+      let componentParent;
+      if (assemblies[_compoundId].type === 'union') {
+        componentParent = "";
+      } else if (assemblyPlacementNames.has(volume.mother_volume)) {
+        componentParent = "";
+      } else if (volume.mother_volume.startsWith('assembly')) {
+        componentParent = "";
+      } else {
+        componentParent = volume.mother_volume;
       }
       
       // Create the component object
@@ -239,7 +266,7 @@ function initializeAssemblies(assemblies, geometry) {
               y: volume.rotation?.y || 0,
               z: volume.rotation?.z || 0
             },
-            parent: assemblies[_compoundId].type === 'union' ? "" : volume.mother_volume.startsWith('assembly') ? '' : volume.mother_volume
+            parent: componentParent
           }
         ],
         visible: volume.visible !== undefined ? volume.visible : true,

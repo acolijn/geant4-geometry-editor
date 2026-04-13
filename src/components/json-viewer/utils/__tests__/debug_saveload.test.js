@@ -23,7 +23,7 @@ describe('Save→Load with real mc-master data', () => {
 
     // Verify input
     const pmtArrays = mcMasterJson.volumes.filter(v => v.name.includes('PMTArray'));
-    expect(pmtArrays).toHaveLength(2); // TopPMTArray, BotPMTArray
+    expect(pmtArrays).toHaveLength(4); // TopPMTArray, BotPMTArray, mVetoPMTArray, nVetoPMTArray
     
     const topArr = pmtArrays.find(a => a.name === 'TopPMTArray');
     const botArr = pmtArrays.find(a => a.name === 'BotPMTArray');
@@ -236,9 +236,9 @@ describe('Save→Load with real mc-master data', () => {
       }
     });
 
-    // Should have exactly 2 PMT assemblies, not more
+    // Should have exactly 4 PMT assemblies, not more
     const pmtAssemblies = savedAsm.filter(a => a.name?.includes('PMT'));
-    expect(pmtAssemblies.length).toBe(2);
+    expect(pmtAssemblies.length).toBe(4);
     
     const savedTop = pmtAssemblies.find(a => a._compoundId === 'TopPMTArray');
     const savedBot = pmtAssemblies.find(a => a._compoundId === 'BotPMTArray');
