@@ -200,6 +200,10 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     volumesByParent[key] = []; // Initialize empty array for each volume
   });
   
+  // Collect display groups: volumes whose parent is World and that have a _displayGroup
+  // will be placed under virtual folder nodes instead of directly under World.
+  const displayGroupKeys = new Set();
+
   // Populate the groups
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
     const key = `volume-${index}`;
@@ -253,7 +257,22 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       }
     } else {
       // Regular volume - add to its parent's children list
-      if (volumesByParent[parentKey]) {
+      // If this volume's parent is World and it has a _displayGroup, place it
+      // under a virtual display-group folder instead.
+      if (parentKey === 'world' && volume._displayGroup) {
+        const groupKey = `display-group-${volume._displayGroup}`;
+        if (!volumesByParent[groupKey]) {
+          volumesByParent[groupKey] = [];
+          displayGroupKeys.add(groupKey);
+          // Add the folder entry to World's children
+          volumesByParent['world'].push({
+            isDisplayGroupFolder: true,
+            key: groupKey,
+            groupName: volume._displayGroup,
+          });
+        }
+        volumesByParent[groupKey].push({ volume, key, index });
+      } else if (volumesByParent[parentKey]) {
         volumesByParent[parentKey].push({
           volume,
           key,
@@ -289,6 +308,10 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Sort volumes alphabetically by g4name (if available) or name
     const sortedVolumes = [...volumesByParent[parentKey]].sort((a, b) => {
+      // Special case: Display group folders come first (alphabetically among themselves)
+      if (a.isDisplayGroupFolder && b.isDisplayGroupFolder) return a.groupName.localeCompare(b.groupName);
+      if (a.isDisplayGroupFolder) return -1;
+      if (b.isDisplayGroupFolder) return 1;
       // Special case: Parts folder should always come first
       if (a.isPartsFolder) return -1;
       if (b.isPartsFolder) return 1;
@@ -301,6 +324,51 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     
     // Render all children of this parent (now sorted alphabetically)
     return sortedVolumes.map((item) => {
+      // Special handling for Display Group folder
+      if (item.isDisplayGroupFolder) {
+        const groupKey = item.key;
+        return (
+          <React.Fragment key={groupKey}>
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNodeExpansion(groupKey, e);
+              }}
+              style={{
+                padding: '8px',
+                backgroundColor: '#f5f0e8',
+                color: '#333',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginBottom: '5px',
+                marginLeft: `${15 + level * 20}px`,
+                display: 'flex',
+                alignItems: 'center',
+                fontWeight: 'bold',
+                borderLeft: '3px solid #e6a817'
+              }}
+            >
+              <span
+                onClick={(e) => toggleNodeExpansion(groupKey, e)}
+                style={{
+                  marginRight: '5px',
+                  cursor: 'pointer',
+                  color: '#555',
+                  fontSize: '14px',
+                  width: '16px',
+                  textAlign: 'center'
+                }}
+              >
+                {expandedNodes[groupKey] ? '▼' : '►'}
+              </span>
+              <span style={{ marginRight: '5px', color: '#e6a817' }}>📁</span>
+              <span>{item.groupName}</span>
+            </div>
+            {expandedNodes[groupKey] && renderVolumeTree(groupKey, level + 1)}
+          </React.Fragment>
+        );
+      }
+
       // Special handling for Parts folder
       if (item.isPartsFolder) {
         const partsKey = item.key;

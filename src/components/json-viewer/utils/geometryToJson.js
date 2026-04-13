@@ -124,7 +124,8 @@ function processVolume(volume) {
     ...(volume._componentId && { _componentId: volume._componentId }),
     ...(volume.boolean_operation !== undefined && { boolean_operation: volume.boolean_operation }),
     ...(volume._is_boolean_component!== undefined && { _is_boolean_component: volume._is_boolean_component }),
-    ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent })
+    ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent }),
+    ...(volume._displayGroup !== undefined && { _displayGroup: volume._displayGroup })
   };
 }
 
@@ -159,6 +160,9 @@ function initializeAssemblies(assemblies, geometry) {
 
       if (volume.hitsCollectionName !== undefined) {
         assemblies[volume._compoundId].hitsCollectionName = volume.hitsCollectionName;
+      }
+      if (volume._displayGroup !== undefined) {
+        assemblies[volume._compoundId]._displayGroup = volume._displayGroup;
       }
     }
   });
@@ -274,7 +278,8 @@ function initializeAssemblies(assemblies, geometry) {
         ...(volume._componentId && { _componentId: volume._componentId }),
         ...(volume.boolean_operation !== undefined && { boolean_operation: volume.boolean_operation }),
         ...(volume._is_boolean_component!== undefined && { _is_boolean_component: volume._is_boolean_component }),
-        ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent })
+        ...(volume._boolean_parent !== undefined && { _boolean_parent: volume._boolean_parent }),
+        ...(volume._displayGroup !== undefined && { _displayGroup: volume._displayGroup })
         //_boolean_parent: "",
         // For union components, the parent should be empty since they're part of the union
         // For assembly components, preserve the parent-child relationships

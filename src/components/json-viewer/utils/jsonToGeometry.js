@@ -178,6 +178,9 @@ function createAssembly(volume, geometry) {
         if (volume.hitsCollectionName !== undefined) {
             assembly.hitsCollectionName = volume.hitsCollectionName;
         }
+        if (volume._displayGroup !== undefined) {
+            assembly._displayGroup = volume._displayGroup;
+        }
         debugLog('createAssembly:: assembly', assembly);
         geometry.geometries.volumes.push(assembly);
 
@@ -210,6 +213,9 @@ function createAssembly(volume, geometry) {
             };
             if (instanceId) {
                 newComponent._instanceId = instanceId;
+            }
+            if (component._displayGroup !== undefined) {
+                newComponent._displayGroup = component._displayGroup;
             }
 
             if (component.boolean_operation) {
@@ -347,6 +353,9 @@ function createVolume(volume, placement, geometry, placementIndex = 0) {
     }
     if (volume.hitsCollectionName !== undefined) {
         newVolume.hitsCollectionName = volume.hitsCollectionName;
+    }
+    if (volume._displayGroup !== undefined) {
+        newVolume._displayGroup = volume._displayGroup;
     }
 
     // set the dimensions of the new volume
