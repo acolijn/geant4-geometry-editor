@@ -596,6 +596,14 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                     const renamedParent = oldPlacementNames.get(pl.parent);
                     if (renamedParent) pl.parent = renamedParent;
                   }
+                  // Also update parent references inside compound components
+                  for (const comp of (vol.components || [])) {
+                    for (const pl of (comp.placements || [])) {
+                      if (pl.parent === oldRootName) pl.parent = newRootName;
+                      const renamedParent = oldPlacementNames.get(pl.parent);
+                      if (renamedParent) pl.parent = renamedParent;
+                    }
+                  }
                 }
                 // Update _compoundId if it matched the old name
                 if (dataToSave.volumes[0]._compoundId === oldRootName) {
