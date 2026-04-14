@@ -16,6 +16,9 @@
 
 import { debugWarn } from './logger.js';
 
+// Zero-padded 3-digit index for placement naming
+const pad3 = (n) => String(n).padStart(3, '0');
+
 // ──────────────────────────────────────────────────────────
 // Dimension mapping  (flat → JSON)  — inverse of expandToFlat.setDimensions
 // ──────────────────────────────────────────────────────────
@@ -93,13 +96,22 @@ export function flatToJsonVolume(flat) {
   const dims = flatDimsToJson(flat.type, flat);
   if (Object.keys(dims).length > 0) vol.dimensions = dims;
 
+  const placementName = `${flat.name}_${pad3(0)}`;
   vol.placements = [{
+    name: placementName,
+    g4name: placementName,
     x: flat.position?.x || 0,
     y: flat.position?.y || 0,
     z: flat.position?.z || 0,
     rotation: flat.rotation ? { ...flat.rotation } : { x: 0, y: 0, z: 0 },
     parent: flat.mother_volume || 'World',
   }];
+
+  // Compound types need a components array
+  if (flat.type === 'assembly' || flat.type === 'union' || flat.type === 'subtraction') {
+    vol.components = [];
+    if (flat._compoundId) vol._compoundId = flat._compoundId;
+  }
 
   return vol;
 }
@@ -119,6 +131,64 @@ function cascadeParentRename(json, oldName, newName) {
       }
     }
   }
+}
+
+// ──────────────────────────────────────────────────────────
+// RESTRUCTURE — move top-level volumes that reference a compound
+// (by volume name or placement name) into that compound's components.
+// This fixes data created before the applyAddToJson compound-aware fix.
+// ──────────────────────────────────────────────────────────
+
+export function restructureCompounds(json) {
+  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+
+  // Build a map: placement name OR volume name → compound volume object
+  const parentLookup = new Map();
+  for (const vol of json.volumes) {
+    if (!compoundTypes.has(vol.type)) continue;
+    parentLookup.set(vol.name, vol);
+    for (const pl of (vol.placements || [])) {
+      if (pl.name) parentLookup.set(pl.name, vol);
+    }
+  }
+
+  // Collect indices of volumes to move (in reverse order for safe splicing)
+  const toMove = [];
+  for (let i = json.volumes.length - 1; i >= 0; i--) {
+    const vol = json.volumes[i];
+    if (compoundTypes.has(vol.type)) continue; // skip compounds themselves
+
+    // Check if ALL placements reference the same compound
+    const placements = vol.placements || [];
+    if (placements.length === 0) continue;
+
+    let targetCompound = null;
+    let allSameCompound = true;
+    for (const pl of placements) {
+      const compound = parentLookup.get(pl.parent);
+      if (!compound) { allSameCompound = false; break; }
+      if (!targetCompound) targetCompound = compound;
+      else if (targetCompound !== compound) { allSameCompound = false; break; }
+    }
+
+    if (allSameCompound && targetCompound) {
+      toMove.push({ volumeIndex: i, targetCompound, vol });
+    }
+  }
+
+  // Move volumes into their compound's components array
+  for (const { volumeIndex, targetCompound, vol } of toMove) {
+    if (!targetCompound.components) targetCompound.components = [];
+    const component = structuredClone(vol);
+    // Set placement parent to '' (relative to compound)
+    for (const pl of (component.placements || [])) {
+      pl.parent = '';
+    }
+    targetCompound.components.push(component);
+    json.volumes.splice(volumeIndex, 1);
+  }
+
+  return json;
 }
 
 // ──────────────────────────────────────────────────────────
@@ -245,11 +315,47 @@ export function applyWorldUpdateToJson(jsonData, currentWorld, patch) {
 
 // ──────────────────────────────────────────────────────────
 // ADD — insert a new flat volume into JSON
+// If the parent is a compound type (assembly/union/subtraction),
+// the volume is added as a component inside that compound.
+// Otherwise it is added as a top-level volume.
 // ──────────────────────────────────────────────────────────
 
 export function applyAddToJson(jsonData, flatNewVolume) {
   const json = structuredClone(jsonData);
-  json.volumes.push(flatToJsonVolume(flatNewVolume));
+  const newVol = flatToJsonVolume(flatNewVolume);
+  const parentName = flatNewVolume.mother_volume;
+  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+
+  // Check if parent is a compound volume.
+  // The parent may be a volume name OR a placement name (e.g. "MyAssembly_0").
+  // Try matching by volume name first, then by any placement name.
+  let parentVol = null;
+  if (parentName) {
+    parentVol = json.volumes.find(v => v.name === parentName && compoundTypes.has(v.type));
+    if (!parentVol) {
+      parentVol = json.volumes.find(v =>
+        compoundTypes.has(v.type) &&
+        (v.placements || []).some(pl => pl.name === parentName)
+      ) || null;
+    }
+  }
+
+  if (parentVol) {
+    // Add as a component inside the compound
+    if (!parentVol.components) parentVol.components = [];
+    // For components, the placement parent should be empty (relative to assembly)
+    const component = { ...newVol };
+    delete component.placements;
+    component.placements = (newVol.placements || []).map(pl => ({
+      ...pl,
+      parent: '',
+    }));
+    parentVol.components.push(component);
+  } else {
+    // Standard top-level volume
+    json.volumes.push(newVol);
+  }
+
   return json;
 }
 
@@ -311,9 +417,19 @@ export function applyRemoveFromJson(jsonData, flatVolumes, flatIndex) {
 export function extractSubtreeFromJson(jsonData, volumeName) {
   if (!jsonData || !jsonData.volumes || !volumeName) return null;
 
-  // Collect all names that are reachable as children of volumeName.
-  // A JSON volume is a child if any of its placements has parent === <name in set>.
+  // Collect all names (volume names AND placement names) that are reachable
+  // as children of volumeName. A JSON volume is a child if any of its
+  // placements has parent matching a name in the set.
   const selectedNames = new Set([volumeName]);
+
+  // Also add all placement names of the root volume
+  const rootVol = jsonData.volumes.find(v => v.name === volumeName);
+  if (rootVol) {
+    for (const pl of (rootVol.placements || [])) {
+      if (pl.name) selectedNames.add(pl.name);
+    }
+  }
+
   let changed = true;
   while (changed) {
     changed = false;
@@ -322,6 +438,10 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
       for (const pl of (vol.placements || [])) {
         if (selectedNames.has(pl.parent)) {
           selectedNames.add(vol.name);
+          // Also add this volume's placement names so grandchildren can be found
+          for (const vpl of (vol.placements || [])) {
+            if (vpl.name) selectedNames.add(vpl.name);
+          }
           changed = true;
           break;
         }
@@ -340,7 +460,7 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
     }
   }
 
-  // Clone matching volumes, keeping only relevant placements
+  // Clone matching volumes (filter by volume name, not placement names)
   const volumes = [];
   for (const vol of jsonData.volumes) {
     if (selectedNames.has(vol.name)) {
@@ -348,13 +468,20 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
     }
   }
 
-  return { world: null, volumes };
+  // Restructure: move misplaced top-level volumes into compound components
+  const result = { world: null, volumes };
+  restructureCompounds(result);
+
+  return result;
 }
 
 // ──────────────────────────────────────────────────────────
 // MERGE VOLUMES — merge imported JSON volumes into existing JSON.
-// If a volume with the same name already exists, append its placements.
-// If it's new, add the volume definition.
+// Compound types (assembly/union/subtraction) with the same name:
+//   → merge placements (add new instances of the compound).
+// Standard volumes with the same name:
+//   → rename to make unique, updating internal parent references.
+// New volumes: add as-is.
 // ──────────────────────────────────────────────────────────
 
 export function mergeJsonVolumes(jsonData, incomingVolumes) {
@@ -365,28 +492,90 @@ export function mergeJsonVolumes(jsonData, incomingVolumes) {
   const existingByName = new Map();
   json.volumes.forEach((vol, idx) => existingByName.set(vol.name, idx));
 
+  // Also index incoming volumes by name so we can detect internal references
+  const incomingNames = new Set(incomingVolumes.map(v => v.name));
+
+  // Phase 1: Build a rename map for standard volumes that collide with existing names
+  const renameMap = new Map(); // oldName → newName
+  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+
+  for (const incoming of incomingVolumes) {
+    if (existingByName.has(incoming.name) && !compoundTypes.has(incoming.type)) {
+      // Standard volume name collision — generate a unique name
+      let suffix = 1;
+      let newName = `${incoming.name}_${suffix}`;
+      while (existingByName.has(newName) || incomingNames.has(newName) || renameMap.has(newName)) {
+        suffix++;
+        newName = `${incoming.name}_${suffix}`;
+      }
+      renameMap.set(incoming.name, newName);
+    }
+  }
+
+  // Phase 2: Apply renames and add/merge volumes
   for (const incoming of incomingVolumes) {
     const clone = structuredClone(incoming);
+
+    // Apply rename to this volume if needed
+    const renamedName = renameMap.get(clone.name);
+    if (renamedName) {
+      clone.name = renamedName;
+      if (clone.g4name) clone.g4name = renamedName;
+      // Update placement names too
+      for (const pl of (clone.placements || [])) {
+        if (pl.name === incoming.name) pl.name = renamedName;
+        if (pl.g4name === incoming.name) pl.g4name = renamedName;
+      }
+    }
+
+    // Update parent references that point to renamed incoming volumes
+    for (const pl of (clone.placements || [])) {
+      const parentRenamed = renameMap.get(pl.parent);
+      if (parentRenamed) {
+        pl.parent = parentRenamed;
+      }
+    }
+    // Same for components
+    for (const comp of (clone.components || [])) {
+      for (const pl of (comp.placements || [])) {
+        const parentRenamed = renameMap.get(pl.parent);
+        if (parentRenamed) {
+          pl.parent = parentRenamed;
+        }
+      }
+    }
+
     const existingIdx = existingByName.get(clone.name);
 
-    if (existingIdx !== undefined) {
-      // Volume definition already exists — merge placements
+    if (existingIdx !== undefined && compoundTypes.has(clone.type)) {
+      // Compound volume already exists — merge placements
       const existing = json.volumes[existingIdx];
       const existingPlacements = existing.placements || [];
 
+      // Find the highest existing placement index for naming
+      let maxIdx = -1;
+      for (const ep of existingPlacements) {
+        const match = ep.name?.match(/_(\d+)$/);
+        if (match) maxIdx = Math.max(maxIdx, parseInt(match[1], 10));
+      }
+      if (maxIdx < 0) maxIdx = existingPlacements.length - 1;
+
       for (const pl of (clone.placements || [])) {
-        // Check for duplicate placements (same position + parent)
         const isDuplicate = existingPlacements.some(ep =>
           ep.x === pl.x && ep.y === pl.y && ep.z === pl.z &&
           ep.parent === pl.parent
         );
         if (!isDuplicate) {
+          maxIdx++;
+          const placementName = `${existing.name}_${pad3(maxIdx)}`;
+          pl.name = placementName;
+          pl.g4name = placementName;
           existingPlacements.push(pl);
         }
       }
       existing.placements = existingPlacements;
     } else {
-      // New volume — add it
+      // New volume (or renamed) — add it
       json.volumes.push(clone);
       existingByName.set(clone.name, json.volumes.length - 1);
     }

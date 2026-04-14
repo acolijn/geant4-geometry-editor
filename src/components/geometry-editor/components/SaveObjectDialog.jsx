@@ -197,7 +197,7 @@ const SaveObjectDialog = ({
       </Box>
       
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-        The object will be saved with {objectData?.descendants?.length || 0} descendants.
+        The object will be saved with {(objectData?.volumes?.length || 1) - 1} descendants.
         {preserveComponentIds && (
           <span>
             <br />

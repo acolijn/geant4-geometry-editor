@@ -14,6 +14,7 @@ import {
 import { JsonTree } from './components/JsonTreeNode';
 import { debugLog } from '../../utils/logger';
 import { useAppContext } from '../../contexts/useAppContext';
+import { restructureCompounds } from '../../utils/jsonOperations';
 
 /**
  * JSON viewer for exporting and importing combined geometry/material state.
@@ -37,6 +38,8 @@ const JsonViewer = () => {
   const parsedData = useMemo(() => {
     if (!jsonData) return null;
     const combined = structuredClone(jsonData);
+    // Ensure compounds have their components properly nested
+    restructureCompounds(combined);
     if (materials && Object.keys(materials).length > 0) {
       combined.materials = materials;
     }

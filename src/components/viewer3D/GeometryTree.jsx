@@ -3,7 +3,7 @@ import { getParentKey } from './utils/geometryUtils';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
-import { getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
+import { getSelectedGeometryObject, findAllDescendants } from '../geometry-editor/utils/GeometryUtils';
 import { saveObject } from '../geometry-editor/utils/ObjectStorage';
 import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdateUtils';
 import { extractSubtreeFromJson } from '../../utils/jsonOperations';
@@ -12,7 +12,7 @@ import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
-  const { jsonData } = useAppContext();
+  const { jsonData, handleBatchSetVisibility } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
@@ -259,21 +259,43 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     }
   });
   
+  // Helper to toggle visibility for all volumes inside a display-group folder
+  // (including all their descendants)
+  const toggleGroupVisibility = (groupKey) => {
+    const members = volumesByParent[groupKey];
+    if (!members || members.length === 0) return;
+    // Determine new visibility: if any member is visible, hide all; otherwise show all
+    const anyVisible = members.some(m => m.volume && m.volume.visible !== false);
+    const newVisible = !anyVisible;
+    const updates = [];
+    members.forEach(m => {
+      if (!m.volume) return;
+      updates.push({ id: m.key, visible: newVisible });
+      // Also include all descendants of this member
+      const descendants = findAllDescendants(m.volume.name, geometries.volumes);
+      descendants.forEach(desc => {
+        const descIndex = geometries.volumes.findIndex(v => v.name === desc.name);
+        if (descIndex !== -1) {
+          updates.push({ id: `volume-${descIndex}`, visible: newVisible });
+        }
+      });
+    });
+    handleBatchSetVisibility(updates);
+  };
+
   // Helper to toggle visibility for a volume and all its descendants
   const toggleCascadeVisibility = (volume, key) => {
     const newVisible = volume.visible === false ? true : false;
-    // Toggle this volume
-    const updatedVolume = { ...volume, visible: newVisible };
-    onUpdateGeometry(key, updatedVolume);
+    const updates = [{ id: key, visible: newVisible }];
     // Toggle all descendants
     const descendants = findAllDescendants(volume.name, geometries.volumes);
     descendants.forEach(desc => {
       const descIndex = geometries.volumes.findIndex(v => v.name === desc.name);
       if (descIndex !== -1) {
-        const updatedDesc = { ...geometries.volumes[descIndex], visible: newVisible };
-        onUpdateGeometry(`volume-${descIndex}`, updatedDesc);
+        updates.push({ id: `volume-${descIndex}`, visible: newVisible });
       }
     });
+    handleBatchSetVisibility(updates);
   };
   
   // Recursive function to render a volume and its children in the tree
@@ -339,7 +361,22 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 {expandedNodes[groupKey] ? '▼' : '►'}
               </span>
               <span style={{ marginRight: '5px', color: '#e6a817' }}>📁</span>
-              <span>{item.groupName}</span>
+              <span style={{ flex: 1 }}>{item.groupName}</span>
+              <span
+                title="Toggle visibility of all items in this group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleGroupVisibility(groupKey);
+                }}
+                style={{
+                  marginLeft: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  opacity: volumesByParent[groupKey]?.some(m => m.volume && m.volume.visible !== false) ? 0.9 : 0.4
+                }}
+              >
+                👁️
+              </span>
             </div>
             {expandedNodes[groupKey] && renderVolumeTree(groupKey, level + 1)}
           </React.Fragment>
@@ -530,12 +567,45 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             // Generate a default file name if none is provided
             const fileName = name || objectToSave?.volumes?.[0]?.name || 'geometry';
             
-            // Apply structured naming if needed
-            debugLog('GeometryTree:: objectToSave', objectToSave);
+            // Rename the root volume (first volume) to match the save name
+            const dataToSave = structuredClone(objectToSave);
+            if (dataToSave.volumes && dataToSave.volumes.length > 0) {
+              const oldRootName = dataToSave.volumes[0].name;
+              const newRootName = fileName;
+              if (oldRootName !== newRootName) {
+                dataToSave.volumes[0].name = newRootName;
+                if (dataToSave.volumes[0].g4name) {
+                  dataToSave.volumes[0].g4name = newRootName;
+                }
+                // Rename placement names that start with the old root name
+                // (e.g. assembly_xxx_000 → PMT_dummy_000)
+                const oldPlacementNames = new Map();
+                for (const pl of (dataToSave.volumes[0].placements || [])) {
+                  if (pl.name && pl.name.startsWith(oldRootName)) {
+                    const suffix = pl.name.slice(oldRootName.length);
+                    const newPlName = newRootName + suffix;
+                    oldPlacementNames.set(pl.name, newPlName);
+                    pl.name = newPlName;
+                    if (pl.g4name) pl.g4name = newPlName;
+                  }
+                }
+                // Update parent references in other volumes (by volume name or placement name)
+                for (const vol of dataToSave.volumes) {
+                  for (const pl of (vol.placements || [])) {
+                    if (pl.parent === oldRootName) pl.parent = newRootName;
+                    const renamedParent = oldPlacementNames.get(pl.parent);
+                    if (renamedParent) pl.parent = renamedParent;
+                  }
+                }
+                // Update _compoundId if it matched the old name
+                if (dataToSave.volumes[0]._compoundId === oldRootName) {
+                  dataToSave.volumes[0]._compoundId = newRootName;
+                }
+              }
+            }
+
+            debugLog('GeometryTree:: dataToSave', dataToSave);
             debugLog('GeometryTree:: preserveComponentIds', preserveComponentIds);
-            // const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
-            const dataToSave = objectToSave;
-            // Save the object to the library
             
             await saveObject(fileName, description, dataToSave);
             

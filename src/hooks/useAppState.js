@@ -135,6 +135,31 @@ export const useAppState = () => {
     }
   };
 
+  // ─── BATCH: set visibility on multiple volumes at once ─────
+  // updates: array of { id: 'volume-N', visible: boolean }
+  const handleBatchSetVisibility = (updates) => {
+    if (!updates || updates.length === 0) return;
+    const currentJson = getOrInitJson();
+    const newJson = structuredClone(currentJson);
+
+    for (const { id, visible } of updates) {
+      const flatIndex = parseInt(id.replace('volume-', ''), 10);
+      const flatVol = geometries.volumes[flatIndex];
+      if (!flatVol || flatVol._volumeIndex === undefined) continue;
+
+      const vi = flatVol._volumeIndex;
+      const ci = flatVol._componentIndex;
+
+      if (ci !== undefined && newJson.volumes[vi]?.components?.[ci]) {
+        newJson.volumes[vi].components[ci].visible = visible;
+      } else if (newJson.volumes[vi]) {
+        newJson.volumes[vi].visible = visible;
+      }
+    }
+
+    reDeriveFlat(newJson);
+  };
+
   // ─── IMPORT: replace all geometry from hierarchical JSON ──
   const handleImportGeometries = (importData) => {
     debugLog('handleImportGeometries:: Received data:', importData);
@@ -205,6 +230,7 @@ export const useAppState = () => {
     handleUpdateGeometry,
     handleAddGeometry,
     handleRemoveGeometry,
+    handleBatchSetVisibility,
     handleImportGeometries,
     handleImportMaterials,
     handleUpdateMaterials,

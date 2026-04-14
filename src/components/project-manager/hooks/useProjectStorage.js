@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import fileSystemManager from '../../../utils/FileSystemManager';
 import indexedDBManager from '../../../utils/IndexedDBManager';
 import { debugLog, debugWarn } from '../../../utils/logger.js';
+import { restructureCompounds } from '../../../utils/jsonOperations';
 
 /**
  * Custom hook for project storage management
@@ -272,6 +273,9 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
     try {
       // Use jsonData directly — it is the source of truth
       const geometryData = structuredClone(jsonData || { world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } }, volumes: [] });
+
+      // Ensure any misplaced top-level volumes are moved into compound components
+      restructureCompounds(geometryData);
       
       if (materials && Object.keys(materials).length > 0) {
         geometryData.materials = materials;
