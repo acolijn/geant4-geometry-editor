@@ -7,18 +7,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import fileSystemManager from '../../../utils/FileSystemManager';
 import indexedDBManager from '../../../utils/IndexedDBManager';
-import { generateJson } from '../../json-viewer/utils/geometryToJson';
 import { debugLog, debugWarn } from '../../../utils/logger.js';
 
 /**
  * Custom hook for project storage management
- * @param {Object} geometries - Current geometry data
+ * @param {Object} geometries - Current geometry data (flat view, used for object saving)
  * @param {Object} materials - Current materials data
  * @param {Array} hitCollections - Current hit collections
  * @param {Function} onLoadProject - Callback when project is loaded
+ * @param {Object} jsonData - Primary hierarchical JSON state (used for project saving)
  * @returns {Object} Storage state and methods
  */
-export const useProjectStorage = (geometries, materials, hitCollections, onLoadProject) => {
+export const useProjectStorage = (geometries, materials, hitCollections, onLoadProject, jsonData) => {
   // Storage state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -270,10 +270,8 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
 
     setIsLoading(true);
     try {
-      const geometryData = generateJson({
-        world: geometries.world,
-        volumes: geometries.volumes || []
-      });
+      // Use jsonData directly — it is the source of truth
+      const geometryData = structuredClone(jsonData || { world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } }, volumes: [] });
       
       if (materials && Object.keys(materials).length > 0) {
         geometryData.materials = materials;
@@ -322,7 +320,7 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
     } finally {
       setIsLoading(false);
     }
-  }, [isInitialized, storageManager, geometries, materials, hitCollections, loadSavedProjectsList]);
+  }, [isInitialized, storageManager, jsonData, materials, hitCollections, loadSavedProjectsList]);
 
   // Load project
   const loadProject = useCallback(async (projectName) => {

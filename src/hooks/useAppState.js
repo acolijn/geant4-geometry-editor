@@ -1,8 +1,14 @@
 import { useState } from 'react';
-import { updateGeometry, addGeometry, removeGeometry } from '../components/geometry-editor/utils/GeometryOperations';
 import { defaultGeometry, defaultMaterials } from '../utils/defaults';
 import { propagateCompoundIdToDescendants } from '../components/geometry-editor/utils/compoundIdPropagator';
 import { expandToFlat } from '../utils/expandToFlat';
+import {
+  applyUpdateToJson,
+  applyWorldUpdateToJson,
+  applyAddToJson,
+  applyRemoveFromJson,
+  flatToJsonVolume,
+} from '../utils/jsonOperations';
 import { debugLog } from '../utils/logger';
 
 const cloneData = (data) => structuredClone(data);
@@ -18,65 +24,19 @@ export const useAppState = () => {
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  // JSON-primary state: the hierarchical JSON is the source of truth for load/save
+  // JSON-primary state: the hierarchical JSON is the source of truth
   const [jsonData, setJsonData] = useState(null);
 
-  const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false, extraData = null) => {
-    updateGeometry(
-      geometries,
-      id,
-      updatedObject,
-      keepSelected,
-      isLiveUpdate,
-      extraData,
-      setGeometries,
-      setSelectedGeometry,
-      selectedGeometry,
-      null,
-      propagateCompoundIdToDescendants
-    );
-  };
+  // ─── Helper: re-derive flat view from JSON ────────────────
+  // Called after every JSON mutation. Stores jsonData, derives flat,
+  // propagates compound IDs, and sets geometries.
+  const reDeriveFlat = (newJson) => {
+    setJsonData(newJson);
+    const flat = expandToFlat(newJson);
 
-  const handleAddGeometry = (newGeometry) => {
-    return addGeometry(
-      newGeometry,
-      geometries,
-      setGeometries,
-      setSelectedGeometry,
-      propagateCompoundIdToDescendants
-    );
-  };
-
-  const handleRemoveGeometry = (id) => {
-    removeGeometry(
-      id,
-      geometries,
-      setGeometries,
-      setSelectedGeometry,
-      selectedGeometry
-    );
-  };
-
-  const handleImportGeometries = (importData) => {
-    debugLog('handleImportGeometries:: Received data:', importData);
-
-    if (!importData || !importData.volumes || !Array.isArray(importData.volumes)) {
-      console.error('Invalid geometries format');
-      return { success: false, message: 'Invalid geometries format' };
-    }
-
-    // Store the hierarchical JSON as primary state
-    const jsonCopy = cloneData(importData);
-    setJsonData(jsonCopy);
-
-    // Derive flat geometry from JSON
-    const flat = expandToFlat(jsonCopy);
-    debugLog('handleImportGeometries:: Derived flat geometry:', flat);
-
-    // Propagate compound IDs for existing edit handlers
     let updatedVolumes = [...flat.volumes];
     flat.volumes.forEach((volume, index) => {
-      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
+      if (['assembly', 'union', 'subtraction'].includes(volume.type)) {
         if (!volume._compoundId) {
           updatedVolumes[index] = { ...volume, _compoundId: volume.name };
         }
@@ -85,7 +45,106 @@ export const useAppState = () => {
       }
     });
 
-    setGeometries({ world: flat.world, volumes: updatedVolumes });
+    const result = { world: flat.world, volumes: updatedVolumes };
+    setGeometries(result);
+    return result;
+  };
+
+  // ─── Helper: get current JSON (lazy-init from flat if needed) ──
+  const getOrInitJson = () => {
+    if (jsonData) return jsonData;
+    // No JSON loaded yet — seed from current default state
+    const world = geometries.world;
+    return {
+      world: {
+        name: world?.name || 'World',
+        type: world?.type || 'box',
+        material: world?.material || 'G4_AIR',
+        dimensions: world?.size
+          ? { x: world.size.x, y: world.size.y, z: world.size.z }
+          : { x: 2000, y: 2000, z: 2000 },
+      },
+      volumes: (geometries.volumes || []).map(v => flatToJsonVolume(v)),
+    };
+  };
+
+  // ─── EDIT: update a volume or the world ───────────────────
+  const handleUpdateGeometry = (id, updatedObject, keepSelected = true) => {
+    const currentJson = getOrInitJson();
+    let newJson;
+
+    if (id === 'world') {
+      newJson = applyWorldUpdateToJson(currentJson, geometries.world, updatedObject);
+    } else {
+      const flatIndex = parseInt(id.replace('volume-', ''), 10);
+      newJson = applyUpdateToJson(currentJson, geometries.volumes, flatIndex, updatedObject);
+    }
+
+    reDeriveFlat(newJson);
+
+    if (keepSelected) {
+      setSelectedGeometry(id);
+    }
+  };
+
+  // ─── EDIT: add a new volume ───────────────────────────────
+  const handleAddGeometry = (newGeometry) => {
+    const currentJson = getOrInitJson();
+
+    // Auto-generate g4name if missing
+    if (!newGeometry.g4name) {
+      const typeName = newGeometry.type.charAt(0).toUpperCase() + newGeometry.type.slice(1);
+      const count = geometries.volumes.filter(v => v.type === newGeometry.type).length;
+      newGeometry.g4name = `${typeName}_${count}`;
+    }
+
+    const newJson = applyAddToJson(currentJson, newGeometry);
+    const derived = reDeriveFlat(newJson);
+
+    // Select the newly added volume (appears at end of flat list)
+    const newIndex = derived.volumes.length - 1;
+    setTimeout(() => setSelectedGeometry(`volume-${newIndex}`), 50);
+
+    return newGeometry.name;
+  };
+
+  // ─── EDIT: remove a volume ────────────────────────────────
+  const handleRemoveGeometry = (id) => {
+    if (id === 'world') return;
+    const currentJson = getOrInitJson();
+
+    const flatIndex = parseInt(id.replace('volume-', ''), 10);
+
+    // Remember selected volume name before removal
+    let selectedName = null;
+    if (selectedGeometry && selectedGeometry !== 'world' && selectedGeometry !== id) {
+      const selIdx = parseInt(selectedGeometry.replace('volume-', ''), 10);
+      selectedName = geometries.volumes[selIdx]?.name;
+    }
+
+    const newJson = applyRemoveFromJson(currentJson, geometries.volumes, flatIndex);
+    const derived = reDeriveFlat(newJson);
+
+    // Re-select by name if possible, otherwise deselect
+    if (selectedName) {
+      const newIdx = derived.volumes.findIndex(v => v.name === selectedName);
+      setSelectedGeometry(newIdx >= 0 ? `volume-${newIdx}` : null);
+    } else {
+      setSelectedGeometry(null);
+    }
+  };
+
+  // ─── IMPORT: replace all geometry from hierarchical JSON ──
+  const handleImportGeometries = (importData) => {
+    debugLog('handleImportGeometries:: Received data:', importData);
+
+    if (!importData || !importData.volumes || !Array.isArray(importData.volumes)) {
+      console.error('Invalid geometries format');
+      return { success: false, message: 'Invalid geometries format' };
+    }
+
+    const jsonCopy = cloneData(importData);
+    reDeriveFlat(jsonCopy);
     return { success: true, message: 'Geometries imported successfully' };
   };
 
@@ -98,56 +157,26 @@ export const useAppState = () => {
     }
 
     const materialsCopy = cloneData(importedMaterials);
-    debugLog('handleImportMaterials:: Setting materials state with:', materialsCopy);
-
     setMaterials(materialsCopy);
     return { success: true, message: 'Materials imported successfully' };
   };
 
-  // Append flat volumes to existing geometry (used by ImportObjectDialog)
-  const handleAppendVolumes = (flatVolumes) => {
-    if (!flatVolumes || !Array.isArray(flatVolumes) || flatVolumes.length === 0) return;
-
-    let updatedVolumes = [...(geometries.volumes || []), ...flatVolumes];
-    flatVolumes.forEach((volume) => {
-      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
-        const idx = updatedVolumes.lastIndexOf(volume);
-        if (!volume._compoundId) {
-          updatedVolumes[idx] = { ...volume, _compoundId: volume.name };
-        }
-        const compoundId = updatedVolumes[idx]._compoundId;
-        updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
-      }
-    });
-
-    setGeometries({ world: geometries.world, volumes: updatedVolumes });
+  // ─── APPEND: add raw JSON volumes (used by ImportObjectDialog) ──
+  const handleAppendJsonVolumes = (jsonVolumes) => {
+    if (!jsonVolumes || !Array.isArray(jsonVolumes) || jsonVolumes.length === 0) return;
+    const currentJson = cloneData(getOrInitJson());
+    currentJson.volumes.push(...cloneData(jsonVolumes));
+    reDeriveFlat(currentJson);
   };
 
   const handleUpdateMaterials = (updatedMaterials) => {
     setMaterials(updatedMaterials);
   };
 
+  // ─── LOAD PROJECT: replace everything from JSON ───────────
   const handleLoadProject = (loadedJsonData, loadedMaterials, loadedHitCollections) => {
-    // Store the hierarchical JSON as primary state
     const jsonCopy = cloneData(loadedJsonData);
-    setJsonData(jsonCopy);
-
-    // Derive flat geometry from JSON
-    const flat = expandToFlat(jsonCopy);
-
-    // Propagate compound IDs for existing edit handlers
-    let updatedVolumes = [...flat.volumes];
-    flat.volumes.forEach((volume, index) => {
-      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
-        if (!volume._compoundId) {
-          updatedVolumes[index] = { ...volume, _compoundId: volume.name };
-        }
-        const compoundId = updatedVolumes[index]._compoundId;
-        updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
-      }
-    });
-
-    setGeometries({ world: flat.world, volumes: updatedVolumes });
+    reDeriveFlat(jsonCopy);
     setMaterials(loadedMaterials);
 
     if (loadedHitCollections && Array.isArray(loadedHitCollections)) {
@@ -176,7 +205,7 @@ export const useAppState = () => {
     handleImportGeometries,
     handleImportMaterials,
     handleUpdateMaterials,
-    handleAppendVolumes,
+    handleAppendJsonVolumes,
     handleLoadProject
   };
 };

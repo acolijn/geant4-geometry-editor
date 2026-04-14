@@ -47,10 +47,11 @@ const ProjectManager = ({ compactMode = false }) => {
     geometries,
     materials,
     hitCollections,
+    jsonData,
     handleLoadProject: onLoadProject,
   } = useAppContext();
   // Use custom storage hook
-  const storage = useProjectStorage(geometries, materials, hitCollections, onLoadProject);
+  const storage = useProjectStorage(geometries, materials, hitCollections, onLoadProject, jsonData);
   
   // Dialog open states
   const [initDialogOpen, setInitDialogOpen] = useState(false);

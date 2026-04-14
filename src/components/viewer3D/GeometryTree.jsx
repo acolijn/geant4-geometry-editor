@@ -3,82 +3,53 @@ import { getParentKey } from './utils/geometryUtils';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
-import { findAllDescendants, getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
+import { getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
 import { saveObject } from '../geometry-editor/utils/ObjectStorage';
 import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdateUtils';
+import { extractSubtreeFromJson } from '../../utils/jsonOperations';
+import { useAppContext } from '../../contexts/useAppContext';
 import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
+  const { jsonData } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
 
-  // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
-  const handleExportObject = async (objectKey = selectedGeometry) => {
-    debugLog('handleExportObject:: geometries');
+  // Extract the selected volume's subtree directly from jsonData
+  const handleExportObject = (objectKey = selectedGeometry) => {
+    debugLog('handleExportObject:: from jsonData');
     
-    // Get the currently selected geometry object
     const selectedObject = getSelectedGeometryObject(objectKey, geometries);
-    debugLog('handleExportObject:: selectedObject', selectedObject);
-    
     if (!selectedObject) {
       alert('Please select a geometry object to export');
       return;
     }
-    
-    // Create a proper geometries structure
-    const geometriesForExport = {
-      volumes: [...geometries.volumes],
-      world: geometries.world || { name: 'world' }
-    };
-    
-    // Get the compound ID
-    let compoundId = selectedObject._compoundId;
-    
-    // Repair missing compound IDs for legacy or imported objects before export
-    if (!compoundId) {
-      const repairedCompoundId = selectedObject.name || `compound_${Date.now()}`;
-      const descendantNames = findAllDescendants(selectedObject.name, geometries.volumes).map(v => v.name);
-      const namesToRepair = new Set([selectedObject.name, ...descendantNames]);
 
-      geometriesForExport.volumes = geometries.volumes.map((volume) => {
-        if (namesToRepair.has(volume.name)) {
-          return {
-            ...volume,
-            _compoundId: volume._compoundId || repairedCompoundId
-          };
-        }
-
-        return volume;
-      });
-
-      compoundId = repairedCompoundId;
-    }
-    
-    try {
-      // Import the generateTemplateJson function
-      const { generateTemplateJson } = await import('../../components/json-viewer/utils/geometryToJson');
-      
-      // Generate a template JSON from the selected root instance to avoid
-      // mixing multiple scene instances that share the same _compoundId.
-      const templateJson = generateTemplateJson(geometriesForExport, compoundId, selectedObject.name);
-      
-      if (!templateJson) {
-        console.error('Failed to generate template JSON');
-        alert('Failed to generate template JSON for this object');
-        return;
-      }
-      
-      debugLog('templateJson::', templateJson);
-      
-      // Set the object to save and open the dialog
-      setObjectToSave(templateJson);
-      setSaveObjectDialogOpen(true);
+    if (!jsonData) {
+      alert('No JSON data available');
       return;
-    } catch (error) {
-      console.error('Error generating template JSON:', error);
     }
+
+    // Find the volume name to extract. For compound components, use the
+    // compound root name if available; otherwise use the volume's own name.
+    const volumeName = selectedObject._compoundId && 
+      !selectedObject._is_boolean_component &&
+      !selectedObject._componentId
+        ? selectedObject._compoundId
+        : selectedObject.name;
+
+    // Extract the subtree directly from the hierarchical JSON
+    const subtree = extractSubtreeFromJson(jsonData, volumeName);
+    if (!subtree || subtree.volumes.length === 0) {
+      alert('Failed to extract object from JSON data');
+      return;
+    }
+
+    debugLog('handleExportObject:: subtree', subtree);
+    setObjectToSave(subtree);
+    setSaveObjectDialogOpen(true);
   };
 
   // State to track expanded nodes - initially only World is expanded
@@ -557,7 +528,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
           
           try {
             // Generate a default file name if none is provided
-            const fileName = name || objectToSave.object.name || 'geometry';
+            const fileName = name || objectToSave?.volumes?.[0]?.name || 'geometry';
             
             // Apply structured naming if needed
             debugLog('GeometryTree:: objectToSave', objectToSave);
@@ -608,7 +579,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
           }
         }}
         objectData={objectToSave}
-        defaultName={objectToSave?.object?.name || ''}
+        defaultName={objectToSave?.volumes?.[0]?.name || ''}
       />
       
       {/* Alert message */}

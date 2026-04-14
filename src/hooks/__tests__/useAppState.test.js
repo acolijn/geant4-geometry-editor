@@ -25,12 +25,6 @@ vi.mock('react', () => ({
 }));
 
 // Mock dependencies — paths relative to THIS test file (src/hooks/__tests__/)
-vi.mock('../../components/geometry-editor/utils/GeometryOperations', () => ({
-  updateGeometry: vi.fn(),
-  addGeometry: vi.fn(),
-  removeGeometry: vi.fn(),
-}));
-
 vi.mock('../../components/geometry-editor/utils/compoundIdPropagator', () => ({
   propagateCompoundIdToDescendants: vi.fn((_name, _compoundId, vols) => vols),
 }));
@@ -51,6 +45,19 @@ vi.mock('../../utils/expandToFlat', () => ({
     world: json.world || { name: 'World', type: 'box', size: { x: 2000, y: 2000, z: 2000 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, material: 'G4_AIR' },
     volumes: json.volumes || [],
   })),
+}));
+
+// Mock jsonOperations — pass-through clones
+vi.mock('../../utils/jsonOperations', () => ({
+  applyUpdateToJson: vi.fn((json) => structuredClone(json)),
+  applyWorldUpdateToJson: vi.fn((json) => structuredClone(json)),
+  applyAddToJson: vi.fn((json, vol) => {
+    const copy = structuredClone(json);
+    copy.volumes.push({ name: vol.name, type: vol.type, placements: [{ x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' }] });
+    return copy;
+  }),
+  applyRemoveFromJson: vi.fn((json) => structuredClone(json)),
+  flatToJsonVolume: vi.fn((flat) => ({ name: flat.name, type: flat.type, placements: [{ x: 0, y: 0, z: 0, parent: 'World' }] })),
 }));
 
 // useState call order in useAppState:
@@ -209,7 +216,7 @@ describe('useAppState', () => {
         'updateDialogOpen', 'setUpdateDialogOpen',
         'handleUpdateGeometry', 'handleAddGeometry', 'handleRemoveGeometry',
         'handleImportGeometries', 'handleImportMaterials',
-        'handleUpdateMaterials', 'handleAppendVolumes', 'handleLoadProject',
+        'handleUpdateMaterials', 'handleAppendJsonVolumes', 'handleLoadProject',
       ];
       for (const key of expectedKeys) {
         expect(result).toHaveProperty(key);

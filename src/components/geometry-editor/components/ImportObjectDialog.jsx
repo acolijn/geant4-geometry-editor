@@ -27,18 +27,16 @@ import InfoIcon from '@mui/icons-material/Info';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { debugLog } from '../../../utils/logger.js';
-import { expandToFlat } from '../../../utils/expandToFlat';
 
 /**
- * Dialog for importing a JSON object from the objects directory
- * Uses expandToFlat to convert the JSON object to flat geometry volumes
+ * Dialog for importing a JSON object from the objects directory.
+ * Appends raw JSON volumes to the primary JSON state.
  */
 const ImportObjectDialog = ({
   open,
   onClose,
-  onImportGeometries,
   onImportMaterials,
-  onAppendVolumes,
+  onAppendJsonVolumes,
   geometries,
   materials
 }) => {
@@ -161,9 +159,8 @@ const ImportObjectDialog = ({
         const objectData = result.data;
         const objectJson = objectData.volumes ? objectData : { volumes: [objectData] };
         
-        // Expand to flat format and append volumes
-        const flatObject = expandToFlat(objectJson);
-        onAppendVolumes(flatObject.volumes);
+        // Append raw JSON volumes directly — JSON-primary handles expansion
+        onAppendJsonVolumes(objectJson.volumes);
         
         if (objectData.materials) {
           onImportMaterials({ ...materials, ...objectData.materials });
