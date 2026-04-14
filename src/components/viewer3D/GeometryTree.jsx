@@ -2,17 +2,15 @@ import React, { useState } from 'react';
 import { getParentKey } from './utils/geometryUtils';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
-import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
 import { getSelectedGeometryObject, findAllDescendants } from '../geometry-editor/utils/GeometryUtils';
 import { saveObject } from '../geometry-editor/utils/ObjectStorage';
-import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdateUtils';
 import { extractSubtreeFromJson } from '../../utils/jsonOperations';
 import { useAppContext } from '../../contexts/useAppContext';
 import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
-  const { jsonData, handleBatchSetVisibility } = useAppContext();
+  const { jsonData, handleBatchSetVisibility, refreshView } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
@@ -65,14 +63,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     assemblies: []
   });
   
-  // State for update assemblies dialog
-  const [updateAssembliesDialog, setUpdateAssembliesDialog] = useState({
-    open: false,
-    sourceIndex: null,
-    selectedIndices: [],
-    allAssemblies: []
-  });
-  
   // Function to toggle node expansion
   const toggleNodeExpansion = (nodeKey, event) => {
     // Stop the click event from bubbling up to the parent div
@@ -99,27 +89,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   const handleCloseContextMenu = () => {
     // Close the context menu
     setContextMenu(null);
-  };
-  
-  // Function to handle the update assemblies dialog confirmation
-  const handleUpdateAssembliesConfirm = () => {
-    const { sourceIndex, selectedIndices } = updateAssembliesDialog;
-
-    if (selectedIndices.length === 0) return;
-    
-    // Close the dialog
-    setUpdateAssembliesDialog(prev => ({
-      ...prev,
-      open: false
-    }));
-    
-    syncAssembliesFromSource({
-      volumes: geometries.volumes,
-      sourceIndex,
-      targetIndices: selectedIndices,
-      onUpdateGeometry,
-      isTargetEligible: (_sourceAssembly, targetAssembly) => targetAssembly.type === 'assembly'
-    });
   };
   
   // Function to confirm adding to assembly
@@ -552,6 +521,21 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px 0' }}>
         <h3 style={{ margin: 0 }}>Geometry Tree</h3>
+        <button
+          onClick={() => refreshView()}
+          title="Re-derive 3D view from current JSON data"
+          style={{
+            padding: '4px 10px',
+            backgroundColor: '#1976d2',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Update View
+        </button>
       </div>
       
       {/* SaveObjectDialog for saving objects with a nicer interface - using the same component as GeometryEditor */}
@@ -731,22 +715,10 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             zIndex: 1000
           }}
         >
-          {/* Show update possibility for assemblies and objects with parent World */}
-          {/* only for top level objects-> mother_volume eitehr has no _compoundId or _motehr _compoundId is different from the selected object */}
+          {/* Show save option for top level objects */}
           {(geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'World' || 
             (typeof geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'object' && 
              geometries.volumes[contextMenu.volumeIndex]?.mother_volume._compoundId !== geometries.volumes[contextMenu.volumeIndex]?._compoundId)) && (
-            <>
-              <div
-                onClick={() => handleUpdateAllAssemblies(contextMenu.volumeIndex, geometries, onUpdateGeometry, setContextMenu)}
-                style={{
-                  padding: '8px 16px',
-                  cursor: 'pointer',
-                  hover: { backgroundColor: '#f5f5f5' }
-                }}
-              >
-                Update All
-              </div>
               <div
                 onClick={() => {
                   // Set the selected geometry to the current context menu item
@@ -764,7 +736,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               >
                 Save to Library
               </div>
-            </>
           )}
           
           <div
@@ -776,115 +747,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             }}
           >
             Cancel
-          </div>
-        </div>
-      )}
-      
-      {/* Update Assemblies Dialog */}
-      {updateAssembliesDialog.open && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              padding: '20px',
-              borderRadius: '8px',
-              maxWidth: '80%',
-              maxHeight: '80%',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}
-          >
-            <h3 style={{ margin: 0 }}>Select Assemblies to Update</h3>
-            <p>Select which assemblies should be updated with properties from the source assembly.</p>
-            
-            <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd', padding: '8px' }}>
-              {updateAssembliesDialog.allAssemblies.map(item => (
-                <div 
-                  key={item.index}
-                  style={{
-                    padding: '8px',
-                    marginBottom: '4px',
-                    backgroundColor: updateAssembliesDialog.selectedIndices.includes(item.index) ? '#e3f2fd' : '#f5f5f5',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  onClick={() => {
-                    setUpdateAssembliesDialog(prev => {
-                      const newSelectedIndices = [...prev.selectedIndices];
-                      const indexPosition = newSelectedIndices.indexOf(item.index);
-                      
-                      if (indexPosition === -1) {
-                        // Add to selection
-                        newSelectedIndices.push(item.index);
-                      } else {
-                        // Remove from selection
-                        newSelectedIndices.splice(indexPosition, 1);
-                      }
-                      
-                      return {
-                        ...prev,
-                        selectedIndices: newSelectedIndices
-                      };
-                    });
-                  }}
-                >
-                  <input 
-                    type="checkbox" 
-                    checked={updateAssembliesDialog.selectedIndices.includes(item.index)}
-                    onChange={() => {}} // Handled by the parent div's onClick
-                    style={{ marginRight: '8px' }}
-                  />
-                  <span>
-                    {item.volume.g4name || item.volume.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setUpdateAssembliesDialog(prev => ({ ...prev, open: false }))}
-              >
-                Cancel
-              </button>
-              <button
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-                onClick={handleUpdateAssembliesConfirm}
-              >
-                Update
-              </button>
-            </div>
           </div>
         </div>
       )}

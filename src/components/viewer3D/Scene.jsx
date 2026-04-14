@@ -310,8 +310,10 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           // Continue rendering this component since it's selected
         }
       }
-      // Skip rendering descendants of assemblies – AssemblyObject renders them
-      if (assemblyDescendantNames.has(volume.name) && volume.type !== 'assembly') {
+      // Skip rendering descendants of assemblies – AssemblyObject renders them.
+      // Exception: compound types (union/subtraction) render via their own components.
+      if (assemblyDescendantNames.has(volume.name) && volume.type !== 'assembly'
+          && volume.type !== 'union' && volume.type !== 'subtraction') {
         const isSelected = selectedGeometry === `volume-${index}`;
         if (!isSelected) {
           return null;

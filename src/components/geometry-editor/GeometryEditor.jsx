@@ -11,7 +11,6 @@ import {
 import {
   createPropertyHandlers,
   createGeometryHandlers,
-  createUpdateHandlers
 } from './utils';
 
 // Import components
@@ -106,14 +105,6 @@ const RefactoredGeometryEditor = () => {
     }
   );
 
-  // Update handlers
-  const {
-    updateAssemblies
-  } = createUpdateHandlers({
-    onUpdateGeometry,
-    geometries
-  });
-
   // ===== Event Handlers =====
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -196,14 +187,12 @@ const RefactoredGeometryEditor = () => {
       
 
       
-      {/* Update Objects Dialog */}
       <UpdateObjectsDialog
         open={updateDialogOpen}
         onClose={() => setUpdateDialogOpen(false)}
         onUpdate={handleUpdateObjects}
         geometries={geometries}
         preSelectedData={null}
-        directUpdateFunc={updateAssemblies}
       />
       
       {/* Import Object Dialog */}

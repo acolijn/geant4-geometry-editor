@@ -56,12 +56,9 @@ const mergeGeometryObject = (baseObject, patchObject) => {
  * @param {Object} updatedObject - The updated geometry object
  * @param {boolean} keepSelected - Whether to keep the object selected after update
  * @param {boolean} isLiveUpdate - Whether this is a live update
- * @param {Object} extraData - Extra data for special updates
  * @param {Function} setGeometries - Function to update geometries state
  * @param {Function} setSelectedGeometry - Function to update selected geometry
  * @param {string} selectedGeometry - Currently selected geometry
- * @param {Function} updateAssembliesFunc - Function to update assemblies
- * @param {Function} propagateCompoundIdToDescendants - Function to propagate compound ID
  * @returns {void}
  */
 export const updateGeometry = (
@@ -74,19 +71,10 @@ export const updateGeometry = (
   setGeometries,
   setSelectedGeometry,
   selectedGeometry,
-  updateAssembliesFunc,
+  _updateAssembliesFunc,
   _propagateCompoundIdToDescendants
 ) => {
-  // Handle special case for assembly update via dialog
-  if (extraData && id === null && updatedObject === null) {
-    debugLog('App: Handling assembly update via dialog', extraData);
-    if (updateAssembliesFunc && typeof updateAssembliesFunc === 'function') {
-      updateAssembliesFunc(extraData.updateData, extraData.objectDefinition);
-    }
-    return;
-  }
-  
-  // If updatedObject is null, we can't proceed with regular updates
+  // If updatedObject is null, we can't proceed
   if (!updatedObject) {
     console.error('App: Cannot update geometry with null object');
     return;

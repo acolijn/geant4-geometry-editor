@@ -15,6 +15,7 @@
  */
 
 import { debugWarn } from './logger.js';
+import { deriveComponentName } from './expandToFlat.js';
 
 // Zero-padded 3-digit index for placement naming
 const pad3 = (n) => String(n).padStart(3, '0');
@@ -143,12 +144,25 @@ export function restructureCompounds(json) {
   const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
 
   // Build a map: placement name OR volume name → compound volume object
-  const parentLookup = new Map();
+  // Also map component names and component placement names → compound
+  const parentLookup = new Map();       // name → compound volume
+  const componentParentMap = new Map();  // component placement/name → component name
   for (const vol of json.volumes) {
     if (!compoundTypes.has(vol.type)) continue;
     parentLookup.set(vol.name, vol);
     for (const pl of (vol.placements || [])) {
       if (pl.name) parentLookup.set(pl.name, vol);
+    }
+    // Also index component names and their placement names
+    for (const comp of (vol.components || [])) {
+      parentLookup.set(comp.name, vol);
+      componentParentMap.set(comp.name, comp.name);
+      for (const pl of (comp.placements || [])) {
+        if (pl.name) {
+          parentLookup.set(pl.name, vol);
+          componentParentMap.set(pl.name, comp.name);
+        }
+      }
     }
   }
 
@@ -156,7 +170,6 @@ export function restructureCompounds(json) {
   const toMove = [];
   for (let i = json.volumes.length - 1; i >= 0; i--) {
     const vol = json.volumes[i];
-    if (compoundTypes.has(vol.type)) continue; // skip compounds themselves
 
     // Check if ALL placements reference the same compound
     const placements = vol.placements || [];
@@ -171,6 +184,9 @@ export function restructureCompounds(json) {
       else if (targetCompound !== compound) { allSameCompound = false; break; }
     }
 
+    // Don't move a compound into itself
+    if (targetCompound === vol) continue;
+
     if (allSameCompound && targetCompound) {
       toMove.push({ volumeIndex: i, targetCompound, vol });
     }
@@ -180,9 +196,15 @@ export function restructureCompounds(json) {
   for (const { volumeIndex, targetCompound, vol } of toMove) {
     if (!targetCompound.components) targetCompound.components = [];
     const component = structuredClone(vol);
-    // Set placement parent to '' (relative to compound)
+    // Resolve parent: if parent matches a component, keep that reference;
+    // if it matches the compound itself, set to ''
     for (const pl of (component.placements || [])) {
-      pl.parent = '';
+      const compParent = componentParentMap.get(pl.parent);
+      if (compParent) {
+        pl.parent = compParent; // nested inside a component
+      } else {
+        pl.parent = ''; // direct child of compound
+      }
     }
     targetCompound.components.push(component);
     json.volumes.splice(volumeIndex, 1);
@@ -228,6 +250,7 @@ export function applyUpdateToJson(jsonData, flatVolumes, flatIndex, patch) {
   if (patch.type !== undefined) targetDef.type = patch.type;
   if (patch.visible !== undefined) targetDef.visible = patch.visible;
   if (patch.wireframe !== undefined) targetDef.wireframe = patch.wireframe;
+  if (patch.boolean_operation !== undefined) targetDef.boolean_operation = patch.boolean_operation;
   if ('hitsCollectionName' in patch) {
     if (patch.hitsCollectionName) targetDef.hitsCollectionName = patch.hitsCollectionName;
     else delete targetDef.hitsCollectionName;
@@ -280,6 +303,49 @@ export function applyUpdateToJson(jsonData, flatVolumes, flatIndex, patch) {
     targetDef.dimensions = { ...(targetDef.dimensions || {}), ...dimPatch };
   }
 
+  // ── Boolean component: move volume into/out of a union's components ──
+  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+  if ('_boolean_parent' in patch || '_is_boolean_component' in patch) {
+    const wantBoolean = patch._is_boolean_component !== false && !!patch._boolean_parent;
+    const targetUnionName = patch._boolean_parent;
+
+    if (wantBoolean && targetUnionName && ci === undefined) {
+      // Top-level volume → move INTO a union's components array
+      const unionVol = json.volumes.find(v =>
+        v.name === targetUnionName && compoundTypes.has(v.type)
+      ) || json.volumes.find(v =>
+        compoundTypes.has(v.type) &&
+        (v.placements || []).some(pl => pl.name === targetUnionName)
+      );
+
+      if (unionVol) {
+        if (!unionVol.components) unionVol.components = [];
+        const component = structuredClone(json.volumes[vi]);
+        component.boolean_operation = patch.boolean_operation || 'union';
+        // Set placement parent to '' (direct child of compound)
+        for (const pl of (component.placements || [])) {
+          pl.parent = '';
+        }
+        unionVol.components.push(component);
+        json.volumes.splice(vi, 1);
+      }
+    } else if (!wantBoolean && ci !== undefined) {
+      // Component inside a compound → move OUT to top-level
+      const compound = json.volumes[vi];
+      if (compound.components && compound.components[ci]) {
+        const comp = structuredClone(compound.components[ci]);
+        delete comp.boolean_operation;
+        // Set placement parent to the compound's own parent (typically 'World')
+        const compoundParent = (compound.placements && compound.placements[0]?.parent) || 'World';
+        for (const pl of (comp.placements || [])) {
+          pl.parent = compoundParent;
+        }
+        compound.components.splice(ci, 1);
+        json.volumes.push(comp);
+      }
+    }
+  }
+
   return json;
 }
 
@@ -327,29 +393,84 @@ export function applyAddToJson(jsonData, flatNewVolume) {
   const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
 
   // Check if parent is a compound volume.
-  // The parent may be a volume name OR a placement name (e.g. "MyAssembly_0").
-  // Try matching by volume name first, then by any placement name.
+  // The parent may be a volume name OR a placement name (e.g. "MyAssembly_000").
   let parentVol = null;
+  let componentParentName = ''; // parent value to set on the new component's placement
   if (parentName) {
+    // 1. Direct match: parent is a compound by volume name
     parentVol = json.volumes.find(v => v.name === parentName && compoundTypes.has(v.type));
     if (!parentVol) {
+      // 2. Match by compound placement name
       parentVol = json.volumes.find(v =>
         compoundTypes.has(v.type) &&
         (v.placements || []).some(pl => pl.name === parentName)
       ) || null;
+    }
+    if (!parentVol) {
+      // 3. Parent is a component INSIDE a compound (e.g. mother_volume = "box_xxx_000"
+      //    which is a component's flat name inside an assembly).
+      //    Also handles instance-derived names (e.g. "box_xxx_002" from placement 2).
+      //    Search all compounds' components by name, placement name, or derived name.
+      for (const vol of json.volumes) {
+        if (!compoundTypes.has(vol.type)) continue;
+        for (const comp of (vol.components || [])) {
+          // Direct match by component name or placement name
+          if (comp.name === parentName) {
+            parentVol = vol;
+            componentParentName = comp.name;
+            break;
+          }
+          for (const pl of (comp.placements || [])) {
+            if (pl.name === parentName) {
+              parentVol = vol;
+              componentParentName = comp.name;
+              break;
+            }
+          }
+          if (parentVol) break;
+          // Instance-derived name match: for each placement index, check if
+          // deriveComponentName(comp.name, idx) produces the parentName
+          for (let pi = 0; pi < (vol.placements || []).length; pi++) {
+            const derivedName = deriveComponentName(comp.name, pi);
+            if (derivedName === parentName) {
+              parentVol = vol;
+              componentParentName = comp.name;
+              break;
+            }
+            // Also try component placement names
+            for (const pl of (comp.placements || [])) {
+              const derivedPlName = deriveComponentName(pl.name, pi);
+              if (derivedPlName === parentName) {
+                parentVol = vol;
+                componentParentName = comp.name;
+                break;
+              }
+            }
+            if (parentVol) break;
+          }
+          if (parentVol) break;
+        }
+        if (parentVol) break;
+      }
     }
   }
 
   if (parentVol) {
     // Add as a component inside the compound
     if (!parentVol.components) parentVol.components = [];
-    // For components, the placement parent should be empty (relative to assembly)
     const component = { ...newVol };
     delete component.placements;
     component.placements = (newVol.placements || []).map(pl => ({
       ...pl,
-      parent: '',
+      parent: componentParentName, // '' for direct child, component name for nested
     }));
+
+    // For union/subtraction compounds, auto-set the boolean operation
+    // so expandCompound correctly marks the component as _is_boolean_component.
+    if ((parentVol.type === 'union' || parentVol.type === 'subtraction') && !component.boolean_operation) {
+      component.boolean_operation = parentVol.type === 'subtraction' ? 'subtract' : 'union';
+    }
+
     parentVol.components.push(component);
   } else {
     // Standard top-level volume
@@ -430,11 +551,25 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
   // Collect all names (volume names AND placement names) that are reachable
   // as children of the root volume.
   const selectedNames = new Set();
+
+  // Helper: seed component names and placement names for a compound volume.
+  // Daughters of components are top-level volumes whose parent is the
+  // component's placement name, so we must add those names to the set.
+  const seedComponents = (vol) => {
+    for (const comp of (vol.components || [])) {
+      selectedNames.add(comp.name);
+      for (const pl of (comp.placements || [])) {
+        if (pl.name) selectedNames.add(pl.name);
+      }
+    }
+  };
+
   if (rootVol) {
     selectedNames.add(rootVol.name);
     for (const pl of (rootVol.placements || [])) {
       if (pl.name) selectedNames.add(pl.name);
     }
+    seedComponents(rootVol);
   } else {
     // Fallback: use the supplied name as-is
     selectedNames.add(volumeName);
@@ -452,35 +587,90 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
           for (const vpl of (vol.placements || [])) {
             if (vpl.name) selectedNames.add(vpl.name);
           }
+          // If this is a compound, seed its component names too
+          seedComponents(vol);
           changed = true;
           break;
-        }
-      }
-      // Also check components for compound volumes
-      for (const comp of (vol.components || [])) {
-        if (selectedNames.has(comp.name)) continue;
-        for (const pl of (comp.placements || [])) {
-          if (selectedNames.has(pl.parent)) {
-            selectedNames.add(comp.name);
-            changed = true;
-            break;
-          }
         }
       }
     }
   }
 
   // Clone matching volumes (filter by volume name, not placement names)
+  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
   const volumes = [];
+  const isRoot = (vol) => vol === rootVol || vol.name === rootVol?.name;
+
   for (const vol of jsonData.volumes) {
     if (selectedNames.has(vol.name)) {
-      volumes.push(structuredClone(vol));
+      const clone = structuredClone(vol);
+
+      // Root volume: reduce to a single canonical placement at origin.
+      // Multi-placement is an import-time concern, not part of the definition.
+      if (isRoot(vol)) {
+        const canonicalPlacement = {
+          name: `${clone.name}_${pad3(0)}`,
+          g4name: `${clone.name}_${pad3(0)}`,
+          x: 0, y: 0, z: 0,
+          rotation: { x: 0, y: 0, z: 0 },
+          parent: 'World',
+        };
+        clone.placements = [canonicalPlacement];
+
+        // Assemblies: material is irrelevant for the definition
+        if (compoundTypes.has(clone.type)) {
+          delete clone.material;
+        }
+      } else if (clone.placements && clone.placements.length > 1) {
+        // Non-root with multiple placements: keep only first
+        clone.placements = [clone.placements[0]];
+      }
+
+      volumes.push(clone);
     }
   }
 
   // Restructure: move misplaced top-level volumes into compound components
   const result = { world: null, volumes };
   restructureCompounds(result);
+
+  // Generate unique internal names for compound components so the saved
+  // definition doesn't collide with the source assembly when re-imported
+  // into the same scene.
+  for (const vol of result.volumes) {
+    if (!compoundTypes.has(vol.type) || !vol.components) continue;
+
+    const nameMap = new Map(); // old name → new name (for component names AND placement names)
+    const uniqueId = `${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+    // Pass 1: build the rename map
+    for (let ci = 0; ci < vol.components.length; ci++) {
+      const comp = vol.components[ci];
+      const baseName = comp.g4name || comp.name;
+      const newName = `${baseName}_${uniqueId}_${ci}`;
+      nameMap.set(comp.name, newName);
+      // Preserve the original identity as g4name
+      if (!comp.g4name) comp.g4name = comp.name;
+      comp.name = newName;
+
+      // Rename placements
+      for (let pi = 0; pi < (comp.placements || []).length; pi++) {
+        const pl = comp.placements[pi];
+        const newPlName = `${newName}_${pad3(pi)}`;
+        if (pl.name) nameMap.set(pl.name, newPlName);
+        pl.name = newPlName;
+        pl.g4name = newPlName;
+      }
+    }
+
+    // Pass 2: update parent references within components
+    for (const comp of vol.components) {
+      for (const pl of (comp.placements || [])) {
+        const mapped = nameMap.get(pl.parent);
+        if (mapped) pl.parent = mapped;
+      }
+    }
+  }
 
   return result;
 }

@@ -202,6 +202,49 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
         setDimensions(componentFlat, component);
 
         flatVolumes.push(componentFlat);
+
+        // If this component is itself a compound (union/subtraction nested inside
+        // an assembly), expand its own sub-components so UnionObject can find them.
+        const nestedCompoundTypes = new Set(['union', 'subtraction']);
+        if (nestedCompoundTypes.has(component.type) && component.components) {
+          component.components.forEach((subComp, subCompIdx) => {
+            const subPlacement = (subComp.placements && subComp.placements[0]) || { x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 } };
+
+            const subName = deriveComponentName(subComp.name || subPlacement.name, placementIndex);
+            const subParentName = subPlacement.parent
+              ? deriveComponentName(subPlacement.parent, placementIndex)
+              : componentName; // default: direct child of the union
+
+            const subFlat = {
+              name: subName,
+              g4name: subName,
+              type: subComp.type,
+              material: subComp.material || undefined,
+              position: { x: subPlacement.x || 0, y: subPlacement.y || 0, z: subPlacement.z || 0 },
+              rotation: subPlacement.rotation
+                ? { x: subPlacement.rotation.x || 0, y: subPlacement.rotation.y || 0, z: subPlacement.rotation.z || 0 }
+                : { x: 0, y: 0, z: 0 },
+              mother_volume: subParentName,
+              _compoundId: sharedCompoundId,
+              _componentId: subComp._componentId || subComp.g4name || subComp.name,
+              _instanceId: instanceId,
+              _volumeIndex: volumeIndex,
+              _placementIndex: placementIndex,
+              _componentIndex: componentIndex,
+              _subComponentIndex: subCompIdx,
+            };
+
+            if (subComp.boolean_operation) {
+              subFlat.boolean_operation = subComp.boolean_operation;
+              subFlat._is_boolean_component = true;
+              subFlat._boolean_parent = componentName;
+            }
+            if (subComp.visible !== undefined) subFlat.visible = subComp.visible;
+
+            setDimensions(subFlat, subComp);
+            flatVolumes.push(subFlat);
+          });
+        }
       });
     }
   });
@@ -215,7 +258,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
  * Derive an instance-specific name by incrementing the trailing number.
  * "PMTBody_0" + placementIndex=2 → "PMTBody_2"
  */
-function deriveComponentName(name, placementIndex) {
+export function deriveComponentName(name, placementIndex) {
   if (placementIndex === 0) return name;
   if (!name) return name;
 

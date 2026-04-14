@@ -9,6 +9,7 @@ import {
   applyRemoveFromJson,
   flatToJsonVolume,
   mergeJsonVolumes,
+  restructureCompounds,
 } from '../utils/jsonOperations';
 import { debugLog } from '../utils/logger';
 
@@ -67,6 +68,16 @@ export const useAppState = () => {
       },
       volumes: (geometries.volumes || []).map(v => flatToJsonVolume(v)),
     };
+  };
+
+  // ─── REFRESH: re-derive flat view from current JSON ────────
+  // Clones the JSON, runs restructureCompounds to move any stray volumes
+  // into their proper assembly/union component arrays, then re-derives flat.
+  const refreshView = () => {
+    if (jsonData) {
+      const fixed = restructureCompounds(structuredClone(jsonData));
+      reDeriveFlat(fixed);
+    }
   };
 
   // ─── EDIT: update a volume or the world ───────────────────
@@ -231,6 +242,7 @@ export const useAppState = () => {
     handleAddGeometry,
     handleRemoveGeometry,
     handleBatchSetVisibility,
+    refreshView,
     handleImportGeometries,
     handleImportMaterials,
     handleUpdateMaterials,

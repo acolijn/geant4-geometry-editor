@@ -37,20 +37,7 @@ describe('GeometryOperations', () => {
   });
 
   describe('updateGeometry', () => {
-    it('calls updateAssembliesFunc for assembly update via dialog', () => {
-      const updateAssemblies = vi.fn();
-      const extraData = { updateData: 'data', objectDefinition: 'def' };
-
-      updateGeometry(
-        baseGeometries, null, null, true, false, extraData,
-        setGeometries, setSelectedGeometry, null, updateAssemblies, vi.fn()
-      );
-
-      expect(updateAssemblies).toHaveBeenCalledWith('data', 'def');
-      expect(setGeometries).not.toHaveBeenCalled();
-    });
-
-    it('returns early when updatedObject is null and no extraData', () => {
+    it('returns early when updatedObject is null', () => {
       updateGeometry(
         baseGeometries, 'volume-0', null, true, false, null,
         setGeometries, setSelectedGeometry, null, null, vi.fn()
