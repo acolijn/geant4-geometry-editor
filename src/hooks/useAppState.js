@@ -165,9 +165,14 @@ export const useAppState = () => {
 
       const vi = flatVol._volumeIndex;
       const ci = flatVol._componentIndex;
+      const pi = flatVol._placementIndex;
 
       if (ci !== undefined && newJson.volumes[vi]?.components?.[ci]) {
         newJson.volumes[vi].components[ci].visible = visible;
+      } else if (pi !== undefined && newJson.volumes[vi]?.placements?.[pi]) {
+        // Store visibility on the individual placement so each instance
+        // can be toggled independently.
+        newJson.volumes[vi].placements[pi].visible = visible;
       } else if (newJson.volumes[vi]) {
         newJson.volumes[vi].visible = visible;
       }

@@ -126,7 +126,9 @@ function expandStandard(volume, volumeIndex, flatVolumes) {
     if (volume._componentId !== undefined) flat._componentId = volume._componentId;
     if (volume.hitsCollectionName !== undefined) flat.hitsCollectionName = volume.hitsCollectionName;
     if (volume._displayGroup !== undefined) flat._displayGroup = volume._displayGroup;
-    if (volume.visible !== undefined) flat.visible = volume.visible;
+    // Per-placement visibility takes precedence over volume-level visibility
+    if (placement.visible !== undefined) flat.visible = placement.visible;
+    else if (volume.visible !== undefined) flat.visible = volume.visible;
     if (volume.wireframe !== undefined) flat.wireframe = volume.wireframe;
     if (volume.boolean_operation !== undefined) flat.boolean_operation = volume.boolean_operation;
     if (volume._is_boolean_component !== undefined) flat._is_boolean_component = volume._is_boolean_component;
@@ -177,6 +179,9 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
 
     if (volume.hitsCollectionName !== undefined) compoundFlat.hitsCollectionName = volume.hitsCollectionName;
     if (volume._displayGroup !== undefined) compoundFlat._displayGroup = volume._displayGroup;
+    // Per-placement visibility takes precedence over volume-level visibility
+    if (placement.visible !== undefined) compoundFlat.visible = placement.visible;
+    else if (volume.visible !== undefined) compoundFlat.visible = volume.visible;
 
     flatVolumes.push(compoundFlat);
 
