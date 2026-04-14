@@ -182,7 +182,7 @@ describe('geometryHandlers', () => {
       });
 
       it('returns error when no object data provided', () => {
-        const result = handlers.handleUpdateObjects(['volume-0'], null);
+        const result = handlers.handleUpdateObjects(['vol-0-pl-0'], null);
         expect(result.success).toBe(false);
       });
 
@@ -190,7 +190,7 @@ describe('geometryHandlers', () => {
         const g = {
           world: { name: 'World', type: 'box', size: { x: 1000, y: 1000, z: 1000 } },
           volumes: [
-            { name: 'Box1', type: 'box', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, mother_volume: 'World' }
+            { _id: 'vol-0-pl-0', name: 'Box1', type: 'box', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, mother_volume: 'World' }
           ]
         };
         const h = createGeometryHandlers(
@@ -199,7 +199,7 @@ describe('geometryHandlers', () => {
         );
 
         const result = h.handleUpdateObjects(
-          ['volume-0'],
+          ['vol-0-pl-0'],
           { object: { type: 'box', size: { x: 50, y: 50, z: 50 } } }
         );
 

@@ -7,6 +7,7 @@ import CameraSetup from './components/CameraSetup';
 import ErrorBoundary from '../app/ErrorBoundary';
 import { debugLog } from '../../utils/logger';
 import { useAppContext } from '../../contexts/useAppContext';
+import { isVolumeKey, findFlatIndex } from '../../utils/expandToFlat';
 
 /**
  * 3D viewer and geometry tree panel.
@@ -45,8 +46,9 @@ const Viewer3D = () => {
     let currentObject;
     if (objectKey === 'world') {
       currentObject = { ...geometries.world };
-    } else if (objectKey.startsWith('volume-')) {
-      const index = parseInt(objectKey.split('-')[1]);
+    } else if (isVolumeKey(objectKey)) {
+      const index = findFlatIndex(geometries.volumes, objectKey);
+      if (index < 0) return;
       currentObject = { ...geometries.volumes[index] };
     } else {
       return;
@@ -143,8 +145,9 @@ const Viewer3D = () => {
     if (updates.position || updates.rotation) {
       if (objectKey === 'world') {
         // World volume updates don't need special handling for children
-      } else if (objectKey.startsWith('volume-')) {
-        const parentIndex = parseInt(objectKey.split('-')[1]);
+      } else if (isVolumeKey(objectKey)) {
+        const parentIndex = findFlatIndex(geometries.volumes, objectKey);
+        if (parentIndex < 0) return;
         const parentVolume = geometries.volumes[parentIndex];
         
         // Only proceed if we have a valid parent volume name

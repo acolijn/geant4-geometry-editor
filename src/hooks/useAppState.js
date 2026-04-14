@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { defaultGeometry, defaultMaterials } from '../utils/defaults';
 import { propagateCompoundIdToDescendants } from '../components/geometry-editor/utils/compoundIdPropagator';
-import { expandToFlat } from '../utils/expandToFlat';
+import { expandToFlat, isVolumeKey, findFlatIndex } from '../utils/expandToFlat';
 import {
   applyUpdateToJson,
   applyWorldUpdateToJson,
@@ -88,7 +88,8 @@ export const useAppState = () => {
     if (id === 'world') {
       newJson = applyWorldUpdateToJson(currentJson, geometries.world, updatedObject);
     } else {
-      const flatIndex = parseInt(id.replace('volume-', ''), 10);
+      const flatIndex = findFlatIndex(geometries.volumes, id);
+      if (flatIndex < 0) return;
       newJson = applyUpdateToJson(currentJson, geometries.volumes, flatIndex, updatedObject);
     }
 
@@ -114,8 +115,10 @@ export const useAppState = () => {
     const derived = reDeriveFlat(newJson);
 
     // Select the newly added volume (appears at end of flat list)
-    const newIndex = derived.volumes.length - 1;
-    setTimeout(() => setSelectedGeometry(`volume-${newIndex}`), 50);
+    const newVol = derived.volumes[derived.volumes.length - 1];
+    if (newVol) {
+      setTimeout(() => setSelectedGeometry(newVol._id), 50);
+    }
 
     return newGeometry.name;
   };
@@ -125,13 +128,14 @@ export const useAppState = () => {
     if (id === 'world') return;
     const currentJson = getOrInitJson();
 
-    const flatIndex = parseInt(id.replace('volume-', ''), 10);
+    const flatIndex = findFlatIndex(geometries.volumes, id);
+    if (flatIndex < 0) return;
 
     // Remember selected volume name before removal
     let selectedName = null;
     if (selectedGeometry && selectedGeometry !== 'world' && selectedGeometry !== id) {
-      const selIdx = parseInt(selectedGeometry.replace('volume-', ''), 10);
-      selectedName = geometries.volumes[selIdx]?.name;
+      const selIdx = findFlatIndex(geometries.volumes, selectedGeometry);
+      if (selIdx >= 0) selectedName = geometries.volumes[selIdx]?.name;
     }
 
     const newJson = applyRemoveFromJson(currentJson, geometries.volumes, flatIndex);
@@ -139,22 +143,23 @@ export const useAppState = () => {
 
     // Re-select by name if possible, otherwise deselect
     if (selectedName) {
-      const newIdx = derived.volumes.findIndex(v => v.name === selectedName);
-      setSelectedGeometry(newIdx >= 0 ? `volume-${newIdx}` : null);
+      const found = derived.volumes.find(v => v.name === selectedName);
+      setSelectedGeometry(found ? found._id : null);
     } else {
       setSelectedGeometry(null);
     }
   };
 
   // ─── BATCH: set visibility on multiple volumes at once ─────
-  // updates: array of { id: 'volume-N', visible: boolean }
+  // updates: array of { id: 'vol-...', visible: boolean }
   const handleBatchSetVisibility = (updates) => {
     if (!updates || updates.length === 0) return;
     const currentJson = getOrInitJson();
     const newJson = structuredClone(currentJson);
 
     for (const { id, visible } of updates) {
-      const flatIndex = parseInt(id.replace('volume-', ''), 10);
+      const flatIndex = findFlatIndex(geometries.volumes, id);
+      if (flatIndex < 0) continue;
       const flatVol = geometries.volumes[flatIndex];
       if (!flatVol || flatVol._volumeIndex === undefined) continue;
 

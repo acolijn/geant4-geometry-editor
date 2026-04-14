@@ -11,6 +11,36 @@
 
 import { debugLog, debugWarn } from './logger.js';
 
+// ---------------------------------------------------------------------------
+// Stable key helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a stable key for a flat volume entry.
+ * Format: vol-{vi}-pl-{pi}  or  vol-{vi}-pl-{pi}-c-{ci}  or  vol-{vi}-pl-{pi}-c-{ci}-sc-{sci}
+ */
+export function buildVolumeKey(vi, pi, ci, sci) {
+  let key = `vol-${vi}-pl-${pi}`;
+  if (ci !== undefined) key += `-c-${ci}`;
+  if (sci !== undefined) key += `-sc-${sci}`;
+  return key;
+}
+
+/**
+ * Check whether a selection key refers to a volume (not 'world').
+ */
+export function isVolumeKey(key) {
+  return typeof key === 'string' && key.startsWith('vol-');
+}
+
+/**
+ * Find the index of a flat volume by its _id.
+ * Returns -1 if not found.
+ */
+export function findFlatIndex(volumes, key) {
+  return volumes.findIndex(v => v._id === key);
+}
+
 /**
  * Expand hierarchical JSON geometry into a flat volume array.
  * Each placement becomes a separate entry. Assemblies/booleans are expanded
@@ -76,6 +106,7 @@ function expandStandard(volume, volumeIndex, flatVolumes) {
   volume.placements.forEach((placement, placementIndex) => {
     if (!placement) return;
     const flat = {
+      _id: buildVolumeKey(volumeIndex, placementIndex),
       name: placement.name || volume.name,
       g4name: placement.g4name || volume.g4name || volume.name,
       type: volume.type,
@@ -127,6 +158,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
 
     // 1. The compound entry itself (assembly/union/subtraction header)
     const compoundFlat = {
+      _id: buildVolumeKey(volumeIndex, placementIndex),
       name: compoundName,
       g4name: placement.g4name || volume.g4name || volume.name,
       type: volume.type,
@@ -173,6 +205,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
         }
 
         const componentFlat = {
+          _id: buildVolumeKey(volumeIndex, placementIndex, componentIndex),
           name: componentName,
           g4name: componentName,
           type: component.type,
@@ -216,6 +249,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
               : componentName; // default: direct child of the union
 
             const subFlat = {
+              _id: buildVolumeKey(volumeIndex, placementIndex, componentIndex, subCompIdx),
               name: subName,
               g4name: subName,
               type: subComp.type,

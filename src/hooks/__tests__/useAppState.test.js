@@ -45,6 +45,8 @@ vi.mock('../../utils/expandToFlat', () => ({
     world: json.world || { name: 'World', type: 'box', size: { x: 2000, y: 2000, z: 2000 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, material: 'G4_AIR' },
     volumes: json.volumes || [],
   })),
+  isVolumeKey: vi.fn((key) => typeof key === 'string' && key.startsWith('vol-')),
+  findFlatIndex: vi.fn((volumes, key) => volumes.findIndex(v => v._id === key)),
 }));
 
 // Mock jsonOperations — pass-through clones

@@ -35,15 +35,15 @@ export const renderMotherVolumeTree = ({
   
   // Initialize volume groups for all volumes
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     volumesByParent[key] = []; // Initialize empty array for each volume
   });
   
   // Populate the groups
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
-    const parentKey = volume.mother_volume && volume.mother_volume !== 'World' ?
-      `volume-${volumeNameToIndex[volume.mother_volume]}` : 'world';
+    const key = volume._id;
+    const parentKey = volume.mother_volume && volume.mother_volume !== 'World' && volumeNameToIndex[volume.mother_volume] !== undefined ?
+      geometries.volumes[volumeNameToIndex[volume.mother_volume]]._id : 'world';
     
     // Add this volume to its parent's children list
     if (volumesByParent[parentKey]) {

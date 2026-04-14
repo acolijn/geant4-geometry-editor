@@ -5,6 +5,7 @@
  */
 
 import { debugLog, debugWarn } from '../../../utils/logger.js';
+import { isVolumeKey, findFlatIndex } from '../../../utils/expandToFlat';
 
 export const generateUniqueName = (type) => {
   return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -202,9 +203,9 @@ export const createGeometryHandlers = (props, state) => {
         
         if (instanceId === 'world') {
           instance = geometries.world;
-        } else if (instanceId.startsWith('volume-')) {
-          const volumeIndex = parseInt(instanceId.split('-')[1]);
-          instance = geometries.volumes[volumeIndex];
+        } else if (isVolumeKey(instanceId)) {
+          const volumeIndex = findFlatIndex(geometries.volumes, instanceId);
+          if (volumeIndex >= 0) instance = geometries.volumes[volumeIndex];
         }
         
         if (!instance) {
@@ -241,7 +242,7 @@ export const createGeometryHandlers = (props, state) => {
             if (volume.mother_volume === instance.name) {
               components.push({
                 index: i,
-                id: `volume-${i}`,
+                id: volume._id,
                 object: volume
               });
             }

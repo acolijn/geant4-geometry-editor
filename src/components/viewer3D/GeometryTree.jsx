@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getParentKey } from './utils/geometryUtils';
+import { isVolumeKey, findFlatIndex } from '../../utils/expandToFlat';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
 import { getSelectedGeometryObject, findAllDescendants } from '../geometry-editor/utils/GeometryUtils';
@@ -98,7 +99,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     const originalVolume = geometries.volumes[volumeIndex];
     
     // Get the volume key for updating
-    const volumeKey = `volume-${volumeIndex}`;
+    const volumeKey = originalVolume._id;
     
     // Update using a full object to avoid dropping existing properties
     const updatedVolume = {
@@ -126,7 +127,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   
   // Function to get a volume's parent object key using the imported function
   const getParentKeyWrapper = (volume) => {
-    return getParentKey(volume, volumeNameToIndex);
+    return getParentKey(volume, volumeNameToIndex, geometries.volumes);
   };
   
   // Group volumes by their parent
@@ -136,7 +137,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   
   // Initialize volume groups for all volumes
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     volumesByParent[key] = []; // Initialize empty array for each volume
   });
   
@@ -146,7 +147,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
 
   // Populate the groups
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     const parentKey = getParentKeyWrapper(volume);
     
     // Check if this is a boolean component
@@ -156,14 +157,15 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       
       if (parentUnionIndex !== -1) {
         // Create a special key for the "Parts" folder of this union
-        const unionPartsKey = `union-parts-${parentUnionIndex}`;
+        const parentUnionVol = geometries.volumes[parentUnionIndex];
+        const unionPartsKey = `union-parts-${parentUnionVol._id}`;
         
         // Make sure the parts folder exists for this union
         if (!volumesByParent[unionPartsKey]) {
           volumesByParent[unionPartsKey] = [];
           
           // Add the parts folder to the union's children
-          const unionKey = `volume-${parentUnionIndex}`;
+          const unionKey = parentUnionVol._id;
           if (!volumesByParent[unionKey]) {
             volumesByParent[unionKey] = [];
           }
@@ -201,9 +203,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       // display-group folder at its parent level — but only if the parent
       // volume does NOT already have the same _displayGroup (to avoid
       // duplicate folders at every level of the hierarchy).
-      const parentVolume = parentKey.startsWith('volume-')
-        ? geometries.volumes[parseInt(parentKey.split('-')[1])]
-        : null;
+      const parentFlatIdx = isVolumeKey(parentKey) ? findFlatIndex(geometries.volumes, parentKey) : -1;
+      const parentVolume = parentFlatIdx >= 0 ? geometries.volumes[parentFlatIdx] : null;
       const parentHasSameGroup = parentVolume && parentVolume._displayGroup === volume._displayGroup;
       if (volume._displayGroup && volumesByParent[parentKey] && !parentHasSameGroup) {
         const groupKey = `display-group-${parentKey}-${volume._displayGroup}`;
@@ -243,9 +244,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       // Also include all descendants of this member
       const descendants = findAllDescendants(m.volume.name, geometries.volumes);
       descendants.forEach(desc => {
-        const descIndex = geometries.volumes.findIndex(v => v.name === desc.name);
-        if (descIndex !== -1) {
-          updates.push({ id: `volume-${descIndex}`, visible: newVisible });
+        const descVol = geometries.volumes.find(v => v.name === desc.name);
+        if (descVol) {
+          updates.push({ id: descVol._id, visible: newVisible });
         }
       });
     });
@@ -259,9 +260,9 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     // Toggle all descendants
     const descendants = findAllDescendants(volume.name, geometries.volumes);
     descendants.forEach(desc => {
-      const descIndex = geometries.volumes.findIndex(v => v.name === desc.name);
-      if (descIndex !== -1) {
-        updates.push({ id: `volume-${descIndex}`, visible: newVisible });
+      const descVol = geometries.volumes.find(v => v.name === desc.name);
+      if (descVol) {
+        updates.push({ id: descVol._id, visible: newVisible });
       }
     });
     handleBatchSetVisibility(updates);
@@ -722,7 +723,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               <div
                 onClick={() => {
                   // Set the selected geometry to the current context menu item
-                  const volumeKey = `volume-${contextMenu.volumeIndex}`;
+                  const volumeKey = geometries.volumes[contextMenu.volumeIndex]?._id;
                   onSelect(volumeKey);
                   // Export explicitly using the clicked object key to avoid stale selection races
                   handleExportObject(volumeKey);

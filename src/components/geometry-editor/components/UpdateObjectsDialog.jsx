@@ -191,7 +191,7 @@ const UpdateObjectsDialog = ({
 
         if (hasMatchingCount && hasMatchingHistogram && hasMatchingComponentIds) {
           foundInstances.push({
-            id: `volume-${index}`,
+            id: volume._id,
             name: volume.name,
             type: volume.type,
             position: volume.position,

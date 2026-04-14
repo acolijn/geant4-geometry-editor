@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { findFlatIndex } from '../../../utils/expandToFlat';
 
 // Function to handle transform updates for a volume and propagate to children
 export const handleVolumeTransform = (
@@ -21,8 +22,8 @@ export const handleVolumeTransform = (
   }
   
   // Get the volume index from the key
-  const volumeIndex = parseInt(objKey.replace('volume-', ''));
-  if (isNaN(volumeIndex) || !geometries.volumes[volumeIndex]) {
+  const volumeIndex = findFlatIndex(geometries.volumes, objKey);
+  if (volumeIndex < 0 || !geometries.volumes[volumeIndex]) {
     console.error(`Invalid volume key: ${objKey}`);
     return;
   }

@@ -6,6 +6,7 @@
  */
 
 import { debugLog } from '../../../utils/logger.js';
+import { isVolumeKey, findFlatIndex } from '../../../utils/expandToFlat';
 
 /**
  * Propagate a compound ID to all descendants of a given object
@@ -78,9 +79,9 @@ export const extractObjectWithDescendants = (objectIdentifier, geometries) => {
       mainObject = { ...geometries.world };
       objectType = 'world';
       isWorld = true;
-    } else if (objectIdentifier.startsWith('volume-')) {
-      const index = parseInt(objectIdentifier.split('-')[1]);
-      if (!isNaN(index) && geometries.volumes[index]) {
+    } else if (isVolumeKey(objectIdentifier)) {
+      const index = findFlatIndex(geometries.volumes, objectIdentifier);
+      if (index >= 0 && geometries.volumes[index]) {
         mainObject = { ...geometries.volumes[index] };
         objectType = 'volume';
       }
@@ -188,9 +189,9 @@ export const getSelectedGeometryObject = (selectedGeometry, geometries) => {
   if (selectedGeometry === 'world') return geometries.world;
   
   // Return the volume at the specified index if a volume is selected
-  if (selectedGeometry.startsWith('volume-')) {
-    const index = parseInt(selectedGeometry.split('-')[1]);
-    return geometries.volumes[index];
+  if (isVolumeKey(selectedGeometry)) {
+    const index = findFlatIndex(geometries.volumes, selectedGeometry);
+    return index >= 0 ? geometries.volumes[index] : null;
   }
   
   return null;
