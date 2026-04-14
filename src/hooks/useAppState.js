@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { updateGeometry, addGeometry, removeGeometry } from '../components/geometry-editor/utils/GeometryOperations';
 import { defaultGeometry, defaultMaterials } from '../utils/defaults';
 import { propagateCompoundIdToDescendants } from '../components/geometry-editor/utils/compoundIdPropagator';
+import { expandToFlat } from '../utils/expandToFlat';
 import { debugLog } from '../utils/logger';
 
 const cloneData = (data) => structuredClone(data);
@@ -17,6 +18,8 @@ export const useAppState = () => {
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  // JSON-primary state: the hierarchical JSON is the source of truth for load/save
+  const [jsonData, setJsonData] = useState(null);
 
   const handleUpdateGeometry = (id, updatedObject, keepSelected = true, isLiveUpdate = false, extraData = null) => {
     updateGeometry(
@@ -62,24 +65,27 @@ export const useAppState = () => {
       return { success: false, message: 'Invalid geometries format' };
     }
 
-    const geometriesCopy = cloneData(importData);
-    debugLog('handleImportGeometries:: Setting geometries state with:', geometriesCopy);
+    // Store the hierarchical JSON as primary state
+    const jsonCopy = cloneData(importData);
+    setJsonData(jsonCopy);
 
-    let updatedVolumes = [...geometriesCopy.volumes];
-    geometriesCopy.volumes.forEach((volume, index) => {
-      if (volume.type === 'assembly' || volume.type === 'union') {
+    // Derive flat geometry from JSON
+    const flat = expandToFlat(jsonCopy);
+    debugLog('handleImportGeometries:: Derived flat geometry:', flat);
+
+    // Propagate compound IDs for existing edit handlers
+    let updatedVolumes = [...flat.volumes];
+    flat.volumes.forEach((volume, index) => {
+      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
         if (!volume._compoundId) {
           updatedVolumes[index] = { ...volume, _compoundId: volume.name };
-          debugLog(`handleImportGeometries:: Assigned _compoundId ${volume.name} to imported ${volume.type}: ${volume.name}`);
         }
-
         const compoundId = updatedVolumes[index]._compoundId;
         updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
       }
     });
-    geometriesCopy.volumes = updatedVolumes;
 
-    setGeometries(geometriesCopy);
+    setGeometries({ world: flat.world, volumes: updatedVolumes });
     return { success: true, message: 'Geometries imported successfully' };
   };
 
@@ -98,16 +104,41 @@ export const useAppState = () => {
     return { success: true, message: 'Materials imported successfully' };
   };
 
+  // Append flat volumes to existing geometry (used by ImportObjectDialog)
+  const handleAppendVolumes = (flatVolumes) => {
+    if (!flatVolumes || !Array.isArray(flatVolumes) || flatVolumes.length === 0) return;
+
+    let updatedVolumes = [...(geometries.volumes || []), ...flatVolumes];
+    flatVolumes.forEach((volume) => {
+      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
+        const idx = updatedVolumes.lastIndexOf(volume);
+        if (!volume._compoundId) {
+          updatedVolumes[idx] = { ...volume, _compoundId: volume.name };
+        }
+        const compoundId = updatedVolumes[idx]._compoundId;
+        updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
+      }
+    });
+
+    setGeometries({ world: geometries.world, volumes: updatedVolumes });
+  };
+
   const handleUpdateMaterials = (updatedMaterials) => {
     setMaterials(updatedMaterials);
   };
 
-  const handleLoadProject = (loadedGeometries, loadedMaterials, loadedHitCollections) => {
-    // Ensure _compoundId is propagated to all descendants, same as handleImportGeometries
-    const geometriesCopy = cloneData(loadedGeometries);
-    let updatedVolumes = [...geometriesCopy.volumes];
-    geometriesCopy.volumes.forEach((volume, index) => {
-      if (volume.type === 'assembly' || volume.type === 'union') {
+  const handleLoadProject = (loadedJsonData, loadedMaterials, loadedHitCollections) => {
+    // Store the hierarchical JSON as primary state
+    const jsonCopy = cloneData(loadedJsonData);
+    setJsonData(jsonCopy);
+
+    // Derive flat geometry from JSON
+    const flat = expandToFlat(jsonCopy);
+
+    // Propagate compound IDs for existing edit handlers
+    let updatedVolumes = [...flat.volumes];
+    flat.volumes.forEach((volume, index) => {
+      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
         if (!volume._compoundId) {
           updatedVolumes[index] = { ...volume, _compoundId: volume.name };
         }
@@ -115,9 +146,8 @@ export const useAppState = () => {
         updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
       }
     });
-    geometriesCopy.volumes = updatedVolumes;
 
-    setGeometries(geometriesCopy);
+    setGeometries({ world: flat.world, volumes: updatedVolumes });
     setMaterials(loadedMaterials);
 
     if (loadedHitCollections && Array.isArray(loadedHitCollections)) {
@@ -132,6 +162,8 @@ export const useAppState = () => {
     setTabValue,
     geometries,
     materials,
+    jsonData,
+    setJsonData,
     selectedGeometry,
     setSelectedGeometry,
     hitCollections,
@@ -144,6 +176,7 @@ export const useAppState = () => {
     handleImportGeometries,
     handleImportMaterials,
     handleUpdateMaterials,
+    handleAppendVolumes,
     handleLoadProject
   };
 };

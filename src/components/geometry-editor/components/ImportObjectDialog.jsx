@@ -27,16 +27,18 @@ import InfoIcon from '@mui/icons-material/Info';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { debugLog } from '../../../utils/logger.js';
+import { expandToFlat } from '../../../utils/expandToFlat';
 
 /**
  * Dialog for importing a JSON object from the objects directory
- * This dialog specifically uses jsonToGeometry to convert the object to geometry
+ * Uses expandToFlat to convert the JSON object to flat geometry volumes
  */
 const ImportObjectDialog = ({
   open,
   onClose,
   onImportGeometries,
   onImportMaterials,
+  onAppendVolumes,
   geometries,
   materials
 }) => {
@@ -154,23 +156,18 @@ const ImportObjectDialog = ({
       const result = await loadObject(selectedObject.fileName);
       
       if (result.success) {
-        // Import the jsonToGeometry function
-        const { jsonToGeometry } = await import('../../json-viewer/utils/jsonToGeometry');
-        
-        // Create current geometry object
-        const currentGeometry = {
-          geometries: geometries,
-          materials: materials
-        };
-        
-        // Convert the object data to geometry
         debugLog('handleImport:: result.data', result.data);
-        debugLog('handleImport:: currentGeometry', currentGeometry);
-        const updatedGeometry = jsonToGeometry(result.data, currentGeometry);
         
-        // Call the import callbacks with the updated geometry and materials
-        onImportGeometries(updatedGeometry.geometries);
-        onImportMaterials(updatedGeometry.materials);
+        const objectData = result.data;
+        const objectJson = objectData.volumes ? objectData : { volumes: [objectData] };
+        
+        // Expand to flat format and append volumes
+        const flatObject = expandToFlat(objectJson);
+        onAppendVolumes(flatObject.volumes);
+        
+        if (objectData.materials) {
+          onImportMaterials({ ...materials, ...objectData.materials });
+        }
         
         onClose();
       } else {

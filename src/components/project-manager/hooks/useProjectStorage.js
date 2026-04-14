@@ -8,7 +8,6 @@ import { useState, useEffect, useCallback } from 'react';
 import fileSystemManager from '../../../utils/FileSystemManager';
 import indexedDBManager from '../../../utils/IndexedDBManager';
 import { generateJson } from '../../json-viewer/utils/geometryToJson';
-import { jsonToGeometry } from '../../json-viewer/utils/jsonToGeometry';
 import { debugLog, debugWarn } from '../../../utils/logger.js';
 
 /**
@@ -336,20 +335,13 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
       if (projectData && projectData.geometry) {
         const geometryData = projectData.geometry;
         
-        const currentGeometry = {
-          geometries: geometries,
-          materials: materials
-        };
-        
-        const updatedGeometry = jsonToGeometry(geometryData, currentGeometry);
-        
-        if (!updatedGeometry || !updatedGeometry.geometries) {
-          throw new Error('Invalid geometry data structure after import');
-        }
-        
+        // Pass the hierarchical JSON directly to handleLoadProject.
+        // The state hook will derive the flat view via expandToFlat.
         const restoredHitCollections = geometryData.hitCollections || [];
+        const loadedMaterials = geometryData.materials || {};
         
-        onLoadProject(updatedGeometry.geometries, updatedGeometry.materials, restoredHitCollections);
+        // Pass the JSON data (with world, volumes, materials) directly
+        onLoadProject(geometryData, loadedMaterials, restoredHitCollections);
         
         setAlert({
           open: true,

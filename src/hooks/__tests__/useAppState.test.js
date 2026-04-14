@@ -42,11 +42,20 @@ vi.mock('../../utils/defaults', () => ({
 
 vi.mock('../../utils/logger.js', () => ({
   debugLog: vi.fn(),
+  debugWarn: vi.fn(),
+}));
+
+// Mock expandToFlat — pass-through by default (returns input with a default world)
+vi.mock('../../utils/expandToFlat', () => ({
+  expandToFlat: vi.fn((json) => ({
+    world: json.world || { name: 'World', type: 'box', size: { x: 2000, y: 2000, z: 2000 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, material: 'G4_AIR' },
+    volumes: json.volumes || [],
+  })),
 }));
 
 // useState call order in useAppState:
-// 0: tabValue, 1: geometries, 2: materials, 3: selectedGeometry, 4: hitCollections, 5: updateDialogOpen
-const GEO = 1, MAT = 2, SEL = 3, HITS = 4;
+// 0: tabValue, 1: geometries, 2: materials, 3: selectedGeometry, 4: hitCollections, 5: updateDialogOpen, 6: jsonData
+const GEO = 1, MAT = 2, SEL = 3, HITS = 4, JSONDATA = 6;
 
 // Import the hook — path relative to test file
 import { useAppState } from '../useAppState';
@@ -98,6 +107,8 @@ describe('useAppState', () => {
         volumes: [{ name: 'X', type: 'box' }],
       });
       expect(stateSetters[GEO]).toHaveBeenCalled();
+      // Also stores JSON as primary state
+      expect(stateSetters[JSONDATA]).toHaveBeenCalled();
     });
   });
 
@@ -145,8 +156,11 @@ describe('useAppState', () => {
 
       handleLoadProject(geo, mats, null);
 
-      expect(stateSetters[GEO]).toHaveBeenCalledWith(geo);
+      // handleLoadProject now passes JSON through expandToFlat, which derives a default world
+      expect(stateSetters[GEO]).toHaveBeenCalled();
       expect(stateSetters[MAT]).toHaveBeenCalledWith(mats);
+      // Also stores JSON as primary state
+      expect(stateSetters[JSONDATA]).toHaveBeenCalled();
     });
 
     it('sets hitCollections when provided valid array', () => {
@@ -189,12 +203,13 @@ describe('useAppState', () => {
       const expectedKeys = [
         'tabValue', 'setTabValue',
         'geometries', 'materials',
+        'jsonData', 'setJsonData',
         'selectedGeometry', 'setSelectedGeometry',
         'hitCollections', 'setHitCollections',
         'updateDialogOpen', 'setUpdateDialogOpen',
         'handleUpdateGeometry', 'handleAddGeometry', 'handleRemoveGeometry',
         'handleImportGeometries', 'handleImportMaterials',
-        'handleUpdateMaterials', 'handleLoadProject',
+        'handleUpdateMaterials', 'handleAppendVolumes', 'handleLoadProject',
       ];
       for (const key of expectedKeys) {
         expect(result).toHaveProperty(key);

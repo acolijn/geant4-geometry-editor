@@ -10,8 +10,7 @@ import {
 import {
   generateGeometryJson,
   handleDownload,
-  handleFileUpload,
-  importJsonGeometry
+  handleFileUpload
 } from './utils/jsonHandlers';
 import { JsonTree } from './components/JsonTreeNode';
 import { debugLog } from '../../utils/logger';
@@ -52,19 +51,16 @@ const JsonViewer = () => {
     try {
       // Parse the JSON file
       const jsonData = await handleFileUpload(file);
+      debugLog('handleImportGeometry:: Parsed JSON:', jsonData);
       
-      // Convert the JSON to geometry format
-      const currentGeometry = {
-        geometries: geometries,
-        materials: materials
-      };
-      debugLog('handleImportGeometry:: Current geometry:', currentGeometry);
-      
-      const updatedGeometry = importJsonGeometry(jsonData, currentGeometry);
-      debugLog('handleImportGeometry:: Updated geometry:', updatedGeometry);
-  
-      onImportGeometries(updatedGeometry.geometries);
-      onImportMaterials(updatedGeometry.materials);
+      // Pass the raw JSON directly — handleImportGeometries will
+      // derive the flat view via expandToFlat
+      if (jsonData.world || jsonData.volumes) {
+        onImportGeometries(jsonData);
+      }
+      if (jsonData.materials) {
+        onImportMaterials(jsonData.materials);
+      }
       
       setAlert({
         open: true,
