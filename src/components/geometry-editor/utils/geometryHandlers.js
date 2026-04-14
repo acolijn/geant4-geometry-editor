@@ -7,8 +7,22 @@
 import { debugLog, debugWarn } from '../../../utils/logger.js';
 import { isVolumeKey, findFlatIndex } from '../../../utils/expandToFlat';
 
-export const generateUniqueName = (type) => {
-  return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+export const generateUniqueName = (type, geometries) => {
+  const pad3 = (n) => String(n).padStart(3, '0');
+  const prefix = `${type}_`;
+  // Collect existing indices used by this type
+  const usedIndices = new Set();
+  if (geometries && geometries.volumes) {
+    for (const vol of geometries.volumes) {
+      if (vol.name && vol.name.startsWith(prefix)) {
+        const suffix = vol.name.slice(prefix.length);
+        if (/^\d+$/.test(suffix)) usedIndices.add(parseInt(suffix, 10));
+      }
+    }
+  }
+  let idx = 0;
+  while (usedIndices.has(idx)) idx++;
+  return `${prefix}${pad3(idx)}`;
 };
 
 /**
@@ -66,7 +80,7 @@ export const createGeometryHandlers = (props, state) => {
     
     // Generate a unique component ID that will persist throughout the object's lifecycle
     const componentId = `component_${timestamp}_${randomSuffix}`;
-    const uniqueName = generateUniqueName(newGeometryType);
+    const uniqueName = generateUniqueName(newGeometryType, geometries);
 
     const newObject = {
       name: uniqueName,

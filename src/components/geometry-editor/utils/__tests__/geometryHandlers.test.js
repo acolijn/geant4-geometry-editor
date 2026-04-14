@@ -14,15 +14,21 @@ describe('geometryHandlers', () => {
   afterEach(() => { consoleErrorSpy.mockRestore(); });
 
   describe('generateUniqueName', () => {
-    it('generates a name with the type prefix', () => {
+    it('generates a name with the type prefix and padded index', () => {
       const name = generateUniqueName('box');
-      expect(name).toMatch(/^box_\d+_\d+$/);
+      expect(name).toBe('box_000');
     });
 
-    it('generates unique names on successive calls', () => {
-      const a = generateUniqueName('sphere');
-      const b = generateUniqueName('sphere');
-      expect(a).not.toBe(b);
+    it('generates unique names avoiding existing volumes', () => {
+      const geom = { volumes: [{ name: 'sphere_000' }, { name: 'sphere_001' }] };
+      const next = generateUniqueName('sphere', geom);
+      expect(next).toBe('sphere_002');
+    });
+
+    it('fills gaps in existing indices', () => {
+      const geom = { volumes: [{ name: 'box_000' }, { name: 'box_002' }] };
+      const name = generateUniqueName('box', geom);
+      expect(name).toBe('box_001');
     });
   });
 

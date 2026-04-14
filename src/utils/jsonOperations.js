@@ -97,10 +97,10 @@ export function flatToJsonVolume(flat) {
   const dims = flatDimsToJson(flat.type, flat);
   if (Object.keys(dims).length > 0) vol.dimensions = dims;
 
-  const placementName = `${flat.name}_${pad3(0)}`;
+  const placementName = flat.name;
   vol.placements = [{
     name: placementName,
-    g4name: placementName,
+    g4name: flat.g4name || placementName,
     x: flat.position?.x || 0,
     y: flat.position?.y || 0,
     z: flat.position?.z || 0,
@@ -569,7 +569,7 @@ export function applyRemoveFromJson(jsonData, flatVolumes, flatIndex) {
 // Used by "Save as Object" to pull a subtree without flat→JSON reconstruction.
 // ──────────────────────────────────────────────────────────
 
-export function extractSubtreeFromJson(jsonData, volumeName) {
+export function extractSubtreeFromJson(jsonData, volumeName, materialsMap) {
   if (!jsonData || !jsonData.volumes || !volumeName) return null;
 
   // volumeName may be a volume name OR a placement name (flat entries use
@@ -703,6 +703,24 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
         const mapped = nameMap.get(pl.parent);
         if (mapped) pl.parent = mapped;
       }
+    }
+  }
+
+  // Collect materials used by the subtree
+  if (materialsMap && typeof materialsMap === 'object') {
+    const usedMaterials = {};
+    for (const vol of result.volumes) {
+      if (vol.material && materialsMap[vol.material]) {
+        usedMaterials[vol.material] = materialsMap[vol.material];
+      }
+      for (const comp of (vol.components || [])) {
+        if (comp.material && materialsMap[comp.material]) {
+          usedMaterials[comp.material] = materialsMap[comp.material];
+        }
+      }
+    }
+    if (Object.keys(usedMaterials).length > 0) {
+      result.materials = usedMaterials;
     }
   }
 

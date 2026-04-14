@@ -11,7 +11,7 @@ import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
-  const { jsonData, handleBatchSetVisibility, refreshView } = useAppContext();
+  const { jsonData, materials, handleBatchSetVisibility, refreshView } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
@@ -39,8 +39,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         ? selectedObject._compoundId
         : selectedObject.name;
 
-    // Extract the subtree directly from the hierarchical JSON
-    const subtree = extractSubtreeFromJson(jsonData, volumeName);
+    // Extract the subtree directly from the hierarchical JSON, including used materials
+    const subtree = extractSubtreeFromJson(jsonData, volumeName, materials);
     if (!subtree || subtree.volumes.length === 0) {
       alert('Failed to extract object from JSON data');
       return;
@@ -716,10 +716,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             zIndex: 1000
           }}
         >
-          {/* Show save option for top level objects */}
-          {(geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'World' || 
-            (typeof geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'object' && 
-             geometries.volumes[contextMenu.volumeIndex]?.mother_volume._compoundId !== geometries.volumes[contextMenu.volumeIndex]?._compoundId)) && (
+          {/* Show save option for any volume */}
+          {geometries.volumes[contextMenu.volumeIndex] && (
               <div
                 onClick={() => {
                   // Set the selected geometry to the current context menu item

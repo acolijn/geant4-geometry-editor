@@ -207,7 +207,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
         const componentFlat = {
           _id: buildVolumeKey(volumeIndex, placementIndex, componentIndex),
           name: componentName,
-          g4name: componentName,
+          g4name: component.g4name || component.name || componentName,
           type: component.type,
           material: component.material || undefined,
           position: { x: compPlacement.x || 0, y: compPlacement.y || 0, z: compPlacement.z || 0 },
@@ -251,7 +251,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
             const subFlat = {
               _id: buildVolumeKey(volumeIndex, placementIndex, componentIndex, subCompIdx),
               name: subName,
-              g4name: subName,
+              g4name: subComp.g4name || subComp.name || subName,
               type: subComp.type,
               material: subComp.material || undefined,
               position: { x: subPlacement.x || 0, y: subPlacement.y || 0, z: subPlacement.z || 0 },

@@ -163,7 +163,7 @@ const ImportObjectDialog = ({
         onAppendJsonVolumes(objectJson.volumes);
         
         if (objectData.materials) {
-          onImportMaterials({ ...materials, ...objectData.materials });
+          onImportMaterials({ ...objectData.materials, ...materials });
         }
         
         onClose();
