@@ -8,6 +8,7 @@ import {
   applyAddToJson,
   applyRemoveFromJson,
   flatToJsonVolume,
+  mergeJsonVolumes,
 } from '../utils/jsonOperations';
 import { debugLog } from '../utils/logger';
 
@@ -161,12 +162,14 @@ export const useAppState = () => {
     return { success: true, message: 'Materials imported successfully' };
   };
 
-  // ─── APPEND: add raw JSON volumes (used by ImportObjectDialog) ──
+  // ─── APPEND: merge JSON volumes into existing JSON (used by ImportObjectDialog) ──
+  // If a volume with the same name exists, its placements are merged.
+  // If it's new, the volume is added.
   const handleAppendJsonVolumes = (jsonVolumes) => {
     if (!jsonVolumes || !Array.isArray(jsonVolumes) || jsonVolumes.length === 0) return;
-    const currentJson = cloneData(getOrInitJson());
-    currentJson.volumes.push(...cloneData(jsonVolumes));
-    reDeriveFlat(currentJson);
+    const currentJson = getOrInitJson();
+    const merged = mergeJsonVolumes(currentJson, jsonVolumes);
+    reDeriveFlat(merged);
   };
 
   const handleUpdateMaterials = (updatedMaterials) => {

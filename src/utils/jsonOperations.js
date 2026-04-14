@@ -350,3 +350,47 @@ export function extractSubtreeFromJson(jsonData, volumeName) {
 
   return { world: null, volumes };
 }
+
+// ──────────────────────────────────────────────────────────
+// MERGE VOLUMES — merge imported JSON volumes into existing JSON.
+// If a volume with the same name already exists, append its placements.
+// If it's new, add the volume definition.
+// ──────────────────────────────────────────────────────────
+
+export function mergeJsonVolumes(jsonData, incomingVolumes) {
+  const json = structuredClone(jsonData);
+  if (!incomingVolumes || !Array.isArray(incomingVolumes)) return json;
+
+  // Index existing volumes by name for fast lookup
+  const existingByName = new Map();
+  json.volumes.forEach((vol, idx) => existingByName.set(vol.name, idx));
+
+  for (const incoming of incomingVolumes) {
+    const clone = structuredClone(incoming);
+    const existingIdx = existingByName.get(clone.name);
+
+    if (existingIdx !== undefined) {
+      // Volume definition already exists — merge placements
+      const existing = json.volumes[existingIdx];
+      const existingPlacements = existing.placements || [];
+
+      for (const pl of (clone.placements || [])) {
+        // Check for duplicate placements (same position + parent)
+        const isDuplicate = existingPlacements.some(ep =>
+          ep.x === pl.x && ep.y === pl.y && ep.z === pl.z &&
+          ep.parent === pl.parent
+        );
+        if (!isDuplicate) {
+          existingPlacements.push(pl);
+        }
+      }
+      existing.placements = existingPlacements;
+    } else {
+      // New volume — add it
+      json.volumes.push(clone);
+      existingByName.set(clone.name, json.volumes.length - 1);
+    }
+  }
+
+  return json;
+}
