@@ -4,6 +4,7 @@ import {
   mergeJsonVolumes,
   applyAddToJson,
   applyUpdateToJson,
+  applyRemoveFromJson,
 } from '../jsonOperations';
 import { expandToFlat } from '../expandToFlat';
 
@@ -670,5 +671,161 @@ describe('add-to-assembly + expandToFlat propagation', () => {
     expect(capVolumes[0].mother_volume).toBe('PMT_000');
     expect(capVolumes[1].mother_volume).toBe('PMT_001');
     expect(capVolumes[2].mother_volume).toBe('PMT_002');
+  });
+});
+
+describe('applyRemoveFromJson – remove component from assembly', () => {
+  const makeAssemblyScene = () => ({
+    world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } },
+    volumes: [
+      {
+        name: 'myAssembly',
+        type: 'assembly',
+        _compoundId: 'myAssembly',
+        placements: [
+          { name: 'myAssembly_000', x: 0, y: 0, z: 0, parent: 'World' },
+          { name: 'myAssembly_001', x: 100, y: 0, z: 0, parent: 'World' },
+        ],
+        components: [
+          {
+            name: 'boxA',
+            type: 'box',
+            material: 'LXe',
+            dimensions: { x: 10, y: 10, z: 10 },
+            placements: [{ name: 'boxA_000', x: 0, y: 0, z: 0, parent: '' }],
+          },
+          {
+            name: 'boxB',
+            type: 'box',
+            material: 'LXe',
+            dimensions: { x: 20, y: 20, z: 20 },
+            placements: [{ name: 'boxB_000', x: 10, y: 0, z: 0, parent: '' }],
+          },
+          {
+            name: 'childOfA',
+            type: 'cylinder',
+            material: 'G4_Al',
+            dimensions: { radius: 5, height: 10, inner_radius: 0 },
+            placements: [{ name: 'childOfA_000', x: 0, y: 0, z: 5, parent: 'boxA' }],
+          },
+        ],
+      },
+    ],
+  });
+
+  it('removes a single component from the assembly', () => {
+    const scene = makeAssemblyScene();
+    const flat = expandToFlat(scene);
+
+    // Find boxB in flat (instance 0)
+    const boxBIdx = flat.volumes.findIndex(v => v.name === 'boxB' && v._componentIndex === 1);
+    expect(boxBIdx).toBeGreaterThanOrEqual(0);
+
+    const newJson = applyRemoveFromJson(scene, flat.volumes, boxBIdx);
+    expect(newJson.volumes[0].components).toHaveLength(2);
+    expect(newJson.volumes[0].components.map(c => c.name)).toEqual(['boxA', 'childOfA']);
+  });
+
+  it('removes component and its nested children', () => {
+    const scene = makeAssemblyScene();
+    const flat = expandToFlat(scene);
+
+    // Find boxA in flat (instance 0) — childOfA has parent='boxA'
+    const boxAIdx = flat.volumes.findIndex(v => v.name === 'boxA' && v._componentIndex === 0);
+    expect(boxAIdx).toBeGreaterThanOrEqual(0);
+
+    const newJson = applyRemoveFromJson(scene, flat.volumes, boxAIdx);
+    // Both boxA and childOfA should be removed
+    expect(newJson.volumes[0].components).toHaveLength(1);
+    expect(newJson.volumes[0].components[0].name).toBe('boxB');
+  });
+
+  it('does not remove the assembly itself', () => {
+    const scene = makeAssemblyScene();
+    const flat = expandToFlat(scene);
+
+    const boxBIdx = flat.volumes.findIndex(v => v.name === 'boxB' && v._componentIndex === 1);
+    const newJson = applyRemoveFromJson(scene, flat.volumes, boxBIdx);
+
+    // Assembly still exists with its placements
+    expect(newJson.volumes).toHaveLength(1);
+    expect(newJson.volumes[0].name).toBe('myAssembly');
+    expect(newJson.volumes[0].placements).toHaveLength(2);
+  });
+
+  it('propagates removal to all instances via expandToFlat', () => {
+    const scene = makeAssemblyScene();
+    const flat = expandToFlat(scene);
+
+    const boxBIdx = flat.volumes.findIndex(v => v.name === 'boxB' && v._componentIndex === 1);
+    const newJson = applyRemoveFromJson(scene, flat.volumes, boxBIdx);
+    const newFlat = expandToFlat(newJson);
+
+    // No boxB in any instance
+    const boxBs = newFlat.volumes.filter(v => v.name.startsWith('boxB'));
+    expect(boxBs).toHaveLength(0);
+
+    // boxA and childOfA still present in both instances
+    const boxAs = newFlat.volumes.filter(v => v.name.startsWith('boxA'));
+    expect(boxAs).toHaveLength(2);
+  });
+});
+
+describe('applyUpdateToJson – component stays in assembly', () => {
+  const makeScene = () => ({
+    world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } },
+    volumes: [
+      {
+        name: 'asm',
+        type: 'assembly',
+        _compoundId: 'asm',
+        placements: [
+          { name: 'asm_000', x: 0, y: 0, z: 0, parent: 'World' },
+        ],
+        components: [
+          {
+            name: 'innerBox',
+            type: 'box',
+            material: 'LXe',
+            dimensions: { x: 10, y: 10, z: 10 },
+            placements: [{ name: 'innerBox_000', x: 0, y: 0, z: 0, parent: '' }],
+          },
+        ],
+      },
+    ],
+  });
+
+  it('updating material of a component does not change its parent', () => {
+    const scene = makeScene();
+    const flat = expandToFlat(scene);
+
+    // Find the component in flat
+    const idx = flat.volumes.findIndex(v => v.name === 'innerBox');
+    expect(idx).toBeGreaterThanOrEqual(0);
+
+    // Simulate what PropertyEditor does: clone the flat vol and change material
+    const patch = structuredClone(flat.volumes[idx]);
+    patch.material = 'G4_Al';
+
+    const newJson = applyUpdateToJson(scene, flat.volumes, idx, patch);
+
+    // Component should still be inside the assembly with parent ''
+    expect(newJson.volumes[0].components).toHaveLength(1);
+    expect(newJson.volumes[0].components[0].material).toBe('G4_Al');
+    expect(newJson.volumes[0].components[0].placements[0].parent).toBe('');
+  });
+
+  it('updating dimensions of a component keeps it in the assembly', () => {
+    const scene = makeScene();
+    const flat = expandToFlat(scene);
+
+    const idx = flat.volumes.findIndex(v => v.name === 'innerBox');
+    const patch = structuredClone(flat.volumes[idx]);
+    patch.size = { x: 20, y: 20, z: 20 };
+
+    const newJson = applyUpdateToJson(scene, flat.volumes, idx, patch);
+
+    expect(newJson.volumes[0].components[0].dimensions.x).toBe(20);
+    expect(newJson.volumes[0].components[0].placements[0].parent).toBe('');
   });
 });

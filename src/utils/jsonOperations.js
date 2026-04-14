@@ -291,7 +291,9 @@ export function applyUpdateToJson(jsonData, flatVolumes, flatIndex, patch) {
         ...patch.rotation,
       };
     }
-    if (patch.mother_volume !== undefined) {
+    if (patch.mother_volume !== undefined && ci === undefined) {
+      // Only reparent for top-level volumes, not for components inside compounds.
+      // Component parent references are managed by the compound structure itself.
       targetPlacement.parent = patch.mother_volume;
     }
   }
@@ -495,7 +497,39 @@ export function applyRemoveFromJson(jsonData, flatVolumes, flatIndex) {
 
   const vi = flatVol._volumeIndex;
   const pi = flatVol._placementIndex;
+  const ci = flatVol._componentIndex;
   const jsonVol = json.volumes[vi];
+
+  // ── Component inside a compound (assembly/union/subtraction) ──
+  if (ci !== undefined && jsonVol.components && jsonVol.components[ci]) {
+    const component = jsonVol.components[ci];
+    const compName = component.name;
+
+    // Also remove any child components whose parent references this component
+    const namesToRemove = new Set([compName]);
+    for (const pl of (component.placements || [])) {
+      if (pl.name) namesToRemove.add(pl.name);
+    }
+
+    // Walk other components to find nested children
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const comp of jsonVol.components) {
+        if (namesToRemove.has(comp.name)) continue;
+        for (const pl of (comp.placements || [])) {
+          if (namesToRemove.has(pl.parent)) {
+            namesToRemove.add(comp.name);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+
+    jsonVol.components = jsonVol.components.filter(c => !namesToRemove.has(c.name));
+    return json;
+  }
 
   if (jsonVol.placements && jsonVol.placements.length > 1) {
     // Multi-placement: remove only this placement
