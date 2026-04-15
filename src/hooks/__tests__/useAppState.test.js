@@ -22,6 +22,9 @@ vi.mock('react', () => ({
     }
     return [stateValues[idx], stateSetters[idx]];
   },
+  useMemo: (factory) => factory(),
+  useRef: (initial) => ({ current: initial }),
+  useEffect: (effect) => { effect(); },
 }));
 
 // Mock dependencies — paths relative to THIS test file (src/hooks/__tests__/)
@@ -62,9 +65,9 @@ vi.mock('../../utils/jsonOperations', () => ({
   flatToJsonVolume: vi.fn((flat) => ({ name: flat.name, type: flat.type, placements: [{ x: 0, y: 0, z: 0, parent: 'World' }] })),
 }));
 
-// useState call order in useAppState:
-// 0: tabValue, 1: geometries, 2: materials, 3: selectedGeometry, 4: hitCollections, 5: updateDialogOpen, 6: jsonData
-const GEO = 1, MAT = 2, SEL = 3, HITS = 4, JSONDATA = 6;
+// useState call order in useAppState (geometries is now useMemo, not useState):
+// 0: tabValue, 1: materials, 2: selectedGeometry, 3: hitCollections, 4: updateDialogOpen, 5: jsonData
+const MAT = 1, SEL = 2, HITS = 3, JSONDATA = 5;
 
 // Import the hook — path relative to test file
 import { useAppState } from '../useAppState';
@@ -109,14 +112,13 @@ describe('useAppState', () => {
       expect(result).toEqual({ success: true, message: 'Geometries imported successfully' });
     });
 
-    it('calls setGeometries on valid import', () => {
+    it('stores JSON on valid import', () => {
       const { handleImportGeometries } = useAppState();
       handleImportGeometries({
         world: null,
         volumes: [{ name: 'X', type: 'box' }],
       });
-      expect(stateSetters[GEO]).toHaveBeenCalled();
-      // Also stores JSON as primary state
+      // Stores JSON as primary state (geometries auto-derived via useMemo)
       expect(stateSetters[JSONDATA]).toHaveBeenCalled();
     });
   });
@@ -158,18 +160,16 @@ describe('useAppState', () => {
   });
 
   describe('handleLoadProject', () => {
-    it('sets geometries and materials', () => {
+    it('sets JSON and materials', () => {
       const { handleLoadProject } = useAppState();
       const geo = { world: null, volumes: [] };
       const mats = { G4_WATER: {} };
 
       handleLoadProject(geo, mats, null);
 
-      // handleLoadProject now passes JSON through expandToFlat, which derives a default world
-      expect(stateSetters[GEO]).toHaveBeenCalled();
-      expect(stateSetters[MAT]).toHaveBeenCalledWith(mats);
-      // Also stores JSON as primary state
+      // Stores JSON as primary state (geometries auto-derived via useMemo)
       expect(stateSetters[JSONDATA]).toHaveBeenCalled();
+      expect(stateSetters[MAT]).toHaveBeenCalledWith(mats);
     });
 
     it('sets hitCollections when provided valid array', () => {

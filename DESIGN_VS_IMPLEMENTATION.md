@@ -1,6 +1,6 @@
 # DESIGN.md vs. Current Implementation — Gap Analysis
 
-*Generated: 2026-04-14*
+*Updated: 2026-04-15*
 
 This report compares the vision in `DESIGN.md` against the actual codebase to identify what has been implemented, what differs, and what remains.
 
@@ -15,7 +15,7 @@ The core goal — **JSON as the internal data structure** — is fully achieved.
 | Phase 1: JSON as state, flat as derived view | ✅ Complete |
 | Phase 2: Mutation API | ✅ Complete (different shape than spec) |
 | Phase 3: Stable selection keys | ✅ Complete |
-| Phase 4: Tree reads JSON directly | ❌ Not started |
+| Phase 4: Tree reads JSON directly | ✅ Mostly complete (flat view is now `useMemo`-derived, not manual sync) |
 
 ---
 
@@ -42,19 +42,15 @@ The core goal — **JSON as the internal data structure** — is fully achieved.
 | DESIGN.md | Implementation | Match |
 |---|---|---|
 | JSON is React state, stored in `useAppState` | `jsonData` in useAppState via `useState` | ✅ |
-| Flat view computed via `useMemo` | Flat view derived via `reDeriveFlat()` on every mutation | ⚠️ Different |
-| `jsonToGeometry` disappears | Still exists in `jsonToGeometry.js` (used for import path) | ⚠️ Partial |
-| `geometryToJson` disappears entirely | `generateJson` still exists in `geometryToJson.js` (used for export) | ⚠️ Partial |
+| Flat view computed via `useMemo` | Flat view derived via `useMemo(() => expandToFlat(jsonData), [jsonData])` | ✅ |
+| `jsonToGeometry` disappears | Deleted — file removed entirely | ✅ |
+| `geometryToJson` disappears entirely | Deleted — file removed entirely | ✅ |
 
 ### Details on deviations:
 
-**Flat view derivation**: DESIGN.md specifies `useMemo(() => expandToFlat(jsonState), [jsonState])`. The implementation uses `reDeriveFlat(newJson)` which is called imperatively after each mutation. Functionally equivalent — the flat view is always re-derived from JSON — but the mechanism is imperative rather than declarative.
+**Flat view derivation**: Now matches the spec — `useMemo(() => expandToFlat(jsonData), [jsonData])`. The flat view is automatically recomputed whenever `jsonData` changes. Post-mutation selection is handled via a `useRef` + `useEffect` pattern.
 
-**Legacy conversion functions**: `jsonToGeometry.js` and `geometryToJson.js` still exist and are used:
-- `jsonToGeometry()` — used during JSON import to create the initial flat geometry set
-- `generateJson()` — used during JSON export/save to produce the output JSON
-
-These are vestigial. The primary data flow no longer depends on them for internal state, but they're still in the import/export pipeline. They could be replaced by direct JSON manipulation + `expandToFlat()`.
+**Legacy conversion functions**: Deleted. `jsonToGeometry.js` and `geometryToJson.js` have been removed entirely. All data flows through JSON → `expandToFlat()` → flat view.
 
 ### Data Flow
 
@@ -66,7 +62,7 @@ These are vestigial. The primary data flow no longer depends on them for interna
 | No flat → JSON reverse path | ✅ | `reDeriveFlat` is one-way | ✅ |
 | Lazy init from flat if JSON null | Not mentioned | `getOrInitJson()` seeds JSON from flat | ⚠️ Extra |
 
-**Verdict: Core architecture matches. Derivation is imperative instead of declarative. Legacy converters still present but not on the critical path.**
+**Verdict: Core architecture matches spec. Flat view is derived via `useMemo` as designed. Legacy converters removed.**
 
 ---
 
@@ -123,7 +119,7 @@ The design envisioned **12 separate mutation functions** with clean signatures i
 | Folders under parent volume (not global) | ✅ | ✅ Grouped by parent | ✅ |
 | Selecting placement opens property editor | ✅ | ✅ | ✅ |
 | Editing shared property updates all placements | ✅ | ✅ (via JSON mutation → re-derive) | ✅ |
-| Tree reads from flat view | Phase 4: reads JSON directly | Still reads flat view | ✅ (Phase 4 not started) |
+| Tree reads from flat view | Phase 4: reads JSON directly | Tree reads `useMemo`-derived flat view (auto-synced, no manual management) | ✅ |
 
 **Verdict: Tree view matches spec.**
 
@@ -173,14 +169,17 @@ Implemented via `findMatchingVolume()` in jsonOperations.js and auto-merge logic
 
 ## 9. Dead / Vestigial Code
 
-The following items from the old architecture are still present:
+All dead code has been removed:
 
 | File | Status | Notes |
 |---|---|---|
-| `src/components/json-viewer/utils/jsonToGeometry.js` | Vestigial | No longer imported by production code; used only in legacy tests |
-| `src/components/json-viewer/utils/geometryToJson.js` | Vestigial | No longer imported by production code; used only in legacy tests |
-| `src/components/geometry-editor/utils/compoundIdPropagator.js` | Active | Used by useAppState for compound ID propagation |
-| `src/components/geometry-editor/utils/GeometryUtils.js` | Active | Duplicate `propagateCompoundIdToDescendants` removed; remaining functions in use |
+| `src/components/json-viewer/utils/jsonToGeometry.js` | ✅ Deleted | No longer needed — expandToFlat replaces it |
+| `src/components/json-viewer/utils/geometryToJson.js` | ✅ Deleted | No longer needed — JSON is the primary state |
+| `src/components/json-viewer/utils/syntaxHighlight.js` | ✅ Deleted | Orphan utility, never imported |
+| `src/components/viewer3D/utils/contextMenuHandlers.js` | ✅ Deleted | Vestigial — GeometryTree has own implementation |
+| `src/components/viewer3D/utils/transformHandlers.js` | ✅ Deleted | Vestigial — Scene.jsx has own implementation |
+| `src/components/geometry-editor/utils/compoundIdPropagator.js` | Active | Used by useMemo in useAppState for compound ID propagation |
+| `src/components/geometry-editor/utils/GeometryUtils.js` | Active | Remaining functions in use |
 
 ---
 
@@ -191,13 +190,14 @@ The following items from the old architecture are still present:
 | Item | Priority | Effort |
 |---|---|---|
 | **`duplicateVolume`** (deep copy with new name) | Low | Low |
+| **Tree reads JSON directly** (skip flat view entirely for tree) | Low | Medium — would duplicate compound expansion logic |
 
 ### Cleanup Items
 
 | Item | Priority | Effort |
 |---|---|---|
-| Remove `jsonToGeometry.js` / `geometryToJson.js` entirely (test-only) | Low | Medium — need to rewrite legacy tests |
-| Switch flat derivation from imperative to `useMemo` | Low | Low — cosmetic |
+| Replace 20 `console.error` calls with `debugWarn` logger | Low | Low |
+| Split large files (GeometryTree.jsx ~650 lines) | Low | Medium |
 
 ---
 

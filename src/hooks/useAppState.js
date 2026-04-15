@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { defaultGeometry, defaultMaterials } from '../utils/defaults';
 import { propagateCompoundIdToDescendants } from '../components/geometry-editor/utils/compoundIdPropagator';
 import { expandToFlat, isVolumeKey, findFlatIndex } from '../utils/expandToFlat';
@@ -8,7 +8,6 @@ import {
   applyAddToJson,
   applyRemoveFromJson,
   applyAddPlacementToJson,
-  flatToJsonVolume,
   mergeJsonVolumes,
   restructureCompounds,
   findMatchingVolume,
@@ -23,7 +22,6 @@ const isValidMaterialsMap = (value) => {
 
 export const useAppState = () => {
   const [tabValue, setTabValue] = useState(0);
-  const [geometries, setGeometries] = useState(defaultGeometry);
   const [materials, setMaterials] = useState(defaultMaterials);
   const [selectedGeometry, setSelectedGeometry] = useState(null);
   const [hitCollections, setHitCollections] = useState(['MyHitsCollection']);
@@ -31,13 +29,10 @@ export const useAppState = () => {
   // JSON-primary state: the hierarchical JSON is the source of truth
   const [jsonData, setJsonData] = useState(null);
 
-  // ─── Helper: re-derive flat view from JSON ────────────────
-  // Called after every JSON mutation. Stores jsonData, derives flat,
-  // propagates compound IDs, and sets geometries.
-  const reDeriveFlat = (newJson) => {
-    setJsonData(newJson);
-    const flat = expandToFlat(newJson);
-
+  // Flat view derived automatically from JSON via useMemo (no manual sync)
+  const geometries = useMemo(() => {
+    if (!jsonData) return defaultGeometry;
+    const flat = expandToFlat(jsonData);
     let updatedVolumes = [...flat.volumes];
     flat.volumes.forEach((volume, index) => {
       if (['assembly', 'union', 'subtraction'].includes(volume.type)) {
@@ -48,37 +43,40 @@ export const useAppState = () => {
         updatedVolumes = propagateCompoundIdToDescendants(volume.name, compoundId, updatedVolumes);
       }
     });
+    return { world: flat.world, volumes: updatedVolumes };
+  }, [jsonData]);
 
-    const result = { world: flat.world, volumes: updatedVolumes };
-    setGeometries(result);
-    return result;
-  };
+  // Post-mutation selection: handlers store a finder function here;
+  // the effect runs it after geometries recomputes.
+  const pendingSelectionRef = useRef(null);
+  useEffect(() => {
+    if (pendingSelectionRef.current) {
+      const finder = pendingSelectionRef.current;
+      pendingSelectionRef.current = null;
+      const key = finder(geometries.volumes);
+      if (key !== undefined) setSelectedGeometry(key);
+    }
+  }, [geometries]);
 
-  // ─── Helper: get current JSON (lazy-init from flat if needed) ──
+  // ─── Helper: get current JSON (or default if not loaded yet) ──
   const getOrInitJson = () => {
     if (jsonData) return jsonData;
-    // No JSON loaded yet — seed from current default state
-    const world = geometries.world;
     return {
       world: {
-        name: world?.name || 'World',
-        type: world?.type || 'box',
-        material: world?.material || 'G4_AIR',
-        dimensions: world?.size
-          ? { x: world.size.x, y: world.size.y, z: world.size.z }
-          : { x: 2000, y: 2000, z: 2000 },
+        name: 'World',
+        type: 'box',
+        material: 'G4_AIR',
+        dimensions: { x: 2000, y: 2000, z: 2000 },
       },
-      volumes: (geometries.volumes || []).map(v => flatToJsonVolume(v)),
+      volumes: [],
     };
   };
 
-  // ─── REFRESH: re-derive flat view from current JSON ────────
-  // Clones the JSON, runs restructureCompounds to move any stray volumes
-  // into their proper assembly/union component arrays, then re-derives flat.
+  // ─── REFRESH: restructure compounds and update JSON ────────
   const refreshView = () => {
     if (jsonData) {
       const fixed = restructureCompounds(structuredClone(jsonData));
-      reDeriveFlat(fixed);
+      setJsonData(fixed);
     }
   };
 
@@ -95,7 +93,7 @@ export const useAppState = () => {
       newJson = applyUpdateToJson(currentJson, geometries.volumes, flatIndex, updatedObject);
     }
 
-    reDeriveFlat(newJson);
+    setJsonData(newJson);
 
     if (keepSelected) {
       setSelectedGeometry(id);
@@ -114,13 +112,13 @@ export const useAppState = () => {
     }
 
     const newJson = applyAddToJson(currentJson, newGeometry);
-    const derived = reDeriveFlat(newJson);
+    setJsonData(newJson);
 
-    // Select the newly added volume (appears at end of flat list)
-    const newVol = derived.volumes[derived.volumes.length - 1];
-    if (newVol) {
-      setTimeout(() => setSelectedGeometry(newVol._id), 50);
-    }
+    // Select the newly added volume after geometries recompute
+    pendingSelectionRef.current = (volumes) => {
+      const newVol = volumes[volumes.length - 1];
+      return newVol?._id || null;
+    };
 
     return newGeometry.name;
   };
@@ -141,12 +139,14 @@ export const useAppState = () => {
     }
 
     const newJson = applyRemoveFromJson(currentJson, geometries.volumes, flatIndex);
-    const derived = reDeriveFlat(newJson);
+    setJsonData(newJson);
 
     // Re-select by name if possible, otherwise deselect
     if (selectedName) {
-      const found = derived.volumes.find(v => v.name === selectedName);
-      setSelectedGeometry(found ? found._id : null);
+      pendingSelectionRef.current = (volumes) => {
+        const found = volumes.find(v => v.name === selectedName);
+        return found?._id || null;
+      };
     } else {
       setSelectedGeometry(null);
     }
@@ -160,16 +160,16 @@ export const useAppState = () => {
     const flatIndex = findFlatIndex(geometries.volumes, id);
     if (flatIndex < 0) return;
 
-    const newJson = applyAddPlacementToJson(currentJson, geometries.volumes, flatIndex);
-    const derived = reDeriveFlat(newJson);
-
-    // Select the newly added placement (last entry for that volume)
     const flatVol = geometries.volumes[flatIndex];
     const vi = flatVol._volumeIndex;
-    const lastPlacement = derived.volumes.filter(v => v._volumeIndex === vi).pop();
-    if (lastPlacement) {
-      setTimeout(() => setSelectedGeometry(lastPlacement._id), 50);
-    }
+    const newJson = applyAddPlacementToJson(currentJson, geometries.volumes, flatIndex);
+    setJsonData(newJson);
+
+    // Select the newly added placement after geometries recompute
+    pendingSelectionRef.current = (volumes) => {
+      const lastPlacement = volumes.filter(v => v._volumeIndex === vi).pop();
+      return lastPlacement?._id || null;
+    };
   };
 
   // ─── BATCH: set visibility on multiple volumes at once ─────
@@ -200,7 +200,7 @@ export const useAppState = () => {
       }
     }
 
-    reDeriveFlat(newJson);
+    setJsonData(newJson);
   };
 
   // ─── IMPORT: replace all geometry from hierarchical JSON ──
@@ -213,7 +213,7 @@ export const useAppState = () => {
     }
 
     const jsonCopy = cloneData(importData);
-    reDeriveFlat(jsonCopy);
+    setJsonData(jsonCopy);
     return { success: true, message: 'Geometries imported successfully' };
   };
 
@@ -254,7 +254,7 @@ export const useAppState = () => {
     });
 
     const merged = mergeJsonVolumes(currentJson, processedVolumes);
-    reDeriveFlat(merged);
+    setJsonData(merged);
   };
 
   const handleUpdateMaterials = (updatedMaterials) => {
@@ -264,7 +264,7 @@ export const useAppState = () => {
   // ─── LOAD PROJECT: replace everything from JSON ───────────
   const handleLoadProject = (loadedJsonData, loadedMaterials, loadedHitCollections) => {
     const jsonCopy = cloneData(loadedJsonData);
-    reDeriveFlat(jsonCopy);
+    setJsonData(jsonCopy);
     setMaterials(loadedMaterials);
 
     if (loadedHitCollections && Array.isArray(loadedHitCollections)) {
