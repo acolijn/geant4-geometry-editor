@@ -27,11 +27,6 @@ const getStorageManager = () => {
   return null;
 };
 
-// Import the ObjectFormatStandardizer
-//import { standardizeObjectFormat } from './ObjectFormatStandardizer';
-
-// Import the geometryToJson
-//import { generateJson } from '../../json-viewer/utils/geometryToJson';
 
 /**
  * Save a compound object to the objects directory
@@ -70,7 +65,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
     // Sanitize the file name
     const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
     
-    // Check if we have a templateJson from geometryToJson
+    // Check if we have a templateJson
     let dataToProcess;
     if (objectData.templateJson) {
       debugLog('ObjectStorage::saveObject:: Using templateJson for old formatting');
