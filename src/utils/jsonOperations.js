@@ -825,6 +825,91 @@ export function applyAddPlacementToJson(jsonData, flatVolumes, flatIndex) {
 }
 
 // ──────────────────────────────────────────────────────────
+// DUPLICATE VOLUME — deep copy a volume definition with a new name.
+// Creates a fully independent copy (new definition + single placement).
+// For compounds, all components are cloned and internal references updated.
+// ──────────────────────────────────────────────────────────
+
+export function applyDuplicateVolumeToJson(jsonData, flatVolumes, flatIndex) {
+  const json = structuredClone(jsonData);
+  const flatVol = flatVolumes[flatIndex];
+
+  if (flatVol._volumeIndex === undefined) {
+    debugWarn('applyDuplicateVolumeToJson: volume has no _volumeIndex');
+    return json;
+  }
+
+  const vi = flatVol._volumeIndex;
+  const original = json.volumes[vi];
+  if (!original) return json;
+
+  // Generate a unique name: "VolName_copy", "VolName_copy2", etc.
+  const allNames = new Set(json.volumes.map(v => v.name));
+  let newName = `${original.name}_copy`;
+  let suffix = 2;
+  while (allNames.has(newName)) {
+    newName = `${original.name}_copy${suffix++}`;
+  }
+
+  const clone = structuredClone(original);
+  const oldName = clone.name;
+  clone.name = newName;
+  clone.g4name = newName;
+  if (clone._compoundId === oldName) clone._compoundId = newName;
+
+  // Keep only one placement, offset slightly, and rename it
+  if (clone.placements && clone.placements.length > 0) {
+    const srcPl = clone.placements[0];
+    clone.placements = [{
+      ...srcPl,
+      name: `${newName}_000`,
+      g4name: `${newName}_000`,
+      x: (srcPl.x || 0) + 50,
+    }];
+  }
+
+  // For compounds: update internal component references from old name to new name
+  if (clone.components) {
+    const nameMap = new Map();
+    nameMap.set(oldName, newName);
+
+    // Build rename map for all components
+    for (const comp of clone.components) {
+      const oldCompName = comp.name;
+      const newCompName = oldCompName.replace(oldName, newName);
+      if (newCompName !== oldCompName) {
+        nameMap.set(oldCompName, newCompName);
+        comp.name = newCompName;
+        if (comp.g4name === oldCompName) comp.g4name = newCompName;
+      }
+      // Rename placements inside components
+      for (const pl of (comp.placements || [])) {
+        if (pl.name) {
+          const newPlName = pl.name.replace(oldName, newName);
+          if (newPlName !== pl.name) {
+            nameMap.set(pl.name, newPlName);
+            pl.name = newPlName;
+            if (pl.g4name === pl.name) pl.g4name = newPlName;
+          }
+        }
+      }
+    }
+
+    // Update parent references inside components
+    for (const comp of clone.components) {
+      for (const pl of (comp.placements || [])) {
+        if (pl.parent && nameMap.has(pl.parent)) {
+          pl.parent = nameMap.get(pl.parent);
+        }
+      }
+    }
+  }
+
+  json.volumes.push(clone);
+  return json;
+}
+
+// ──────────────────────────────────────────────────────────
 // MERGE VOLUMES — merge imported JSON volumes into existing JSON.
 // Compound types (assembly/union/subtraction) with the same name:
 //   → merge placements (add new instances of the compound).

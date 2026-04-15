@@ -5,6 +5,7 @@ import {
   applyAddToJson,
   applyUpdateToJson,
   applyRemoveFromJson,
+  applyDuplicateVolumeToJson,
 } from '../jsonOperations';
 import { expandToFlat } from '../expandToFlat';
 
@@ -827,5 +828,119 @@ describe('applyUpdateToJson – component stays in assembly', () => {
 
     expect(newJson.volumes[0].components[0].dimensions.x).toBe(20);
     expect(newJson.volumes[0].components[0].placements[0].parent).toBe('');
+  });
+});
+
+describe('applyDuplicateVolumeToJson', () => {
+  const makeScene = () => ({
+    world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } },
+    volumes: [
+      {
+        name: 'myBox',
+        type: 'box',
+        material: 'LXe',
+        dimensions: { x: 100, y: 100, z: 100 },
+        placements: [
+          { name: 'myBox_000', x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+          { name: 'myBox_001', x: 200, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' },
+        ],
+      },
+    ],
+  });
+
+  it('creates an independent copy with a new name', () => {
+    const scene = makeScene();
+    const flat = expandToFlat(scene);
+    const idx = flat.volumes.findIndex(v => v.name === 'myBox_000');
+
+    const newJson = applyDuplicateVolumeToJson(scene, flat.volumes, idx);
+
+    expect(newJson.volumes).toHaveLength(2);
+    expect(newJson.volumes[1].name).toBe('myBox_copy');
+    expect(newJson.volumes[1].type).toBe('box');
+    expect(newJson.volumes[1].material).toBe('LXe');
+    expect(newJson.volumes[1].dimensions).toEqual({ x: 100, y: 100, z: 100 });
+  });
+
+  it('keeps only one placement in the copy', () => {
+    const scene = makeScene();
+    const flat = expandToFlat(scene);
+    const idx = flat.volumes.findIndex(v => v.name === 'myBox_000');
+
+    const newJson = applyDuplicateVolumeToJson(scene, flat.volumes, idx);
+
+    expect(newJson.volumes[1].placements).toHaveLength(1);
+    expect(newJson.volumes[1].placements[0].name).toBe('myBox_copy_000');
+  });
+
+  it('offsets the copy position by 50 in x', () => {
+    const scene = makeScene();
+    const flat = expandToFlat(scene);
+    const idx = flat.volumes.findIndex(v => v.name === 'myBox_000');
+
+    const newJson = applyDuplicateVolumeToJson(scene, flat.volumes, idx);
+
+    expect(newJson.volumes[1].placements[0].x).toBe(50);
+  });
+
+  it('does not modify the original volume', () => {
+    const scene = makeScene();
+    const flat = expandToFlat(scene);
+    const idx = flat.volumes.findIndex(v => v.name === 'myBox_000');
+
+    const newJson = applyDuplicateVolumeToJson(scene, flat.volumes, idx);
+
+    expect(newJson.volumes[0].name).toBe('myBox');
+    expect(newJson.volumes[0].placements).toHaveLength(2);
+  });
+
+  it('generates unique names when _copy already exists', () => {
+    const scene = makeScene();
+    scene.volumes.push({
+      name: 'myBox_copy',
+      type: 'box',
+      material: 'LXe',
+      dimensions: { x: 50, y: 50, z: 50 },
+      placements: [{ name: 'myBox_copy_000', x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' }],
+    });
+
+    const flat = expandToFlat(scene);
+    const idx = flat.volumes.findIndex(v => v.name === 'myBox_000');
+
+    const newJson = applyDuplicateVolumeToJson(scene, flat.volumes, idx);
+
+    expect(newJson.volumes[2].name).toBe('myBox_copy2');
+  });
+
+  it('duplicates a compound volume with components', () => {
+    const scene = {
+      world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } },
+      volumes: [{
+        name: 'myAssembly',
+        type: 'assembly',
+        placements: [{ name: 'myAssembly_000', x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' }],
+        components: [
+          {
+            name: 'myAssembly_body',
+            type: 'box',
+            material: 'LXe',
+            dimensions: { x: 50, y: 50, z: 50 },
+            placements: [{ name: 'myAssembly_body_000', x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: '' }],
+          },
+        ],
+      }],
+    };
+
+    const flat = expandToFlat(scene);
+    const idx = flat.volumes.findIndex(v => v.name === 'myAssembly_000');
+
+    const newJson = applyDuplicateVolumeToJson(scene, flat.volumes, idx);
+
+    expect(newJson.volumes).toHaveLength(2);
+    const dup = newJson.volumes[1];
+    expect(dup.name).toBe('myAssembly_copy');
+    expect(dup.components).toHaveLength(1);
+    expect(dup.components[0].name).toBe('myAssembly_copy_body');
+    expect(dup.placements[0].name).toBe('myAssembly_copy_000');
   });
 });

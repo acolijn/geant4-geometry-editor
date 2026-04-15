@@ -8,6 +8,7 @@ import {
   applyAddToJson,
   applyRemoveFromJson,
   applyAddPlacementToJson,
+  applyDuplicateVolumeToJson,
   mergeJsonVolumes,
   restructureCompounds,
   findMatchingVolume,
@@ -172,6 +173,24 @@ export const useAppState = () => {
     };
   };
 
+  // ─── EDIT: duplicate a volume definition (independent copy) ─
+  const handleDuplicateVolume = (id) => {
+    if (id === 'world') return;
+    const currentJson = getOrInitJson();
+
+    const flatIndex = findFlatIndex(geometries.volumes, id);
+    if (flatIndex < 0) return;
+
+    const newJson = applyDuplicateVolumeToJson(currentJson, geometries.volumes, flatIndex);
+    setJsonData(newJson);
+
+    // Select the newly created volume (last in the list)
+    pendingSelectionRef.current = (volumes) => {
+      const newVol = volumes[volumes.length - 1];
+      return newVol?._id || null;
+    };
+  };
+
   // ─── BATCH: set visibility on multiple volumes at once ─────
   // updates: array of { id: 'vol-...', visible: boolean }
   const handleBatchSetVisibility = (updates) => {
@@ -291,6 +310,7 @@ export const useAppState = () => {
     handleAddGeometry,
     handleRemoveGeometry,
     handleAddPlacement,
+    handleDuplicateVolume,
     handleBatchSetVisibility,
     refreshView,
     handleImportGeometries,

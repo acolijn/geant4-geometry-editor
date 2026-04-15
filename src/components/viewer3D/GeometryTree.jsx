@@ -11,7 +11,7 @@ import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
 export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
-  const { jsonData, materials, handleBatchSetVisibility, handleAddPlacement, refreshView } = useAppContext();
+  const { jsonData, materials, handleBatchSetVisibility, handleAddPlacement, handleDuplicateVolume, refreshView } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
@@ -754,6 +754,25 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 }}
               >
                 Add Placement
+              </div>
+          )}
+
+          {/* Duplicate volume definition (independent copy) */}
+          {geometries.volumes[contextMenu.volumeIndex] &&
+           geometries.volumes[contextMenu.volumeIndex]._componentIndex === undefined && (
+              <div
+                onClick={() => {
+                  const volumeKey = geometries.volumes[contextMenu.volumeIndex]?._id;
+                  handleDuplicateVolume(volumeKey);
+                  handleCloseContextMenu();
+                }}
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  hover: { backgroundColor: '#f5f5f5' }
+                }}
+              >
+                Duplicate Volume
               </div>
           )}
           
