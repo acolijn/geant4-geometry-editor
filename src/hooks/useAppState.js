@@ -7,9 +7,11 @@ import {
   applyWorldUpdateToJson,
   applyAddToJson,
   applyRemoveFromJson,
+  applyAddPlacementToJson,
   flatToJsonVolume,
   mergeJsonVolumes,
   restructureCompounds,
+  findMatchingVolume,
 } from '../utils/jsonOperations';
 import { debugLog } from '../utils/logger';
 
@@ -150,6 +152,26 @@ export const useAppState = () => {
     }
   };
 
+  // ─── EDIT: add a new placement of an existing volume ──────
+  const handleAddPlacement = (id) => {
+    if (id === 'world') return;
+    const currentJson = getOrInitJson();
+
+    const flatIndex = findFlatIndex(geometries.volumes, id);
+    if (flatIndex < 0) return;
+
+    const newJson = applyAddPlacementToJson(currentJson, geometries.volumes, flatIndex);
+    const derived = reDeriveFlat(newJson);
+
+    // Select the newly added placement (last entry for that volume)
+    const flatVol = geometries.volumes[flatIndex];
+    const vi = flatVol._volumeIndex;
+    const lastPlacement = derived.volumes.filter(v => v._volumeIndex === vi).pop();
+    if (lastPlacement) {
+      setTimeout(() => setSelectedGeometry(lastPlacement._id), 50);
+    }
+  };
+
   // ─── BATCH: set visibility on multiple volumes at once ─────
   // updates: array of { id: 'vol-...', visible: boolean }
   const handleBatchSetVisibility = (updates) => {
@@ -210,11 +232,28 @@ export const useAppState = () => {
 
   // ─── APPEND: merge JSON volumes into existing JSON (used by ImportObjectDialog) ──
   // If a volume with the same name exists, its placements are merged.
-  // If it's new, the volume is added.
+  // If a volume matches an existing definition (same type, dims, material, components),
+  // its placements are added to the matching volume (automatic placement detection).
+  // Otherwise the volume is added as new.
   const handleAppendJsonVolumes = (jsonVolumes) => {
     if (!jsonVolumes || !Array.isArray(jsonVolumes) || jsonVolumes.length === 0) return;
     const currentJson = getOrInitJson();
-    const merged = mergeJsonVolumes(currentJson, jsonVolumes);
+
+    // Auto-detect: if an incoming volume matches an existing definition by
+    // type+dimensions+material+components, redirect its placements to the
+    // existing volume instead of creating a duplicate definition.
+    const processedVolumes = jsonVolumes.map(vol => {
+      const match = findMatchingVolume(currentJson, vol);
+      if (match) {
+        debugLog(`Auto-placement: "${vol.name}" matches existing "${match.name}" — merging as placement`);
+        // Return a clone with the name changed to the existing volume's name
+        // so mergeJsonVolumes recognises it as the same volume and appends placements.
+        return { ...structuredClone(vol), name: match.name };
+      }
+      return vol;
+    });
+
+    const merged = mergeJsonVolumes(currentJson, processedVolumes);
     reDeriveFlat(merged);
   };
 
@@ -251,6 +290,7 @@ export const useAppState = () => {
     handleUpdateGeometry,
     handleAddGeometry,
     handleRemoveGeometry,
+    handleAddPlacement,
     handleBatchSetVisibility,
     refreshView,
     handleImportGeometries,

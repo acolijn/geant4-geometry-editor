@@ -9,58 +9,6 @@ import { debugLog } from '../../../utils/logger.js';
 import { isVolumeKey, findFlatIndex } from '../../../utils/expandToFlat';
 
 /**
- * Propagate a compound ID to all descendants of a given object
- * @param {string} parentName - The name of the parent object
- * @param {string} compoundId - The compound ID to propagate
- * @param {Array} volumes - The array of volumes to update
- * @returns {Array} The updated volumes array
- */
-export const propagateCompoundIdToDescendants = (parentName, compoundId, volumes) => {
-  // Create a copy of the volumes array to avoid mutating the original
-  const updatedVolumes = [...volumes];
-  
-  // Find all direct children of the parent
-  const directChildren = updatedVolumes.filter(vol => vol.mother_volume === parentName);
-  
-  // If no direct children, return the original array
-  if (directChildren.length === 0) {
-    return updatedVolumes;
-  }
-  
-  // For each direct child, update its _compoundId and recursively update its descendants
-  directChildren.forEach(child => {
-    // Find the index of the child in the volumes array
-    const childIndex = updatedVolumes.findIndex(vol => vol.name === child.name);
-    
-    // Update the child's _compoundId
-    if (childIndex !== -1) {
-      updatedVolumes[childIndex] = {
-        ...updatedVolumes[childIndex],
-        _compoundId: compoundId
-      };
-      
-      debugLog(`Propagated _compoundId ${compoundId} to child ${child.name}`);
-      
-      // Recursively update the child's descendants
-      const childName = updatedVolumes[childIndex].name;
-      const updatedWithGrandchildren = propagateCompoundIdToDescendants(
-        childName,
-        compoundId,
-        updatedVolumes
-      );
-      
-      // Update the volumes array with the recursively updated descendants
-      // Since we're mutating the array in place, we need to be careful about indices
-      for (let i = 0; i < updatedWithGrandchildren.length; i++) {
-        updatedVolumes[i] = updatedWithGrandchildren[i];
-      }
-    }
-  });
-  
-  return updatedVolumes;
-};
-
-/**
  * Extract an object and all its descendants
  * @param {string|Object} objectIdentifier - Either the name of the object, an object ID (e.g. 'world', 'volume-1'), or the object itself
  * @param {Object} geometries - The current geometries state

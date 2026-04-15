@@ -14,7 +14,7 @@ The core goal — **JSON as the internal data structure** — is fully achieved.
 |---|---|
 | Phase 1: JSON as state, flat as derived view | ✅ Complete |
 | Phase 2: Mutation API | ✅ Complete (different shape than spec) |
-| Phase 3: Stable selection keys | ❌ Not started |
+| Phase 3: Stable selection keys | ✅ Complete |
 | Phase 4: Tree reads JSON directly | ❌ Not started |
 
 ---
@@ -79,14 +79,14 @@ DESIGN.md specified fine-grained, separated mutation functions:
 | `addVolume(volumeDef)` | `applyAddToJson(json, flatNewVolume)` | ✅ Combined |
 | `removeVolume(volumeIndex)` | `applyRemoveFromJson(json, flatVolumes, flatIndex)` | ✅ Combined |
 | `updateVolume(volumeIndex, patch)` | `applyUpdateToJson(json, flatVolumes, flatIndex, patch)` | ✅ Combined |
-| `addPlacement(volumeIndex, placement)` | Not implemented separately | ❌ Missing |
+| `addPlacement(volumeIndex, placement)` | `applyAddPlacementToJson` in jsonOperations + context menu | ✅ |
 | `removePlacement(volumeIndex, placementIndex)` | Handled inside `applyRemoveFromJson` (multi-placement branch) | ✅ Inline |
 | `updatePlacement(volumeIndex, placementIndex, patch)` | Handled inside `applyUpdateToJson` | ✅ Inline |
 | `addComponent(volumeIndex, component)` | Handled inside `applyAddToJson` (auto-detects compound parent) | ✅ Inline |
 | `removeComponent(volumeIndex, componentIndex)` | Handled inside `applyRemoveFromJson` (`_componentIndex` branch) | ✅ Inline |
 | `updateComponent(volumeIndex, componentIndex, patch)` | Handled inside `applyUpdateToJson` (`ci` branch) | ✅ Inline |
 | `duplicateVolume(volumeIndex)` | Not implemented | ❌ Missing |
-| `duplicatePlacement(volumeIndex, placementIndex)` | Not implemented | ❌ Missing |
+| `duplicatePlacement(volumeIndex, placementIndex)` | Via `applyAddPlacementToJson` (copies + offsets) | ✅ |
 
 ### Key differences:
 
@@ -105,12 +105,12 @@ The design envisioned **12 separate mutation functions** with clean signatures i
 | Aspect | DESIGN.md | Implementation | Match |
 |---|---|---|---|
 | Flat entry has `volumeIndex`, `placementIndex` | ✅ | `_volumeIndex`, `_placementIndex` (prefixed) | ✅ |
-| Flat entry has `id: "vol-3-pl-0"` | Stable composite key | Not implemented — uses array index | ❌ |
-| Selection key: `vol-${vi}-pl-${pi}` | Stable across edits | `volume-${arrayIndex}` (fragile) | ❌ |
-| Flat entry has `volumeDef` reference | Direct ref to JSON | Not implemented — uses index lookup | ❌ |
+| Flat entry has `id: "vol-3-pl-0"` | Stable composite key | `_id: buildVolumeKey(vi, pi)` in expandToFlat | ✅ |
+| Selection key: `vol-${vi}-pl-${pi}` | Stable across edits | `buildVolumeKey()` + `isVolumeKey()` + `findFlatIndex()` | ✅ |
+| Flat entry has `volumeDef` reference | Direct ref to JSON | Uses `_volumeIndex` back-reference (equivalent) | ✅ |
 | Additional flat fields: `_compoundId`, `_componentId`, `_instanceId`, `_componentIndex` | Not in spec | Implemented for compound tracking | ⚠️ Extra |
 
-**Verdict: Selection key is the biggest unimplemented design item. The current `volume-${index}` key shifts when volumes are added/removed, which can cause selection jumps. The existing workaround (re-selecting by name after mutations) mitigates this but doesn't fully solve it.**
+**Verdict: Selection keys are fully implemented using `buildVolumeKey(vi, pi, ci, sci)` in expandToFlat.js. Keys are stable across edits — based on JSON array indices, not flat array position.**
 
 ---
 
@@ -150,12 +150,12 @@ The design envisioned **12 separate mutation functions** with clean signatures i
 | Save JSON: `JSON.stringify(jsonState)` | ✅ | Project save from jsonData | ✅ |
 | Import object: append to volumes | ✅ | `handleAppendJsonVolumes()` + `mergeJsonVolumes()` | ✅ |
 | Save object: extract subtree | ✅ | `extractSubtreeFromJson()` | ✅ |
-| Automatic placement detection | Spec'd in detail | Not implemented | ❌ |
+| Automatic placement detection | Spec'd in detail | `findMatchingVolume()` + auto-merge in `handleAppendJsonVolumes` | ✅ |
 | Object library import merges matching defs | Adds new placements to existing | `mergeJsonVolumes()` merges compound placements | ✅ |
 
 ### Automatic Placement Detection
 
-DESIGN.md describes a feature where importing a volume that already exists (same type, dimensions, material, components, `_displayGroup`) should prompt the user to add as a new placement instead of creating a duplicate definition. This is **not implemented**. Currently, importing always creates a new volume or merges at the compound level.
+Implemented via `findMatchingVolume()` in jsonOperations.js and auto-merge logic in `handleAppendJsonVolumes`. When importing a volume that matches an existing definition (same type, dimensions, material, components, `_displayGroup`), its placements are automatically added to the matching volume instead of creating a duplicate definition.
 
 ---
 
@@ -177,10 +177,10 @@ The following items from the old architecture are still present:
 
 | File | Status | Notes |
 |---|---|---|
-| `src/components/json-viewer/utils/jsonToGeometry.js` | Vestigial | Used only for import path; could be replaced by direct JSON + expandToFlat |
-| `src/components/json-viewer/utils/geometryToJson.js` | Vestigial | Used for export; could be replaced by direct jsonData serialization |
-| `src/components/geometry-editor/utils/compoundIdPropagator.js` | Vestigial | Logic moved to useAppState; may still be imported |
-| `src/components/geometry-editor/utils/GeometryUtils.js` | Partially vestigial | Some utilities may no longer be needed |
+| `src/components/json-viewer/utils/jsonToGeometry.js` | Vestigial | No longer imported by production code; used only in legacy tests |
+| `src/components/json-viewer/utils/geometryToJson.js` | Vestigial | No longer imported by production code; used only in legacy tests |
+| `src/components/geometry-editor/utils/compoundIdPropagator.js` | Active | Used by useAppState for compound ID propagation |
+| `src/components/geometry-editor/utils/GeometryUtils.js` | Active | Duplicate `propagateCompoundIdToDescendants` removed; remaining functions in use |
 
 ---
 
@@ -190,17 +190,13 @@ The following items from the old architecture are still present:
 
 | Item | Priority | Effort |
 |---|---|---|
-| **Stable selection keys** (`vol-${vi}-pl-${pi}`) | High | Medium — requires updating all selection consumers |
-| **Automatic placement detection** on import | Medium | Medium — matching logic + UI prompt |
-| **`addPlacement` API** (add placement to existing volume) | Medium | Low — straightforward JSON splice |
-| **`duplicateVolume` / `duplicatePlacement`** | Low | Low |
+| **`duplicateVolume`** (deep copy with new name) | Low | Low |
 
 ### Cleanup Items
 
 | Item | Priority | Effort |
 |---|---|---|
-| Remove `jsonToGeometry.js` / `geometryToJson.js` from import/export paths | Low | Medium — need to rewire import/export flows |
-| Remove `compoundIdPropagator.js` if fully dead | Low | Low |
+| Remove `jsonToGeometry.js` / `geometryToJson.js` entirely (test-only) | Low | Medium — need to rewrite legacy tests |
 | Switch flat derivation from imperative to `useMemo` | Low | Low — cosmetic |
 
 ---

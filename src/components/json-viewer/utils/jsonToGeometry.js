@@ -9,8 +9,6 @@
 
 import { debugLog, debugWarn } from '../../../utils/logger.js';
 
-//import { generateUniqueName } from '../../geometry-editor/utils/geometryHandlers';
-
 /**
  * 
  * @param {*} json 

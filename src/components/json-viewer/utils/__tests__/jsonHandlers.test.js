@@ -3,8 +3,6 @@ import {
   formatJson,
   ensureOrderedZPlanes,
   generateMaterialsJson,
-  generateGeometryJson,
-  importJsonGeometry,
 } from '../jsonHandlers';
 import { generateJson, generateTemplateJson } from '../geometryToJson';
 import { jsonToGeometry } from '../jsonToGeometry';
@@ -72,36 +70,6 @@ describe('jsonHandlers', () => {
       const result = generateMaterialsJson(mats);
       const parsed = JSON.parse(result);
       expect(parsed.materials.G4_WATER.density).toBe(1.0);
-    });
-  });
-
-  describe('generateGeometryJson', () => {
-    it('includes world, volumes, and materials', () => {
-      const geometries = {
-        world: { name: 'World', type: 'box', size: { x: 100, y: 100, z: 100 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } },
-        volumes: [
-          { name: 'B1', type: 'box', size: { x: 10, y: 10, z: 10 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, mother_volume: 'World', visible: true }
-        ],
-      };
-      const materials = { G4_AIR: { density: 0.001 } };
-
-      const result = JSON.parse(generateGeometryJson(geometries, materials));
-
-      expect(result.world).toBeTruthy();
-      expect(result.world.name).toBe('World');
-      expect(result.volumes.length).toBe(1);
-      expect(result.materials.G4_AIR.density).toBe(0.001);
-    });
-
-    it('generates valid JSON even with no volumes', () => {
-      const geometries = {
-        world: { name: 'World', type: 'box', size: { x: 100, y: 100, z: 100 } },
-        volumes: [],
-      };
-
-      const result = JSON.parse(generateGeometryJson(geometries, {}));
-      expect(result.world).toBeTruthy();
-      expect(result.volumes).toEqual([]);
     });
   });
 });

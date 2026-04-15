@@ -728,6 +728,103 @@ export function extractSubtreeFromJson(jsonData, volumeName, materialsMap) {
 }
 
 // ──────────────────────────────────────────────────────────
+// PLACEMENT DETECTION — find an existing volume that matches
+// an incoming volume's definition (type, dimensions, material,
+// components, _displayGroup).  Used during import/merge to
+// add as a new placement instead of duplicating the definition.
+// ──────────────────────────────────────────────────────────
+
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return a == b;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== 'object') return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every(k => deepEqual(a[k], b[k]));
+}
+
+function volumeDefinitionMatches(a, b) {
+  if (a.type !== b.type) return false;
+  if (a.material !== b.material) return false;
+  if ((a._displayGroup || '') !== (b._displayGroup || '')) return false;
+  if (!deepEqual(a.dimensions, b.dimensions)) return false;
+  // Compare components for compounds
+  const aComps = a.components || [];
+  const bComps = b.components || [];
+  if (aComps.length !== bComps.length) return false;
+  for (let i = 0; i < aComps.length; i++) {
+    if (aComps[i].type !== bComps[i].type) return false;
+    if (aComps[i].material !== bComps[i].material) return false;
+    if (!deepEqual(aComps[i].dimensions, bComps[i].dimensions)) return false;
+  }
+  return true;
+}
+
+/**
+ * Find an existing volume in JSON whose definition matches the incoming volume.
+ * Returns the matching volume object, or null if no match.
+ */
+export function findMatchingVolume(jsonData, incomingVolume) {
+  if (!jsonData?.volumes) return null;
+  for (const vol of jsonData.volumes) {
+    if (vol.name === incomingVolume.name) continue; // same-name handled separately
+    if (volumeDefinitionMatches(vol, incomingVolume)) return vol;
+  }
+  return null;
+}
+
+// ──────────────────────────────────────────────────────────
+// ADD PLACEMENT — add a new placement of an existing volume
+// ──────────────────────────────────────────────────────────
+
+export function applyAddPlacementToJson(jsonData, flatVolumes, flatIndex) {
+  const json = structuredClone(jsonData);
+  const flatVol = flatVolumes[flatIndex];
+
+  if (flatVol._volumeIndex === undefined) {
+    debugWarn('applyAddPlacementToJson: volume has no _volumeIndex');
+    return json;
+  }
+
+  const vi = flatVol._volumeIndex;
+  const jsonVol = json.volumes[vi];
+  if (!jsonVol || !jsonVol.placements) return json;
+
+  // Determine next placement index for naming.
+  // Use the volume definition name, stripping any trailing _NNN suffix
+  // so that e.g. clicking on R11410_000 produces R11410_002, not R11410_000_002.
+  let maxIdx = -1;
+  for (const pl of jsonVol.placements) {
+    const match = pl.name?.match(/_(\d+)$/);
+    if (match) maxIdx = Math.max(maxIdx, parseInt(match[1], 10));
+  }
+  if (maxIdx < 0) maxIdx = jsonVol.placements.length - 1;
+  const newIdx = maxIdx + 1;
+  const rawName = jsonVol.g4name || jsonVol.name;
+  const baseName = rawName.replace(/_\d+$/, '');
+  const newPlName = `${baseName}_${pad3(newIdx)}`;
+
+  // Copy position/rotation/parent from the source placement, offset slightly
+  const sourcePl = jsonVol.placements[flatVol._placementIndex] || jsonVol.placements[0];
+  const newPlacement = {
+    name: newPlName,
+    g4name: newPlName,
+    x: (sourcePl.x || 0) + 50,
+    y: (sourcePl.y || 0),
+    z: (sourcePl.z || 0),
+    rotation: sourcePl.rotation
+      ? { ...sourcePl.rotation }
+      : { x: 0, y: 0, z: 0 },
+    parent: sourcePl.parent || 'World',
+  };
+
+  jsonVol.placements.push(newPlacement);
+  return json;
+}
+
+// ──────────────────────────────────────────────────────────
 // MERGE VOLUMES — merge imported JSON volumes into existing JSON.
 // Compound types (assembly/union/subtraction) with the same name:
 //   → merge placements (add new instances of the compound).

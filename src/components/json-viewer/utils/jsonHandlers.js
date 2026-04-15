@@ -5,8 +5,6 @@
  * for the Geant4 Geometry Editor.
  */
 
-import { generateJson } from './geometryToJson';
-import { jsonToGeometry } from './jsonToGeometry';
 import { debugLog } from '../../../utils/logger.js';
 
 /**
@@ -72,26 +70,7 @@ export const generateMaterialsJson = (materials) => {
   return formatJson({ materials });
 };
 
-/**
- * Generate geometry JSON with multiple placements
- * 
- * @param {Object} geometries - Geometry data with world and volumes
- * @param {Object} materials - Materials data
- * @returns {string} Formatted geometry JSON with materials included
- */
-export const generateGeometryJson = (geometries, materials) => {
-  const geometryData = generateJson({
-    world: geometries.world,
-    volumes: (geometries.volumes || []).map(vol => ensureOrderedZPlanes({...vol}))
-  });
-  
-  // Add materials to the geometry JSON if provided
-  if (materials && Object.keys(materials).length > 0) {
-    geometryData.materials = materials;
-  }
-  
-  return formatJson(geometryData);
-};
+
 
 /**
  * Handle download of JSON file
@@ -143,30 +122,4 @@ export const handleFileUpload = (file) => {
   });
 };
 
-/**
- * Import JSON geometry into the application's geometry structure
- * 
- * @param {Object} jsonData - The parsed JSON data
- * @param {Object} currentGeometry - The current geometry object (optional)
- * @returns {Object} - The updated geometry object
- */
-export const importJsonGeometry = (jsonData, currentGeometry = null) => {
-  debugLog('importJsonGeometry:: Starting import with data:', jsonData);
-  debugLog('importJsonGeometry:: Current geometry:', currentGeometry);
-  
-  // Initialize an empty geometry if none provided
-  const geometry = currentGeometry || {
-    geometries: {
-      world: null,
-      volumes: []
-    },
-    materials: []
-  };
-  
-  debugLog('importJsonGeometry:: Using geometry structure:', geometry);
-  
-  // Use the jsonToGeometry function to convert the JSON data
-  const result = jsonToGeometry(jsonData, geometry);
-  debugLog('importJsonGeometry:: Conversion complete, result:', result);
-  return result;
-};
+
