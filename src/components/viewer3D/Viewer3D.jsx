@@ -23,6 +23,7 @@ const Viewer3D = () => {
   } = useAppContext();
   const [transformMode, setTransformMode] = useState('translate');
   const [cameraControls, setCameraControls] = useState(null);
+  const [scopeRoot, setScopeRoot] = useState('world');
   
   // Handle canvas click to deselect
   const handleCanvasClick = (e) => {
@@ -183,6 +184,8 @@ const Viewer3D = () => {
           selectedGeometry={selectedGeometry} 
           onSelect={onSelect}
           onUpdateGeometry={onUpdateGeometry}
+          scopeRoot={scopeRoot}
+          setScopeRoot={setScopeRoot}
         />
       </div>
       
@@ -284,6 +287,7 @@ const Viewer3D = () => {
             onTransformEnd={handleTransformEnd}
             worldSize={worldSize}
             materials={materials}
+            scopeRoot={scopeRoot}
           />
           <OrbitControls 
             makeDefault 

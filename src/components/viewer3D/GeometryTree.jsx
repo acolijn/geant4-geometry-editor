@@ -10,13 +10,11 @@ import { useAppContext } from '../../contexts/useAppContext';
 import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
-export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
+export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry, scopeRoot, setScopeRoot }) {
   const { jsonData, materials, handleBatchSetVisibility, handleAddPlacement, handleDuplicateVolume, refreshView } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
-  // Scope-to-node: the current root of the tree view
-  const [scopeRoot, setScopeRoot] = useState('world');
 
   // Extract the selected volume's subtree directly from jsonData
   const handleExportObject = (objectKey = selectedGeometry) => {
