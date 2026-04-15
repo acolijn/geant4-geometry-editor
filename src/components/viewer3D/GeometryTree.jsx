@@ -15,6 +15,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
+  // Scope-to-node: the current root of the tree view
+  const [scopeRoot, setScopeRoot] = useState('world');
 
   // Extract the selected volume's subtree directly from jsonData
   const handleExportObject = (objectKey = selectedGeometry) => {
@@ -303,14 +305,18 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 e.stopPropagation();
                 toggleNodeExpansion(groupKey, e);
               }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setScopeRoot(groupKey);
+              }}
               style={{
                 padding: '8px',
+                paddingLeft: `${15 + level * 14}px`,
                 backgroundColor: '#f5f0e8',
                 color: '#333',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 marginBottom: '5px',
-                marginLeft: `${15 + level * 20}px`,
                 display: 'flex',
                 alignItems: 'center',
                 fontWeight: 'bold',
@@ -331,7 +337,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 {expandedNodes[groupKey] ? '▼' : '►'}
               </span>
               <span style={{ marginRight: '5px', color: '#e6a817' }}>📁</span>
-              <span style={{ flex: 1 }}>{item.groupName}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.groupName}>{item.groupName}</span>
               <span
                 title="Toggle visibility of all items in this group"
                 onClick={(e) => {
@@ -365,18 +371,22 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 e.stopPropagation();
                 toggleNodeExpansion(partsKey, e);
               }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setScopeRoot(partsKey);
+              }}
               style={{
                 padding: '8px',
+                paddingLeft: `${15 + level * 14}px`,
                 backgroundColor: '#f0f0f0',
                 color: '#333',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 marginBottom: '5px',
-                marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
                 display: 'flex',
                 alignItems: 'center',
                 fontWeight: 'bold',
-                borderLeft: '3px solid #1976d2' // Blue border to indicate special folder
+                borderLeft: '3px solid #1976d2'
               }}
             >
               {/* Expand/collapse icon */}
@@ -422,18 +432,23 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               // Otherwise, select this object
               onSelect(selectedGeometry === key ? null : key);
             }}
+            onDoubleClick={(e) => {
+              if (hasChildren) {
+                e.stopPropagation();
+                setScopeRoot(key);
+              }
+            }}
             onContextMenu={(e) => handleContextMenu(e, index)}
             style={{
               padding: '8px',
+              paddingLeft: `${15 + level * 14}px`,
               backgroundColor: selectedGeometry === key ? '#1976d2' : '#fff',
               color: selectedGeometry === key ? '#fff' : '#000',
               borderRadius: '4px',
               cursor: 'pointer',
               marginBottom: '5px',
-              marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
               display: 'flex',
               alignItems: 'center',
-              // Special styling for boolean components
               ...(isBooleanComponent && {
                 borderLeft: '2px solid #1976d2',
                 backgroundColor: selectedGeometry === key ? '#1976d2' : '#f0f8ff'
@@ -464,11 +479,10 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               textShadow: isActive ? '0 0 1px #4caf50, 0 0 1px #4caf50, 0 0 2px #4caf50, 0 0 2px #4caf50' : 'none', // Much thicker green outline for active elements
               fontSize: '16px'
             }}>{getVolumeIcon(volume)}</span>
-            <span style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-              {/* Display the Geant4 name (g4name) if available, otherwise fall back to internal name */}
+            <span style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+            >
               {volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
-              
-              {/* Active elements are now indicated by the green icon outline */}
             </span>
             {/* Cascade visibility toggle - only for volumes with children */}
             {hasChildren && (
@@ -517,6 +531,30 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   
   // State for import alert
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
+
+  // Build breadcrumb path from world down to scopeRoot
+  const scopeBreadcrumb = React.useMemo(() => {
+    if (scopeRoot === 'world') return [];
+    const path = [];
+    let currentKey = scopeRoot;
+    while (currentKey && currentKey !== 'world') {
+      const flatIdx = isVolumeKey(currentKey) ? findFlatIndex(geometries.volumes, currentKey) : -1;
+      if (flatIdx < 0) break;
+      const vol = geometries.volumes[flatIdx];
+      path.unshift({ key: currentKey, label: vol.g4name || vol.name });
+      currentKey = getParentKeyWrapper(vol);
+    }
+    return path;
+  }, [scopeRoot, geometries.volumes]);
+
+  // Get a label for a scope key
+  const getScopeLabel = (key) => {
+    if (key === 'world') return 'World';
+    const flatIdx = isVolumeKey(key) ? findFlatIndex(geometries.volumes, key) : -1;
+    if (flatIdx < 0) return key;
+    const vol = geometries.volumes[flatIdx];
+    return vol.g4name || vol.name;
+  };
 
   return (
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
@@ -662,16 +700,68 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         </div>
       )}
       <div style={{ marginBottom: '5px' }}>
-        {/* World volume - selectable but not movable */}
+        {/* Breadcrumb navigation for scope-to-node */}
+        {scopeRoot !== 'world' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '6px 8px',
+            marginBottom: '8px',
+            backgroundColor: '#e8eef4',
+            borderRadius: '4px',
+            fontSize: '12px',
+            color: '#555',
+            flexWrap: 'wrap',
+            gap: '2px',
+          }}>
+            <span
+              onClick={() => setScopeRoot('world')}
+              style={{ cursor: 'pointer', color: '#1976d2' }}
+              title="Back to World root"
+            >
+              World
+            </span>
+            {scopeBreadcrumb.map((crumb, i) => (
+              <React.Fragment key={crumb.key}>
+                <span style={{ color: '#999' }}>›</span>
+                <span
+                  onClick={() => setScopeRoot(i === scopeBreadcrumb.length - 1 ? crumb.key : crumb.key)}
+                  style={{
+                    cursor: i < scopeBreadcrumb.length - 1 ? 'pointer' : 'default',
+                    color: i < scopeBreadcrumb.length - 1 ? '#1976d2' : '#333',
+                    fontWeight: i === scopeBreadcrumb.length - 1 ? 'bold' : 'normal',
+                  }}
+                  title={crumb.label}
+                >
+                  {crumb.label}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+        {/* Scope root node header */}
         <div 
           onClick={() => {
-            // Allow selecting/unselecting World volume in the tree
-            onSelect(selectedGeometry === 'world' ? null : 'world');
+            if (scopeRoot === 'world') {
+              onSelect(selectedGeometry === 'world' ? null : 'world');
+            } else {
+              onSelect(selectedGeometry === scopeRoot ? null : scopeRoot);
+            }
+          }}
+          onDoubleClick={() => {
+            // Double-click on scope root goes up one level
+            if (scopeRoot !== 'world') {
+              if (scopeBreadcrumb.length > 1) {
+                setScopeRoot(scopeBreadcrumb[scopeBreadcrumb.length - 2].key);
+              } else {
+                setScopeRoot('world');
+              }
+            }
           }}
           style={{
             padding: '8px',
-            backgroundColor: selectedGeometry === 'world' ? '#1976d2' : '#fff',
-            color: selectedGeometry === 'world' ? '#fff' : '#000',
+            backgroundColor: (selectedGeometry === scopeRoot) ? '#1976d2' : '#fff',
+            color: (selectedGeometry === scopeRoot) ? '#fff' : '#000',
             borderRadius: '4px',
             cursor: 'pointer',
             marginBottom: '5px',
@@ -679,27 +769,50 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             alignItems: 'center'
           }}
         >
-          {/* Expand/collapse icon for World */}
+          {/* Back arrow when scoped in */}
+          {scopeRoot !== 'world' && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                if (scopeBreadcrumb.length > 1) {
+                  setScopeRoot(scopeBreadcrumb[scopeBreadcrumb.length - 2].key);
+                } else {
+                  setScopeRoot('world');
+                }
+              }}
+              style={{
+                marginRight: '5px',
+                cursor: 'pointer',
+                color: (selectedGeometry === scopeRoot) ? '#fff' : '#1976d2',
+                fontSize: '14px',
+                width: '16px',
+                textAlign: 'center'
+              }}
+              title="Go up one level"
+            >
+              ←
+            </span>
+          )}
+          {/* Expand/collapse icon */}
           <span 
-            onClick={(e) => toggleNodeExpansion('world', e)} 
+            onClick={(e) => toggleNodeExpansion(scopeRoot, e)} 
             style={{ 
               marginRight: '5px', 
               cursor: 'pointer',
-              color: selectedGeometry === 'world' ? '#fff' : '#555',
+              color: (selectedGeometry === scopeRoot) ? '#fff' : '#555',
               fontSize: '14px',
               width: '16px',
               textAlign: 'center'
             }}
           >
-            {expandedNodes['world'] ? '▼' : '►'}
+            {expandedNodes[scopeRoot] ? '▼' : '►'}
           </span>
-          <span style={{ marginRight: '5px' }}>🌐</span>
-          <strong>World</strong>
-          <span style={{ marginLeft: '5px', fontSize: '0.8em', color: selectedGeometry === 'world' ? '#ddd' : '#777' }}></span>
+          <span style={{ marginRight: '5px' }}>{scopeRoot === 'world' ? '🌐' : ''}</span>
+          <strong>{getScopeLabel(scopeRoot)}</strong>
         </div>
         
-        {/* Render volumes with World as parent and their children recursively, but only if World is expanded */}
-        {expandedNodes['world'] && renderVolumeTree('world')}
+        {/* Render tree from scope root */}
+        {expandedNodes[scopeRoot] && renderVolumeTree(scopeRoot)}
       </div>
       
       {/* Context Menu */}
