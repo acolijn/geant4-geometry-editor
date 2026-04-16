@@ -155,6 +155,35 @@ tp["TpcWallHeight"] = 1500.8
 tp["TpcWallThickness"] = 3.0
 tp["TopGateRingToTopTPC"] = 2.8
 
+# PMT bases (Cirlex discs, one per PMT)
+tp["PmtBasesDiameter"] = 35.0
+tp["PmtBasesHeight"] = 1.55
+tp["TopBasesToBottomBellPlate"] = 37.3
+tp["TopPmtStemToBases"] = 8.0
+
+# Field guard rings (64 copper torus+tube union rings around field shapers)
+tp["NumerOfFieldGuards"] = 64
+tp["FieldShaperWireTopToTpcTop"] = 21.3
+tp["FieldGuardsHeight"] = 15.0
+tp["FieldGuardsTubeHeight"] = 10.0
+tp["FieldGuardsWidth"] = 5.0
+tp["FieldGuardsDistance"] = 22.0
+tp["TopGuardToTopFieldShaperWire"] = 48.625
+tp["GuardToFRSradialDistance"] = 9.16
+
+# PTFE cathode frames (24 polycone sectors on top of cathode ring)
+tp["PTFEAboveCathodeHeight"] = 15.0
+tp["PTFEAboveCathodeTopInnerR"] = 685.5
+tp["PTFEAboveCathodeTopWidth"] = 2.0
+tp["PTFEAboveCathodeBotInnerR"] = 697.5
+tp["PTFEAboveCathodeBotWidth"] = 2.0
+tp["PTFEAboveCathodeMiddleHeight"] = 3.0
+tp["PTFEAboveCathodeBotHeight"] = 5.0
+tp["PTFECathodeAngularSeparation"] = 0.02793  # rad (gap between adjacent sectors)
+tp["NumberOfPillars"] = 24
+tp["PillarsDeltaTheta"] = 2 * math.pi / 24   # rad, angular step between pillars/frames
+tp["CathodeFrameAngularOffset"] = math.radians(7.5397)  # rad, global rotation offset
+
 # PTFE ring below gate frame
 tp["RingBelowGateHeight"] = 5.0
 tp["RingBelowGateInnerDiameter"] = tp["CopperRingInnerDiameter"]  # 1358.0 mm
@@ -398,6 +427,41 @@ bot_cu_z = bot_refl_z - 0.5 * tp["TopReflectorHeight"] - 55.0 - 0.5 * tp["BotCop
 
 # Top copper plate
 top_cu_offsetZ = top_refl_offsetZ + 0.5 * tp["TopReflectorHeight"] + 60.0 + 0.5 * tp["TopCopperPlateHeight"]
+
+# ============================================================
+# Phase 2: computed geometry
+# ============================================================
+
+# PMT base: Z offset of base centre relative to PMT body centre in assembly frame
+# (stem end is at +0.5*PMTheight; base sits TopPmtStemToBases above the stem)
+pmt_base_rel_z = tp["TopPmtStemToBases"] + 0.5 * (tp["PmtBasesHeight"] + tp["PMTheight"])
+
+# Field guard rings
+# FSR = field shaper ring (copper torus wire around TPC wall outer surface)
+_FSRradius = 0.5 * tp["FieldShaperWireDiameter"]          # 1.0 mm minor radius
+_TpcOutRadius = 0.5 * tp["TpcWallDiameter"] + tp["TpcWallThickness"]   # 667.0 mm
+_FSRcurvature = _TpcOutRadius + _FSRradius                 # 668.0 mm major radius
+# Guard ring major radius: FSR outer surface + air gap + half guard width
+GuardCurvature = (_FSRcurvature + _FSRradius
+                  + tp["GuardToFRSradialDistance"]
+                  + 0.5 * tp["FieldGuardsWidth"])          # 680.66 mm
+# Guard torus edge minor radius: half the height not covered by the central tube
+GuardEdgeMinorR = 0.5 * (tp["FieldGuardsHeight"] - tp["FieldGuardsTubeHeight"])  # 2.5 mm
+
+# Z of the topmost guard ring centre (in LXe/inner-cryostat frame)
+_FSRtopOffsetZ = (TpcTopZ
+                  - dPTFECorrZ * tp["FieldShaperWireTopToTpcTop"]
+                  - _FSRradius)
+GuardTopOffsetZ = (_FSRtopOffsetZ + _FSRradius
+                   - dPTFECorrZ * tp["TopGuardToTopFieldShaperWire"]
+                   - 0.5 * tp["FieldGuardsHeight"])
+
+# PTFE cathode frames: Z centre in LXe frame
+# Placed above the cathode ring tube section (not the full ring height)
+CathodeFrameOffsetZ = (CathodeRingOffsetZ
+                       + 0.5 * tp["CathodeRingTubeHeight"]
+                       - tp["PTFEAboveCathodeBotHeight"]
+                       + 0.5 * tp["PTFEAboveCathodeHeight"])
 
 # ============================================================
 # Phase 1: new volume positions

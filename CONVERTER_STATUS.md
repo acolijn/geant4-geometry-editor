@@ -88,15 +88,15 @@ The `XenonNtTPC.cc` reference implementation (~2,700 lines) constructs **~50 dis
 
 All Phase 1 volumes added in `tpc.py`; parameters in `parameters.py`. Volume count: 27 → 31.
 
-### Phase 2 — Assemblies with Simple Components (Medium effort)
+### Phase 2 — Assemblies with Simple Components ✅ COMPLETE
 
-| Task | Description | Effort |
+| Task | Description | Status |
 |------|-------------|--------|
-| Field Guard Rings | 64 copper torus+tube unions, circumferential placement | 3 hrs |
-| PMT Bases | 466 Cirlex discs (assembly with top/bottom placements) | 2 hrs |
-| PTFE Cathode Frames | 24 polycone segments around cathode | 2 hrs |
+| Field Guard Rings | 64 copper torus+tube unions (FieldGuards assembly) | ✅ Done |
+| PMT Bases | 466 Cirlex discs added as 6th component of R11410 assembly | ✅ Done |
+| PTFE Cathode Frames | 24 polycone sectors (CathodeFrames assembly) | ✅ Done |
 
-**Total Phase 2: ~7 hours**
+Volume count: 31 → 33 (+2 assemblies). Cirlex material added.
 
 ### Phase 3 — Boolean Solids (Significant effort)
 
@@ -147,7 +147,7 @@ These require the converter to generate boolean operations (union/subtraction), 
 Reference (XenonNtTPC.cc):  ████████████████████████████████████████ 100%
 Current Converter (TPC):    ██████████████████░░░░░░░░░░░░░░░░░░░░░░  45%
 After Phase 1:              ████████████████████░░░░░░░░░░░░░░░░░░░░  50% ✅
-After Phase 2:              █████████████████████████░░░░░░░░░░░░░░░░  62%
+After Phase 2:              █████████████████████████░░░░░░░░░░░░░░░░  62% ✅
 After Phase 3:              ████████████████████████████████░░░░░░░░░░  80%
 After Phase 4:              ███████████████████████████████████████░░░  95%
 ```

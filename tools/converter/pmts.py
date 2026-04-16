@@ -8,6 +8,7 @@ from .parameters import (
     tp,
     BellPlateOffsetZ, BMRingOffsetZ,
     gxe_center_z, top_pmt_base_z, bot_pmt_base_z,
+    pmt_base_rel_z,
 )
 from .helpers import rot, hexagonal_pmt_positions
 
@@ -136,6 +137,21 @@ def _pmt_assembly_components():
             "dimensions": {"radius": pmt_ceramic_r, "height": pmt_ceramic_t},
             "placements": [{"name": "PMTCeramic_0", "x": 0, "y": 0,
                             "z": round(0.5 * (pmt_height - pmt_ceramic_t), 3),
+                            "rotation": rot(), "parent": ""}],
+            "visible": True,
+        },
+        # 6. PMT Base (Cirlex disc, sits above stem end of PMT body)
+        {
+            "name": "PMTBase_0",
+            "g4name": "Cirlex_PMTBase",
+            "type": "cylinder",
+            "material": "Cirlex",
+            "dimensions": {
+                "radius": round(0.5 * tp["PmtBasesDiameter"], 3),
+                "height": round(tp["PmtBasesHeight"], 3),
+            },
+            "placements": [{"name": "PMTBase_0", "x": 0, "y": 0,
+                            "z": round(pmt_base_rel_z, 3),
                             "rotation": rot(), "parent": ""}],
             "visible": True,
         },

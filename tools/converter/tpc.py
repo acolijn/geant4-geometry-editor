@@ -3,6 +3,8 @@ TPC internals: bell, electrode rings/meshes, TPC wall, field shapers,
 reflectors, copper plates.
 """
 
+import math
+
 from .parameters import (
     tp, dPTFECorrZ,
     BellPlateOffsetZ, BellWallOffsetZ, CuRingOffsetZ,
@@ -13,6 +15,8 @@ from .parameters import (
     BottomTPCRingHeight, BottomTPCRingOffsetZ,
     TeflonBMringHeight, TeflonBMRingOffsetZ,
     CuBelowPillarsOffsetZ,
+    GuardCurvature, GuardEdgeMinorR, GuardTopOffsetZ,
+    CathodeFrameOffsetZ,
 )
 from .helpers import placement
 
@@ -326,6 +330,122 @@ def build_tpc():
         "placements": [placement(0, 0, 0, "LXeVolume",
                                  "FieldShaper", "FieldShaper")],
         "components": fs_components,
+        "visible": True,
+    })
+
+    # ---- Phase 2: field guard rings ----
+    # Each guard is a union of a central tube + two torus edges (rounded cross-section).
+    # All 64 guards share the same logical volume; only their Z position differs.
+    guard_placements = []
+    for i in range(int(tp["NumerOfFieldGuards"])):
+        gz = GuardTopOffsetZ - i * dPTFECorrZ * tp["FieldGuardsDistance"]
+        guard_placements.append({
+            "name": f"FieldGuard_{i}",
+            "x": 0, "y": 0, "z": round(gz, 3),
+            "rotation": {"x": 0, "y": 0, "z": 0},
+        })
+
+    guard_component = {
+        "name": "FieldGuard",
+        "g4name": "Copper_FieldGuard",
+        "type": "union",
+        "material": "G4_Cu",
+        "components": [
+            {
+                "name": "GuardTube",
+                "type": "cylinder",
+                "material": "G4_Cu",
+                "dimensions": {
+                    "radius": round(GuardCurvature + 0.5 * tp["FieldGuardsWidth"], 3),
+                    "height": round(tp["FieldGuardsTubeHeight"], 3),
+                    "inner_radius": round(GuardCurvature - 0.5 * tp["FieldGuardsWidth"], 3),
+                },
+                "placements": [{"name": "GuardTube", "x": 0, "y": 0, "z": 0,
+                                 "rotation": {"x": 0, "y": 0, "z": 0}, "parent": ""}],
+            },
+            {
+                "name": "GuardEdgeTop",
+                "type": "torus",
+                "material": "G4_Cu",
+                "dimensions": {
+                    "tube_radius": round(GuardEdgeMinorR, 3),
+                    "torus_radius": round(GuardCurvature, 3),
+                },
+                "placements": [{"name": "GuardEdgeTop", "x": 0, "y": 0,
+                                 "z": round(0.5 * tp["FieldGuardsTubeHeight"], 3),
+                                 "rotation": {"x": 0, "y": 0, "z": 0}, "parent": ""}],
+            },
+            {
+                "name": "GuardEdgeBot",
+                "type": "torus",
+                "material": "G4_Cu",
+                "dimensions": {
+                    "tube_radius": round(GuardEdgeMinorR, 3),
+                    "torus_radius": round(GuardCurvature, 3),
+                },
+                "placements": [{"name": "GuardEdgeBot", "x": 0, "y": 0,
+                                 "z": round(-0.5 * tp["FieldGuardsTubeHeight"], 3),
+                                 "rotation": {"x": 0, "y": 0, "z": 0}, "parent": ""}],
+            },
+        ],
+        "placements": guard_placements,
+        "visible": True,
+    }
+
+    volumes.append({
+        "name": "FieldGuards",
+        "g4name": "FieldGuards",
+        "type": "assembly",
+        "material": "G4_Cu",
+        "placements": [placement(0, 0, 0, "LXeVolume", "FieldGuards", "FieldGuards")],
+        "components": [guard_component],
+        "visible": True,
+    })
+
+    # ---- Phase 2: PTFE cathode frames (24 polycone sectors above cathode ring) ----
+    cathode_sep = tp["PTFECathodeAngularSeparation"]
+    cathode_delta = tp["PillarsDeltaTheta"]
+    cathode_h = tp["PTFEAboveCathodeHeight"]
+    cathode_z0 = round(-0.5 * cathode_h, 3)
+    cathode_z1 = round(cathode_z0 + tp["PTFEAboveCathodeBotHeight"], 3)
+    cathode_z3 = round(cathode_z1 + tp["PTFEAboveCathodeMiddleHeight"], 3)
+    cathode_z5 = round(0.5 * cathode_h, 3)
+
+    cathode_placements = []
+    for i in range(int(tp["NumberOfPillars"])):
+        # C++ uses rotateZ(step*i - offset); JSON convention negates the angle
+        rz = -(i * cathode_delta - tp["CathodeFrameAngularOffset"])
+        cathode_placements.append({
+            "name": f"CathodeFrame_{i}",
+            "x": 0, "y": 0, "z": round(CathodeFrameOffsetZ, 3),
+            "rotation": {"x": 0, "y": 0, "z": round(rz, 6)},
+        })
+
+    cathode_component = {
+        "name": "CathodeFrame",
+        "g4name": "Teflon_CathodeRingFrame",
+        "type": "polycone",
+        "material": "PTFE",
+        "dimensions": {
+            "start_phi": round(0.5 * cathode_sep, 6),
+            "delta_phi": round(cathode_delta - cathode_sep, 6),
+            "z":    [cathode_z0, cathode_z1, cathode_z1, cathode_z3, cathode_z3, cathode_z5],
+            "rmin": [tp["PTFEAboveCathodeBotInnerR"]] * 2
+                    + [tp["PTFEAboveCathodeTopInnerR"]] * 4,
+            "rmax": [tp["PTFEAboveCathodeBotInnerR"] + tp["PTFEAboveCathodeBotWidth"]] * 4
+                    + [tp["PTFEAboveCathodeTopInnerR"] + tp["PTFEAboveCathodeTopWidth"]] * 2,
+        },
+        "placements": cathode_placements,
+        "visible": True,
+    }
+
+    volumes.append({
+        "name": "CathodeFrames",
+        "g4name": "CathodeFrames",
+        "type": "assembly",
+        "material": "PTFE",
+        "placements": [placement(0, 0, 0, "LXeVolume", "CathodeFrames", "CathodeFrames")],
+        "components": [cathode_component],
         "visible": True,
     })
 

@@ -136,6 +136,17 @@ def get_materials():
             "composition": {"Al": 2, "O": 3},
             "color": [0.85, 0.75, 0.55, 0.6],
         },
+        "Cirlex": {
+            # Polyimide (Kapton-like). Composition C22H10N2O5 per monomer unit.
+            "type": "element_based",
+            "density": 1.43,
+            "density_unit": "g/cm3",
+            "state": "solid",
+            "temperature": 293.0,
+            "temperature_unit": "kelvin",
+            "composition": {"C": 22, "H": 10, "N": 2, "O": 5},
+            "color": [0.2, 0.5, 0.8, 0.7],
+        },
         # --- Neutron veto materials ---
         "Glass": {
             "type": "element_based",
