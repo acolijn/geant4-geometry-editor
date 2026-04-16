@@ -31,12 +31,16 @@ import { debugLog } from '../../../utils/logger.js';
 /**
  * Dialog for importing a JSON object from the objects directory.
  * Appends raw JSON volumes to the primary JSON state.
+ * When incoming volume names conflict with existing ones, a resolution
+ * dialog offers: replace definition (keep placements), import as new copy, or skip.
  */
 const ImportObjectDialog = ({
   open,
   onClose,
   onImportMaterials,
   onAppendJsonVolumes,
+  onReplaceJsonVolumes,
+  jsonData,
   geometries,
   materials
 }) => {
@@ -143,29 +147,47 @@ const ImportObjectDialog = ({
     setObjectDetails(object);
   };
   
+  // Conflict resolution state
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [conflictingNames, setConflictingNames] = useState([]);
+  const [pendingImportData, setPendingImportData] = useState(null);
+
   // Handle importing the selected object
   const handleImport = async () => {
     if (!selectedObject) return;
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
       const result = await loadObject(selectedObject.fileName);
-      
+
       if (result.success) {
         debugLog('handleImport:: result.data', result.data);
-        
+
         const objectData = result.data;
         const objectJson = objectData.volumes ? objectData : { volumes: [objectData] };
-        
-        // Append raw JSON volumes directly — JSON-primary handles expansion
+
+        // Detect name conflicts with existing project volumes
+        const existingNames = new Set((jsonData?.volumes || []).map(v => v.name));
+        const conflicts = objectJson.volumes
+          .map(v => v.name)
+          .filter(n => existingNames.has(n));
+
+        if (conflicts.length > 0) {
+          // Pause and ask the user how to resolve
+          setPendingImportData(objectJson);
+          setConflictingNames(conflicts);
+          setConflictDialogOpen(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // No conflicts — append directly
         onAppendJsonVolumes(objectJson.volumes);
-        
         if (objectData.materials) {
           onImportMaterials({ ...objectData.materials, ...materials });
         }
-        
         onClose();
       } else {
         setError(result.message || 'Error loading object');
@@ -176,6 +198,79 @@ const ImportObjectDialog = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Conflict resolution: replace definitions, keep existing placements
+  const handleConflictReplace = () => {
+    if (!pendingImportData) return;
+    setConflictDialogOpen(false);
+    onReplaceJsonVolumes(pendingImportData.volumes);
+    if (pendingImportData.materials) {
+      onImportMaterials({ ...pendingImportData.materials, ...materials });
+    }
+    setPendingImportData(null);
+    onClose();
+  };
+
+  // Conflict resolution: rename conflicting volumes and import as new copies
+  const handleConflictImportCopy = () => {
+    if (!pendingImportData) return;
+    setConflictDialogOpen(false);
+
+    const existingNames = new Set((jsonData?.volumes || []).map(v => v.name));
+    const renamedVolumes = pendingImportData.volumes.map(vol => {
+      if (!existingNames.has(vol.name)) return vol;
+
+      // Find a unique name by appending _1, _2, …
+      let suffix = 1;
+      let newName = `${vol.name}_${suffix}`;
+      while (existingNames.has(newName)) {
+        suffix++;
+        newName = `${vol.name}_${suffix}`;
+      }
+      existingNames.add(newName); // reserve it for subsequent volumes
+
+      const renamed = { ...vol, name: newName };
+      if (vol.g4name === vol.name) renamed.g4name = newName;
+      // Rename top-level placements to match new volume name
+      if (vol.placements) {
+        renamed.placements = vol.placements.map((pl, i) => ({
+          ...pl,
+          name: `${newName}_${String(i).padStart(3, '0')}`,
+          g4name: `${newName}_${String(i).padStart(3, '0')}`,
+        }));
+      }
+      // For compound volumes: update internal component parent references
+      // so child placements point to the renamed parent placement names
+      if (vol.components) {
+        const oldPlacementNames = new Set((vol.placements || []).map(pl => pl.name));
+        const newPlacementNames = (renamed.placements || []).map(pl => pl.name);
+        const oldToNew = new Map(
+          [...oldPlacementNames].map((oldName, i) => [oldName, newPlacementNames[i]])
+        );
+        renamed.components = vol.components.map(comp => ({
+          ...comp,
+          placements: (comp.placements || []).map(pl => ({
+            ...pl,
+            parent: oldToNew.get(pl.parent) ?? pl.parent,
+          })),
+        }));
+      }
+      return renamed;
+    });
+
+    onAppendJsonVolumes(renamedVolumes);
+    if (pendingImportData.materials) {
+      onImportMaterials({ ...pendingImportData.materials, ...materials });
+    }
+    setPendingImportData(null);
+    onClose();
+  };
+
+  // Conflict resolution: cancel the import entirely
+  const handleConflictCancel = () => {
+    setConflictDialogOpen(false);
+    setPendingImportData(null);
   };
   
   // Format date string
@@ -357,6 +452,43 @@ const ImportObjectDialog = ({
       </DialogActions>
     </Dialog>
     
+    {/* Conflict resolution dialog */}
+    <Dialog
+      open={conflictDialogOpen}
+      onClose={handleConflictCancel}
+      aria-labelledby="conflict-dialog-title"
+    >
+      <DialogTitle id="conflict-dialog-title">
+        Name Conflict Detected
+      </DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          The following volume{conflictingNames.length > 1 ? 's' : ''} already exist{conflictingNames.length === 1 ? 's' : ''} in this project:
+        </DialogContentText>
+        <Box component="ul" sx={{ mt: 1, mb: 1, pl: 3 }}>
+          {conflictingNames.map(name => (
+            <li key={name}>
+              <Typography variant="body2">{name}</Typography>
+            </li>
+          ))}
+        </Box>
+        <DialogContentText>
+          How would you like to handle this?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, p: 2 }}>
+        <Button onClick={handleConflictReplace} variant="contained" color="primary" fullWidth>
+          Replace definition, keep placements
+        </Button>
+        <Button onClick={handleConflictImportCopy} variant="outlined" fullWidth>
+          Import as new copy (rename)
+        </Button>
+        <Button onClick={handleConflictCancel} fullWidth>
+          Cancel
+        </Button>
+      </DialogActions>
+    </Dialog>
+
     {/* Delete confirmation dialog */}
     <Dialog
       open={deleteConfirmOpen}

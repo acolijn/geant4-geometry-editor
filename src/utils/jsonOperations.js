@@ -918,6 +918,21 @@ export function applyDuplicateVolumeToJson(jsonData, flatVolumes, flatIndex) {
 // New volumes: add as-is.
 // ──────────────────────────────────────────────────────────
 
+// ──────────────────────────────────────────────────────────
+// REPLACE VOLUME DEFINITION — swap a volume's definition while
+// keeping its existing placements intact.
+// Used by the import conflict dialog "Replace definition, keep placements" option.
+// ──────────────────────────────────────────────────────────
+
+export function replaceJsonVolumeDefinition(jsonData, incomingVolume) {
+  const json = structuredClone(jsonData);
+  const idx = json.volumes.findIndex(v => v.name === incomingVolume.name);
+  if (idx === -1) return json;
+  const existingPlacements = json.volumes[idx].placements || [];
+  json.volumes[idx] = { ...structuredClone(incomingVolume), placements: existingPlacements };
+  return json;
+}
+
 export function mergeJsonVolumes(jsonData, incomingVolumes) {
   const json = structuredClone(jsonData);
   if (!incomingVolumes || !Array.isArray(incomingVolumes)) return json;

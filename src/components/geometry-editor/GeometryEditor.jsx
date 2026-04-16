@@ -44,6 +44,8 @@ const RefactoredGeometryEditor = () => {
     handleImportGeometries,
     handleImportMaterials,
     handleAppendJsonVolumes,
+    handleReplaceJsonVolumes,
+    jsonData,
     updateDialogOpen,
     setUpdateDialogOpen,
   } = useAppContext();
@@ -210,6 +212,8 @@ const RefactoredGeometryEditor = () => {
         materials={materials}
         onImportMaterials={handleImportMaterials}
         onAppendJsonVolumes={handleAppendJsonVolumes}
+        onReplaceJsonVolumes={handleReplaceJsonVolumes}
+        jsonData={jsonData}
       />
       
       {/* Hit Collections Dialog */}

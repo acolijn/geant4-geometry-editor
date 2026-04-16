@@ -10,6 +10,7 @@ import {
   applyAddPlacementToJson,
   applyDuplicateVolumeToJson,
   mergeJsonVolumes,
+  replaceJsonVolumeDefinition,
   restructureCompounds,
   findMatchingVolume,
 } from '../utils/jsonOperations';
@@ -276,6 +277,28 @@ export const useAppState = () => {
     setJsonData(merged);
   };
 
+  // ─── REPLACE: swap volume definitions, keep existing placements ──────────
+  // Used by the import conflict dialog "Replace definition, keep placements" option.
+  // Conflicting volumes get their definitions replaced; new volumes are appended.
+  const handleReplaceJsonVolumes = (incomingVolumes) => {
+    if (!incomingVolumes || !Array.isArray(incomingVolumes) || incomingVolumes.length === 0) return;
+    let current = getOrInitJson();
+    const existingNames = new Set(current.volumes.map(v => v.name));
+
+    for (const vol of incomingVolumes) {
+      if (existingNames.has(vol.name)) {
+        current = replaceJsonVolumeDefinition(current, vol);
+      }
+    }
+
+    const newVolumes = incomingVolumes.filter(v => !existingNames.has(v.name));
+    if (newVolumes.length > 0) {
+      current = mergeJsonVolumes(current, newVolumes);
+    }
+
+    setJsonData(current);
+  };
+
   const handleUpdateMaterials = (updatedMaterials) => {
     setMaterials(updatedMaterials);
   };
@@ -317,6 +340,7 @@ export const useAppState = () => {
     handleImportMaterials,
     handleUpdateMaterials,
     handleAppendJsonVolumes,
+    handleReplaceJsonVolumes,
     handleLoadProject
   };
 };
