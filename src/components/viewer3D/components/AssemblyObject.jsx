@@ -128,8 +128,14 @@ const collectDescendants = (assemblyName, volumes) => {
     if (!children) continue;
 
     children.forEach(child => {
-      // Skip assembly or union children – they have their own renderers
-      if (child.type === 'assembly' || child.type === 'union') return;
+      // Skip invisible children
+      if (child.visible === false) return;
+
+      // Skip compound children – they have their own renderers (UnionObject, etc.)
+      // But still continue BFS through them so their descendants can be collected.
+      if (child.type === 'assembly' || child.type === 'union' || child.type === 'subtraction') {
+        return;
+      }
 
       // Local position / rotation of the child relative to its direct parent
       const lx = child.position?.x || 0;
@@ -201,19 +207,22 @@ const AssemblyObject = forwardRef(({ object, volumes, isSelected, onClick, mater
   const meshData = useMemo(() => {
     return descendants.map(({ volume, position, rotation }) => {
       const geometry = createGeometryForVolume(volume);
+      const edgesGeometry = new THREE.EdgesGeometry(geometry);
       const color = getMaterialColor(volume.material, materials);
       const opacity = getMaterialOpacity(volume.material, materials);
       debugLog(`AssemblyObject mesh: ${volume.name} type=${volume.type} pos=${position} size=${JSON.stringify(volume.size)} radius=${volume.radius} height=${volume.height}`);
-      return { geometry, color, opacity, position, rotation, name: volume.name };
+      return { geometry, edgesGeometry, color, opacity, position, rotation, name: volume.name };
     });
   }, [descendants, materials]);
+
+  // Version counter to force mesh remount when data changes
+  const version = useMemo(() => Date.now(), [meshData]);
 
   return (
     <group ref={ref} onClick={(e) => { e.stopPropagation(); onClick && onClick(); }}>
       {/* Render each descendant volume as a mesh */}
       {meshData.map((m, i) => (
-        <mesh key={m.name || i} position={m.position} rotation={m.rotation}>
-          <primitive object={m.geometry} attach="geometry" />
+        <mesh key={`${m.name || i}-${version}`} geometry={m.geometry} position={m.position} rotation={m.rotation}>
           <meshStandardMaterial
             color={m.color}
             transparent
@@ -225,8 +234,7 @@ const AssemblyObject = forwardRef(({ object, volumes, isSelected, onClick, mater
 
       {/* Selection highlight: wireframes on all descendants */}
       {isSelected && meshData.map((m, i) => (
-        <lineSegments key={`edge-${m.name || i}`} position={m.position} rotation={m.rotation}>
-          <edgesGeometry attach="geometry" args={[m.geometry]} />
+        <lineSegments key={`edge-${m.name || i}-${version}`} geometry={m.edgesGeometry} position={m.position} rotation={m.rotation}>
           <lineBasicMaterial attach="material" color="#ffff00" />
         </lineSegments>
       ))}

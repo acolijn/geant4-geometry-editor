@@ -27,11 +27,6 @@ const getStorageManager = () => {
   return null;
 };
 
-// Import the ObjectFormatStandardizer
-//import { standardizeObjectFormat } from './ObjectFormatStandardizer';
-
-// Import the geometryToJson
-//import { generateJson } from '../../json-viewer/utils/geometryToJson';
 
 /**
  * Save a compound object to the objects directory
@@ -70,7 +65,7 @@ export const saveObject = async (name, description, objectData, preserveComponen
     // Sanitize the file name
     const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
     
-    // Check if we have a templateJson from geometryToJson
+    // Check if we have a templateJson
     let dataToProcess;
     if (objectData.templateJson) {
       debugLog('ObjectStorage::saveObject:: Using templateJson for old formatting');
@@ -82,7 +77,6 @@ export const saveObject = async (name, description, objectData, preserveComponen
     } else {
       dataToProcess = objectData;
       debugLog('ObjectStorage::saveObject:: dataToProcess', dataToProcess);
-      debugLog('ObjectStorage::saveObject:: objectData', objectData.descendants);
     }
     
     // If preserveComponentIds is true, check if the object already exists and preserve component IDs
@@ -97,47 +91,32 @@ export const saveObject = async (name, description, objectData, preserveComponen
         if (existingObject) {
           debugLog(`Existing object found. Preserving component IDs for "${name}"`);
           
+          // Support both old format (descendants) and new format (volumes)
+          const existingItems = existingObject.volumes || existingObject.descendants || [];
+          const newItems = dataToProcess.volumes || dataToProcess.descendants || [];
+
           // Create maps of components by _componentId for both existing and new data
           const existingComponentsMap = new Map();
-          if (existingObject.descendants && Array.isArray(existingObject.descendants)) {
-            existingObject.descendants.forEach(component => {
-              if (component._componentId) {
-                existingComponentsMap.set(component._componentId, component);
-              }
-            });
-          }
-          
-          // Create a map of new components by name for easier matching
-          const newComponentsByName = new Map();
-          if (dataToProcess.descendants && Array.isArray(dataToProcess.descendants)) {
-            dataToProcess.descendants.forEach(component => {
-              if (component.name) {
-                newComponentsByName.set(component.name, component);
-              }
-            });
-          }
+          existingItems.forEach(component => {
+            if (component._componentId) {
+              existingComponentsMap.set(component._componentId, component);
+            }
+          });
           
           // Process each component in the new data
-          if (dataToProcess.descendants && Array.isArray(dataToProcess.descendants)) {
-            // First, try to match by _componentId if it exists
-            dataToProcess.descendants.forEach(component => {
-              if (component._componentId && existingComponentsMap.has(component._componentId)) {
-                debugLog(`Matched component by ID: ${component.name} (${component._componentId})`);
-                // Component already has a matching ID, no need to do anything
-              } else {
-                // If component doesn't have an ID or it's not in the existing map,
-                // generate a new unique ID
-                const timestamp = Date.now();
-                const randomSuffix = Math.random().toString(36).substring(2, 10);
-                component._componentId = `component_${timestamp}_${randomSuffix}`;
-                debugLog(`Generated new _componentId ${component._componentId} for component ${component.name}`);
-              }
-            });
-          }
+          newItems.forEach(component => {
+            if (component._componentId && existingComponentsMap.has(component._componentId)) {
+              debugLog(`Matched component by ID: ${component.name} (${component._componentId})`);
+            } else {
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substring(2, 10);
+              component._componentId = `component_${timestamp}_${randomSuffix}`;
+              debugLog(`Generated new _componentId ${component._componentId} for component ${component.name}`);
+            }
+          });
         }
       } catch (error) {
         debugWarn(`No existing object found for "${name}". Creating new object with fresh component IDs.`, error);
-        // If there's an error loading the existing object, just continue with the new data
       }
     }
     

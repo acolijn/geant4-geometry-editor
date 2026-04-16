@@ -8,22 +8,22 @@ import {
   Snackbar
 } from '@mui/material';
 import {
-  generateGeometryJson,
   handleDownload,
-  handleFileUpload,
-  importJsonGeometry
+  handleFileUpload
 } from './utils/jsonHandlers';
 import { JsonTree } from './components/JsonTreeNode';
 import { debugLog } from '../../utils/logger';
 import { useAppContext } from '../../contexts/useAppContext';
+import { restructureCompounds } from '../../utils/jsonOperations';
 
 /**
  * JSON viewer for exporting and importing combined geometry/material state.
+ * Displays the primary JSON data directly (no reconstruction from flat state).
  * State is consumed from AppStateContext.
  */
 const JsonViewer = () => {
   const {
-    geometries,
+    jsonData,
     materials,
     handleImportGeometries: onImportGeometries,
     handleImportMaterials: onImportMaterials,
@@ -34,12 +34,20 @@ const JsonViewer = () => {
   const [treeKey, setTreeKey] = useState(0);
   
 
-  
-  const combinedJson = generateGeometryJson(geometries, materials);
+  // Build the display JSON from the primary jsonData state
   const parsedData = useMemo(() => {
-    try { return JSON.parse(combinedJson); }
-    catch { return null; }
-  }, [combinedJson]);
+    if (!jsonData) return null;
+    const combined = structuredClone(jsonData);
+    // Ensure compounds have their components properly nested
+    restructureCompounds(combined);
+    if (materials && Object.keys(materials).length > 0) {
+      combined.materials = materials;
+    }
+    return combined;
+  }, [jsonData, materials]);
+  const combinedJson = useMemo(() => {
+    return parsedData ? JSON.stringify(parsedData, null, 2) : '{}';
+  }, [parsedData]);
   // Handle importing geometry from JSON file
   const handleImportGeometry = async (event) => {
     debugLog('handleImportGeometry:: Import button clicked');
@@ -52,19 +60,16 @@ const JsonViewer = () => {
     try {
       // Parse the JSON file
       const jsonData = await handleFileUpload(file);
+      debugLog('handleImportGeometry:: Parsed JSON:', jsonData);
       
-      // Convert the JSON to geometry format
-      const currentGeometry = {
-        geometries: geometries,
-        materials: materials
-      };
-      debugLog('handleImportGeometry:: Current geometry:', currentGeometry);
-      
-      const updatedGeometry = importJsonGeometry(jsonData, currentGeometry);
-      debugLog('handleImportGeometry:: Updated geometry:', updatedGeometry);
-  
-      onImportGeometries(updatedGeometry.geometries);
-      onImportMaterials(updatedGeometry.materials);
+      // Pass the raw JSON directly — handleImportGeometries will
+      // derive the flat view via expandToFlat
+      if (jsonData.world || jsonData.volumes) {
+        onImportGeometries(jsonData);
+      }
+      if (jsonData.materials) {
+        onImportMaterials(jsonData.materials);
+      }
       
       setAlert({
         open: true,

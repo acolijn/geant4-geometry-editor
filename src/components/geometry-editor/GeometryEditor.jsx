@@ -11,7 +11,6 @@ import {
 import {
   createPropertyHandlers,
   createGeometryHandlers,
-  createUpdateHandlers
 } from './utils';
 
 // Import components
@@ -44,6 +43,7 @@ const RefactoredGeometryEditor = () => {
     handleRemoveGeometry: onRemoveGeometry,
     handleImportGeometries,
     handleImportMaterials,
+    handleAppendJsonVolumes,
     updateDialogOpen,
     setUpdateDialogOpen,
   } = useAppContext();
@@ -104,14 +104,6 @@ const RefactoredGeometryEditor = () => {
       newMotherVolume,
     }
   );
-
-  // Update handlers
-  const {
-    updateAssemblies
-  } = createUpdateHandlers({
-    onUpdateGeometry,
-    geometries
-  });
 
   // ===== Event Handlers =====
   // Handle tab change
@@ -195,14 +187,12 @@ const RefactoredGeometryEditor = () => {
       
 
       
-      {/* Update Objects Dialog */}
       <UpdateObjectsDialog
         open={updateDialogOpen}
         onClose={() => setUpdateDialogOpen(false)}
         onUpdate={handleUpdateObjects}
         geometries={geometries}
         preSelectedData={null}
-        directUpdateFunc={updateAssemblies}
       />
       
       {/* Import Object Dialog */}
@@ -218,8 +208,8 @@ const RefactoredGeometryEditor = () => {
         }}
         geometries={geometries}
         materials={materials}
-        onImportGeometries={handleImportGeometries}
         onImportMaterials={handleImportMaterials}
+        onAppendJsonVolumes={handleAppendJsonVolumes}
       />
       
       {/* Hit Collections Dialog */}

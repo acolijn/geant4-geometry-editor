@@ -22,15 +22,12 @@ vi.mock('react', () => ({
     }
     return [stateValues[idx], stateSetters[idx]];
   },
+  useMemo: (factory) => factory(),
+  useRef: (initial) => ({ current: initial }),
+  useEffect: (effect) => { effect(); },
 }));
 
 // Mock dependencies — paths relative to THIS test file (src/hooks/__tests__/)
-vi.mock('../../components/geometry-editor/utils/GeometryOperations', () => ({
-  updateGeometry: vi.fn(),
-  addGeometry: vi.fn(),
-  removeGeometry: vi.fn(),
-}));
-
 vi.mock('../../components/geometry-editor/utils/compoundIdPropagator', () => ({
   propagateCompoundIdToDescendants: vi.fn((_name, _compoundId, vols) => vols),
 }));
@@ -42,11 +39,35 @@ vi.mock('../../utils/defaults', () => ({
 
 vi.mock('../../utils/logger.js', () => ({
   debugLog: vi.fn(),
+  debugWarn: vi.fn(),
 }));
 
-// useState call order in useAppState:
-// 0: tabValue, 1: geometries, 2: materials, 3: selectedGeometry, 4: hitCollections, 5: updateDialogOpen
-const GEO = 1, MAT = 2, SEL = 3, HITS = 4;
+// Mock expandToFlat — pass-through by default (returns input with a default world)
+vi.mock('../../utils/expandToFlat', () => ({
+  expandToFlat: vi.fn((json) => ({
+    world: json.world || { name: 'World', type: 'box', size: { x: 2000, y: 2000, z: 2000 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, material: 'G4_AIR' },
+    volumes: json.volumes || [],
+  })),
+  isVolumeKey: vi.fn((key) => typeof key === 'string' && key.startsWith('vol-')),
+  findFlatIndex: vi.fn((volumes, key) => volumes.findIndex(v => v._id === key)),
+}));
+
+// Mock jsonOperations — pass-through clones
+vi.mock('../../utils/jsonOperations', () => ({
+  applyUpdateToJson: vi.fn((json) => structuredClone(json)),
+  applyWorldUpdateToJson: vi.fn((json) => structuredClone(json)),
+  applyAddToJson: vi.fn((json, vol) => {
+    const copy = structuredClone(json);
+    copy.volumes.push({ name: vol.name, type: vol.type, placements: [{ x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 }, parent: 'World' }] });
+    return copy;
+  }),
+  applyRemoveFromJson: vi.fn((json) => structuredClone(json)),
+  flatToJsonVolume: vi.fn((flat) => ({ name: flat.name, type: flat.type, placements: [{ x: 0, y: 0, z: 0, parent: 'World' }] })),
+}));
+
+// useState call order in useAppState (geometries is now useMemo, not useState):
+// 0: tabValue, 1: materials, 2: selectedGeometry, 3: hitCollections, 4: updateDialogOpen, 5: jsonData
+const MAT = 1, SEL = 2, HITS = 3, JSONDATA = 5;
 
 // Import the hook — path relative to test file
 import { useAppState } from '../useAppState';
@@ -91,13 +112,14 @@ describe('useAppState', () => {
       expect(result).toEqual({ success: true, message: 'Geometries imported successfully' });
     });
 
-    it('calls setGeometries on valid import', () => {
+    it('stores JSON on valid import', () => {
       const { handleImportGeometries } = useAppState();
       handleImportGeometries({
         world: null,
         volumes: [{ name: 'X', type: 'box' }],
       });
-      expect(stateSetters[GEO]).toHaveBeenCalled();
+      // Stores JSON as primary state (geometries auto-derived via useMemo)
+      expect(stateSetters[JSONDATA]).toHaveBeenCalled();
     });
   });
 
@@ -138,14 +160,15 @@ describe('useAppState', () => {
   });
 
   describe('handleLoadProject', () => {
-    it('sets geometries and materials', () => {
+    it('sets JSON and materials', () => {
       const { handleLoadProject } = useAppState();
       const geo = { world: null, volumes: [] };
       const mats = { G4_WATER: {} };
 
       handleLoadProject(geo, mats, null);
 
-      expect(stateSetters[GEO]).toHaveBeenCalledWith(geo);
+      // Stores JSON as primary state (geometries auto-derived via useMemo)
+      expect(stateSetters[JSONDATA]).toHaveBeenCalled();
       expect(stateSetters[MAT]).toHaveBeenCalledWith(mats);
     });
 
@@ -189,12 +212,13 @@ describe('useAppState', () => {
       const expectedKeys = [
         'tabValue', 'setTabValue',
         'geometries', 'materials',
+        'jsonData', 'setJsonData',
         'selectedGeometry', 'setSelectedGeometry',
         'hitCollections', 'setHitCollections',
         'updateDialogOpen', 'setUpdateDialogOpen',
         'handleUpdateGeometry', 'handleAddGeometry', 'handleRemoveGeometry',
         'handleImportGeometries', 'handleImportMaterials',
-        'handleUpdateMaterials', 'handleLoadProject',
+        'handleUpdateMaterials', 'handleAppendJsonVolumes', 'handleLoadProject',
       ];
       for (const key of expectedKeys) {
         expect(result).toHaveProperty(key);

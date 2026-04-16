@@ -23,6 +23,7 @@ describe('propertyHandlers', () => {
       },
       volumes: [
         {
+          _id: 'vol-0-pl-0',
           name: 'Box1', type: 'box',
           size: { x: 10, y: 10, z: 10 },
           position: { x: 0, y: 0, z: 0 },
@@ -30,6 +31,7 @@ describe('propertyHandlers', () => {
           mother_volume: 'World'
         },
         {
+          _id: 'vol-1-pl-0',
           name: 'Union1', type: 'union',
           position: { x: 0, y: 0, z: 0 },
           rotation: { x: 0, y: 0, z: 0 },
@@ -39,7 +41,7 @@ describe('propertyHandlers', () => {
     };
     handlers = createPropertyHandlers({
       onUpdateGeometry,
-      selectedGeometry: 'volume-0',
+      selectedGeometry: 'vol-0-pl-0',
       geometries,
     });
   });
@@ -74,7 +76,7 @@ describe('propertyHandlers', () => {
       handlers.handlePropertyChange('material', 'G4_WATER');
 
       expect(onUpdateGeometry).toHaveBeenCalledWith(
-        'volume-0',
+        'vol-0-pl-0',
         expect.objectContaining({ material: 'G4_WATER' })
       );
     });
@@ -132,6 +134,7 @@ describe('propertyHandlers', () => {
     it('creates rotation object if missing', () => {
       // Create a volume without rotation
       geometries.volumes[0] = {
+        _id: 'vol-0-pl-0',
         name: 'NoRot', type: 'box',
         size: { x: 10, y: 10, z: 10 },
         position: { x: 0, y: 0, z: 0 },
@@ -139,7 +142,7 @@ describe('propertyHandlers', () => {
       };
       const h = createPropertyHandlers({
         onUpdateGeometry,
-        selectedGeometry: 'volume-0',
+        selectedGeometry: 'vol-0-pl-0',
         geometries,
       });
 
@@ -159,7 +162,7 @@ describe('propertyHandlers', () => {
     it('updates relative_position for union type', () => {
       const unionHandlers = createPropertyHandlers({
         onUpdateGeometry,
-        selectedGeometry: 'volume-1',
+        selectedGeometry: 'vol-1-pl-0',
         geometries,
       });
 
@@ -170,7 +173,7 @@ describe('propertyHandlers', () => {
     });
 
     it('ignores non-union types', () => {
-      // volume-0 is a box, not a union
+      // vol-0-pl-0 is a box, not a union
       handlers.handleRelativePositionChange('x', 5.0);
       expect(onUpdateGeometry).not.toHaveBeenCalled();
     });
@@ -178,7 +181,7 @@ describe('propertyHandlers', () => {
     it('ignores NaN values', () => {
       const unionHandlers = createPropertyHandlers({
         onUpdateGeometry,
-        selectedGeometry: 'volume-1',
+        selectedGeometry: 'vol-1-pl-0',
         geometries,
       });
       unionHandlers.handleRelativePositionChange('x', 'abc');
@@ -190,7 +193,7 @@ describe('propertyHandlers', () => {
     it('updates relative_rotation for union type', () => {
       const unionHandlers = createPropertyHandlers({
         onUpdateGeometry,
-        selectedGeometry: 'volume-1',
+        selectedGeometry: 'vol-1-pl-0',
         geometries,
       });
 

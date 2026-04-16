@@ -1,84 +1,54 @@
 import React, { useState } from 'react';
 import { getParentKey } from './utils/geometryUtils';
+import { isVolumeKey, findFlatIndex } from '../../utils/expandToFlat';
 import { getVolumeIcon } from '../geometry-editor/utils/geometryIcons';
 import SaveObjectDialog from '../geometry-editor/components/SaveObjectDialog';
-import { handleUpdateAllAssemblies } from './utils/contextMenuHandlers';
-import { findAllDescendants, getSelectedGeometryObject } from '../geometry-editor/utils/GeometryUtils';
+import { getSelectedGeometryObject, findAllDescendants } from '../geometry-editor/utils/GeometryUtils';
 import { saveObject } from '../geometry-editor/utils/ObjectStorage';
-import { syncAssembliesFromSource } from '../geometry-editor/utils/assemblyUpdateUtils';
+import { extractSubtreeFromJson } from '../../utils/jsonOperations';
+import { useAppContext } from '../../contexts/useAppContext';
 import { debugLog } from '../../utils/logger.js';
 
 // GeometryTree component for the left panel
-export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry }) {
+export default function GeometryTree({ geometries, selectedGeometry, onSelect, onUpdateGeometry, scopeRoot, setScopeRoot }) {
+  const { jsonData, materials, handleBatchSetVisibility, handleAddPlacement, handleDuplicateVolume, refreshView } = useAppContext();
   // State for save object dialog
   const [saveObjectDialogOpen, setSaveObjectDialogOpen] = useState(false);
   const [objectToSave, setObjectToSave] = useState(null);
 
-  // Create a wrapper for handleExportObject that uses generateTemplateJson for consistent formatting
-  const handleExportObject = async (objectKey = selectedGeometry) => {
-    debugLog('handleExportObject:: geometries');
+  // Extract the selected volume's subtree directly from jsonData
+  const handleExportObject = (objectKey = selectedGeometry) => {
+    debugLog('handleExportObject:: from jsonData');
     
-    // Get the currently selected geometry object
     const selectedObject = getSelectedGeometryObject(objectKey, geometries);
-    debugLog('handleExportObject:: selectedObject', selectedObject);
-    
     if (!selectedObject) {
       alert('Please select a geometry object to export');
       return;
     }
-    
-    // Create a proper geometries structure
-    const geometriesForExport = {
-      volumes: [...geometries.volumes],
-      world: geometries.world || { name: 'world' }
-    };
-    
-    // Get the compound ID
-    let compoundId = selectedObject._compoundId;
-    
-    // Repair missing compound IDs for legacy or imported objects before export
-    if (!compoundId) {
-      const repairedCompoundId = selectedObject.name || `compound_${Date.now()}`;
-      const descendantNames = findAllDescendants(selectedObject.name, geometries.volumes).map(v => v.name);
-      const namesToRepair = new Set([selectedObject.name, ...descendantNames]);
 
-      geometriesForExport.volumes = geometries.volumes.map((volume) => {
-        if (namesToRepair.has(volume.name)) {
-          return {
-            ...volume,
-            _compoundId: volume._compoundId || repairedCompoundId
-          };
-        }
-
-        return volume;
-      });
-
-      compoundId = repairedCompoundId;
-    }
-    
-    try {
-      // Import the generateTemplateJson function
-      const { generateTemplateJson } = await import('../../components/json-viewer/utils/geometryToJson');
-      
-      // Generate a template JSON from the selected root instance to avoid
-      // mixing multiple scene instances that share the same _compoundId.
-      const templateJson = generateTemplateJson(geometriesForExport, compoundId, selectedObject.name);
-      
-      if (!templateJson) {
-        console.error('Failed to generate template JSON');
-        alert('Failed to generate template JSON for this object');
-        return;
-      }
-      
-      debugLog('templateJson::', templateJson);
-      
-      // Set the object to save and open the dialog
-      setObjectToSave(templateJson);
-      setSaveObjectDialogOpen(true);
+    if (!jsonData) {
+      alert('No JSON data available');
       return;
-    } catch (error) {
-      console.error('Error generating template JSON:', error);
     }
+
+    // Find the volume name to extract. For compound components, use the
+    // compound root name if available; otherwise use the volume's own name.
+    const volumeName = selectedObject._compoundId && 
+      !selectedObject._is_boolean_component &&
+      !selectedObject._componentId
+        ? selectedObject._compoundId
+        : selectedObject.name;
+
+    // Extract the subtree directly from the hierarchical JSON, including used materials
+    const subtree = extractSubtreeFromJson(jsonData, volumeName, materials);
+    if (!subtree || subtree.volumes.length === 0) {
+      alert('Failed to extract object from JSON data');
+      return;
+    }
+
+    debugLog('handleExportObject:: subtree', subtree);
+    setObjectToSave(subtree);
+    setSaveObjectDialogOpen(true);
   };
 
   // State to track expanded nodes - initially only World is expanded
@@ -92,14 +62,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     open: false,
     volumeIndex: null,
     assemblies: []
-  });
-  
-  // State for update assemblies dialog
-  const [updateAssembliesDialog, setUpdateAssembliesDialog] = useState({
-    open: false,
-    sourceIndex: null,
-    selectedIndices: [],
-    allAssemblies: []
   });
   
   // Function to toggle node expansion
@@ -130,27 +92,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     setContextMenu(null);
   };
   
-  // Function to handle the update assemblies dialog confirmation
-  const handleUpdateAssembliesConfirm = () => {
-    const { sourceIndex, selectedIndices } = updateAssembliesDialog;
-
-    if (selectedIndices.length === 0) return;
-    
-    // Close the dialog
-    setUpdateAssembliesDialog(prev => ({
-      ...prev,
-      open: false
-    }));
-    
-    syncAssembliesFromSource({
-      volumes: geometries.volumes,
-      sourceIndex,
-      targetIndices: selectedIndices,
-      onUpdateGeometry,
-      isTargetEligible: (_sourceAssembly, targetAssembly) => targetAssembly.type === 'assembly'
-    });
-  };
-  
   // Function to confirm adding to assembly
   const handleConfirmAddToAssembly = (assemblyIndex) => {
     const volumeIndex = assemblyDialog.volumeIndex;
@@ -158,7 +99,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     const originalVolume = geometries.volumes[volumeIndex];
     
     // Get the volume key for updating
-    const volumeKey = `volume-${volumeIndex}`;
+    const volumeKey = originalVolume._id;
     
     // Update using a full object to avoid dropping existing properties
     const updatedVolume = {
@@ -186,7 +127,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   
   // Function to get a volume's parent object key using the imported function
   const getParentKeyWrapper = (volume) => {
-    return getParentKey(volume, volumeNameToIndex);
+    return getParentKey(volume, volumeNameToIndex, geometries.volumes);
   };
   
   // Group volumes by their parent
@@ -196,7 +137,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   
   // Initialize volume groups for all volumes
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     volumesByParent[key] = []; // Initialize empty array for each volume
   });
   
@@ -206,7 +147,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
 
   // Populate the groups
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     const parentKey = getParentKeyWrapper(volume);
     
     // Check if this is a boolean component
@@ -216,14 +157,15 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       
       if (parentUnionIndex !== -1) {
         // Create a special key for the "Parts" folder of this union
-        const unionPartsKey = `union-parts-${parentUnionIndex}`;
+        const parentUnionVol = geometries.volumes[parentUnionIndex];
+        const unionPartsKey = `union-parts-${parentUnionVol._id}`;
         
         // Make sure the parts folder exists for this union
         if (!volumesByParent[unionPartsKey]) {
           volumesByParent[unionPartsKey] = [];
           
           // Add the parts folder to the union's children
-          const unionKey = `volume-${parentUnionIndex}`;
+          const unionKey = parentUnionVol._id;
           if (!volumesByParent[unionKey]) {
             volumesByParent[unionKey] = [];
           }
@@ -261,9 +203,8 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
       // display-group folder at its parent level — but only if the parent
       // volume does NOT already have the same _displayGroup (to avoid
       // duplicate folders at every level of the hierarchy).
-      const parentVolume = parentKey.startsWith('volume-')
-        ? geometries.volumes[parseInt(parentKey.split('-')[1])]
-        : null;
+      const parentFlatIdx = isVolumeKey(parentKey) ? findFlatIndex(geometries.volumes, parentKey) : -1;
+      const parentVolume = parentFlatIdx >= 0 ? geometries.volumes[parentFlatIdx] : null;
       const parentHasSameGroup = parentVolume && parentVolume._displayGroup === volume._displayGroup;
       if (volume._displayGroup && volumesByParent[parentKey] && !parentHasSameGroup) {
         const groupKey = `display-group-${parentKey}-${volume._displayGroup}`;
@@ -288,21 +229,43 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
     }
   });
   
+  // Helper to toggle visibility for all volumes inside a display-group folder
+  // (including all their descendants)
+  const toggleGroupVisibility = (groupKey) => {
+    const members = volumesByParent[groupKey];
+    if (!members || members.length === 0) return;
+    // Determine new visibility: if any member is visible, hide all; otherwise show all
+    const anyVisible = members.some(m => m.volume && m.volume.visible !== false);
+    const newVisible = !anyVisible;
+    const updates = [];
+    members.forEach(m => {
+      if (!m.volume) return;
+      updates.push({ id: m.key, visible: newVisible });
+      // Also include all descendants of this member
+      const descendants = findAllDescendants(m.volume.name, geometries.volumes);
+      descendants.forEach(desc => {
+        const descVol = geometries.volumes.find(v => v.name === desc.name);
+        if (descVol) {
+          updates.push({ id: descVol._id, visible: newVisible });
+        }
+      });
+    });
+    handleBatchSetVisibility(updates);
+  };
+
   // Helper to toggle visibility for a volume and all its descendants
   const toggleCascadeVisibility = (volume, key) => {
     const newVisible = volume.visible === false ? true : false;
-    // Toggle this volume
-    const updatedVolume = { ...volume, visible: newVisible };
-    onUpdateGeometry(key, updatedVolume);
+    const updates = [{ id: key, visible: newVisible }];
     // Toggle all descendants
     const descendants = findAllDescendants(volume.name, geometries.volumes);
     descendants.forEach(desc => {
-      const descIndex = geometries.volumes.findIndex(v => v.name === desc.name);
-      if (descIndex !== -1) {
-        const updatedDesc = { ...geometries.volumes[descIndex], visible: newVisible };
-        onUpdateGeometry(`volume-${descIndex}`, updatedDesc);
+      const descVol = geometries.volumes.find(v => v.name === desc.name);
+      if (descVol) {
+        updates.push({ id: descVol._id, visible: newVisible });
       }
     });
+    handleBatchSetVisibility(updates);
   };
   
   // Recursive function to render a volume and its children in the tree
@@ -340,14 +303,18 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 e.stopPropagation();
                 toggleNodeExpansion(groupKey, e);
               }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setScopeRoot(groupKey);
+              }}
               style={{
                 padding: '8px',
+                paddingLeft: `${15 + level * 14}px`,
                 backgroundColor: '#f5f0e8',
                 color: '#333',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 marginBottom: '5px',
-                marginLeft: `${15 + level * 20}px`,
                 display: 'flex',
                 alignItems: 'center',
                 fontWeight: 'bold',
@@ -368,7 +335,22 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 {expandedNodes[groupKey] ? '▼' : '►'}
               </span>
               <span style={{ marginRight: '5px', color: '#e6a817' }}>📁</span>
-              <span>{item.groupName}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.groupName}>{item.groupName}</span>
+              <span
+                title="Toggle visibility of all items in this group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleGroupVisibility(groupKey);
+                }}
+                style={{
+                  marginLeft: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  opacity: volumesByParent[groupKey]?.some(m => m.volume && m.volume.visible !== false) ? 0.9 : 0.4
+                }}
+              >
+                👁️
+              </span>
             </div>
             {expandedNodes[groupKey] && renderVolumeTree(groupKey, level + 1)}
           </React.Fragment>
@@ -387,18 +369,22 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
                 e.stopPropagation();
                 toggleNodeExpansion(partsKey, e);
               }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setScopeRoot(partsKey);
+              }}
               style={{
                 padding: '8px',
+                paddingLeft: `${15 + level * 14}px`,
                 backgroundColor: '#f0f0f0',
                 color: '#333',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 marginBottom: '5px',
-                marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
                 display: 'flex',
                 alignItems: 'center',
                 fontWeight: 'bold',
-                borderLeft: '3px solid #1976d2' // Blue border to indicate special folder
+                borderLeft: '3px solid #1976d2'
               }}
             >
               {/* Expand/collapse icon */}
@@ -444,18 +430,23 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               // Otherwise, select this object
               onSelect(selectedGeometry === key ? null : key);
             }}
+            onDoubleClick={(e) => {
+              if (hasChildren) {
+                e.stopPropagation();
+                setScopeRoot(key);
+              }
+            }}
             onContextMenu={(e) => handleContextMenu(e, index)}
             style={{
               padding: '8px',
+              paddingLeft: `${15 + level * 14}px`,
               backgroundColor: selectedGeometry === key ? '#1976d2' : '#fff',
               color: selectedGeometry === key ? '#fff' : '#000',
               borderRadius: '4px',
               cursor: 'pointer',
               marginBottom: '5px',
-              marginLeft: `${15 + level * 20}px`, // Indent based on hierarchy level
               display: 'flex',
               alignItems: 'center',
-              // Special styling for boolean components
               ...(isBooleanComponent && {
                 borderLeft: '2px solid #1976d2',
                 backgroundColor: selectedGeometry === key ? '#1976d2' : '#f0f8ff'
@@ -486,11 +477,10 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               textShadow: isActive ? '0 0 1px #4caf50, 0 0 1px #4caf50, 0 0 2px #4caf50, 0 0 2px #4caf50' : 'none', // Much thicker green outline for active elements
               fontSize: '16px'
             }}>{getVolumeIcon(volume)}</span>
-            <span style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-              {/* Display the Geant4 name (g4name) if available, otherwise fall back to internal name */}
+            <span style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
+            >
               {volume.g4name || volume.name || `${volume.type.charAt(0).toUpperCase() + volume.type.slice(1)} ${index + 1}`}
-              
-              {/* Active elements are now indicated by the green icon outline */}
             </span>
             {/* Cascade visibility toggle - only for volumes with children */}
             {hasChildren && (
@@ -540,10 +530,49 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
   // State for import alert
   const [importAlert, setImportAlert] = useState({ show: false, message: '', severity: 'info' });
 
+  // Build breadcrumb path from world down to scopeRoot
+  const scopeBreadcrumb = React.useMemo(() => {
+    if (scopeRoot === 'world') return [];
+    const path = [];
+    let currentKey = scopeRoot;
+    while (currentKey && currentKey !== 'world') {
+      const flatIdx = isVolumeKey(currentKey) ? findFlatIndex(geometries.volumes, currentKey) : -1;
+      if (flatIdx < 0) break;
+      const vol = geometries.volumes[flatIdx];
+      path.unshift({ key: currentKey, label: vol.g4name || vol.name });
+      currentKey = getParentKeyWrapper(vol);
+    }
+    return path;
+  }, [scopeRoot, geometries.volumes]);
+
+  // Get a label for a scope key
+  const getScopeLabel = (key) => {
+    if (key === 'world') return 'World';
+    const flatIdx = isVolumeKey(key) ? findFlatIndex(geometries.volumes, key) : -1;
+    if (flatIdx < 0) return key;
+    const vol = geometries.volumes[flatIdx];
+    return vol.g4name || vol.name;
+  };
+
   return (
     <div style={{ padding: '10px', backgroundColor: '#f5f5f5', height: '100%', overflowY: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px 0' }}>
         <h3 style={{ margin: 0 }}>Geometry Tree</h3>
+        <button
+          onClick={() => refreshView()}
+          title="Re-derive 3D view from current JSON data"
+          style={{
+            padding: '4px 10px',
+            backgroundColor: '#1976d2',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px'
+          }}
+        >
+          Update View
+        </button>
       </div>
       
       {/* SaveObjectDialog for saving objects with a nicer interface - using the same component as GeometryEditor */}
@@ -557,14 +586,55 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
           
           try {
             // Generate a default file name if none is provided
-            const fileName = name || objectToSave.object.name || 'geometry';
+            const fileName = name || objectToSave?.volumes?.[0]?.name || 'geometry';
             
-            // Apply structured naming if needed
-            debugLog('GeometryTree:: objectToSave', objectToSave);
+            // Rename the root volume (first volume) to match the save name
+            const dataToSave = structuredClone(objectToSave);
+            if (dataToSave.volumes && dataToSave.volumes.length > 0) {
+              const oldRootName = dataToSave.volumes[0].name;
+              const newRootName = fileName;
+              if (oldRootName !== newRootName) {
+                dataToSave.volumes[0].name = newRootName;
+                if (dataToSave.volumes[0].g4name) {
+                  dataToSave.volumes[0].g4name = newRootName;
+                }
+                // Rename placement names that start with the old root name
+                // (e.g. assembly_xxx_000 → PMT_dummy_000)
+                const oldPlacementNames = new Map();
+                for (const pl of (dataToSave.volumes[0].placements || [])) {
+                  if (pl.name && pl.name.startsWith(oldRootName)) {
+                    const suffix = pl.name.slice(oldRootName.length);
+                    const newPlName = newRootName + suffix;
+                    oldPlacementNames.set(pl.name, newPlName);
+                    pl.name = newPlName;
+                    if (pl.g4name) pl.g4name = newPlName;
+                  }
+                }
+                // Update parent references in other volumes (by volume name or placement name)
+                for (const vol of dataToSave.volumes) {
+                  for (const pl of (vol.placements || [])) {
+                    if (pl.parent === oldRootName) pl.parent = newRootName;
+                    const renamedParent = oldPlacementNames.get(pl.parent);
+                    if (renamedParent) pl.parent = renamedParent;
+                  }
+                  // Also update parent references inside compound components
+                  for (const comp of (vol.components || [])) {
+                    for (const pl of (comp.placements || [])) {
+                      if (pl.parent === oldRootName) pl.parent = newRootName;
+                      const renamedParent = oldPlacementNames.get(pl.parent);
+                      if (renamedParent) pl.parent = renamedParent;
+                    }
+                  }
+                }
+                // Update _compoundId if it matched the old name
+                if (dataToSave.volumes[0]._compoundId === oldRootName) {
+                  dataToSave.volumes[0]._compoundId = newRootName;
+                }
+              }
+            }
+
+            debugLog('GeometryTree:: dataToSave', dataToSave);
             debugLog('GeometryTree:: preserveComponentIds', preserveComponentIds);
-            // const dataToSave = preserveComponentIds ? objectToSave : applyStructuredNaming(objectToSave);
-            const dataToSave = objectToSave;
-            // Save the object to the library
             
             await saveObject(fileName, description, dataToSave);
             
@@ -608,7 +678,7 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
           }
         }}
         objectData={objectToSave}
-        defaultName={objectToSave?.object?.name || ''}
+        defaultName={objectToSave?.volumes?.[0]?.name || ''}
       />
       
       {/* Alert message */}
@@ -628,16 +698,68 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
         </div>
       )}
       <div style={{ marginBottom: '5px' }}>
-        {/* World volume - selectable but not movable */}
+        {/* Breadcrumb navigation for scope-to-node */}
+        {scopeRoot !== 'world' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '6px 8px',
+            marginBottom: '8px',
+            backgroundColor: '#e8eef4',
+            borderRadius: '4px',
+            fontSize: '12px',
+            color: '#555',
+            flexWrap: 'wrap',
+            gap: '2px',
+          }}>
+            <span
+              onClick={() => setScopeRoot('world')}
+              style={{ cursor: 'pointer', color: '#1976d2' }}
+              title="Back to World root"
+            >
+              World
+            </span>
+            {scopeBreadcrumb.map((crumb, i) => (
+              <React.Fragment key={crumb.key}>
+                <span style={{ color: '#999' }}>›</span>
+                <span
+                  onClick={() => setScopeRoot(i === scopeBreadcrumb.length - 1 ? crumb.key : crumb.key)}
+                  style={{
+                    cursor: i < scopeBreadcrumb.length - 1 ? 'pointer' : 'default',
+                    color: i < scopeBreadcrumb.length - 1 ? '#1976d2' : '#333',
+                    fontWeight: i === scopeBreadcrumb.length - 1 ? 'bold' : 'normal',
+                  }}
+                  title={crumb.label}
+                >
+                  {crumb.label}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+        {/* Scope root node header */}
         <div 
           onClick={() => {
-            // Allow selecting/unselecting World volume in the tree
-            onSelect(selectedGeometry === 'world' ? null : 'world');
+            if (scopeRoot === 'world') {
+              onSelect(selectedGeometry === 'world' ? null : 'world');
+            } else {
+              onSelect(selectedGeometry === scopeRoot ? null : scopeRoot);
+            }
+          }}
+          onDoubleClick={() => {
+            // Double-click on scope root goes up one level
+            if (scopeRoot !== 'world') {
+              if (scopeBreadcrumb.length > 1) {
+                setScopeRoot(scopeBreadcrumb[scopeBreadcrumb.length - 2].key);
+              } else {
+                setScopeRoot('world');
+              }
+            }
           }}
           style={{
             padding: '8px',
-            backgroundColor: selectedGeometry === 'world' ? '#1976d2' : '#fff',
-            color: selectedGeometry === 'world' ? '#fff' : '#000',
+            backgroundColor: (selectedGeometry === scopeRoot) ? '#1976d2' : '#fff',
+            color: (selectedGeometry === scopeRoot) ? '#fff' : '#000',
             borderRadius: '4px',
             cursor: 'pointer',
             marginBottom: '5px',
@@ -645,27 +767,50 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             alignItems: 'center'
           }}
         >
-          {/* Expand/collapse icon for World */}
+          {/* Back arrow when scoped in */}
+          {scopeRoot !== 'world' && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                if (scopeBreadcrumb.length > 1) {
+                  setScopeRoot(scopeBreadcrumb[scopeBreadcrumb.length - 2].key);
+                } else {
+                  setScopeRoot('world');
+                }
+              }}
+              style={{
+                marginRight: '5px',
+                cursor: 'pointer',
+                color: (selectedGeometry === scopeRoot) ? '#fff' : '#1976d2',
+                fontSize: '14px',
+                width: '16px',
+                textAlign: 'center'
+              }}
+              title="Go up one level"
+            >
+              ←
+            </span>
+          )}
+          {/* Expand/collapse icon */}
           <span 
-            onClick={(e) => toggleNodeExpansion('world', e)} 
+            onClick={(e) => toggleNodeExpansion(scopeRoot, e)} 
             style={{ 
               marginRight: '5px', 
               cursor: 'pointer',
-              color: selectedGeometry === 'world' ? '#fff' : '#555',
+              color: (selectedGeometry === scopeRoot) ? '#fff' : '#555',
               fontSize: '14px',
               width: '16px',
               textAlign: 'center'
             }}
           >
-            {expandedNodes['world'] ? '▼' : '►'}
+            {expandedNodes[scopeRoot] ? '▼' : '►'}
           </span>
-          <span style={{ marginRight: '5px' }}>🌐</span>
-          <strong>World</strong>
-          <span style={{ marginLeft: '5px', fontSize: '0.8em', color: selectedGeometry === 'world' ? '#ddd' : '#777' }}></span>
+          <span style={{ marginRight: '5px' }}>{scopeRoot === 'world' ? '🌐' : ''}</span>
+          <strong>{getScopeLabel(scopeRoot)}</strong>
         </div>
         
-        {/* Render volumes with World as parent and their children recursively, but only if World is expanded */}
-        {expandedNodes['world'] && renderVolumeTree('world')}
+        {/* Render tree from scope root */}
+        {expandedNodes[scopeRoot] && renderVolumeTree(scopeRoot)}
       </div>
       
       {/* Context Menu */}
@@ -682,26 +827,12 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             zIndex: 1000
           }}
         >
-          {/* Show update possibility for assemblies and objects with parent World */}
-          {/* only for top level objects-> mother_volume eitehr has no _compoundId or _motehr _compoundId is different from the selected object */}
-          {(geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'World' || 
-            (typeof geometries.volumes[contextMenu.volumeIndex]?.mother_volume === 'object' && 
-             geometries.volumes[contextMenu.volumeIndex]?.mother_volume._compoundId !== geometries.volumes[contextMenu.volumeIndex]?._compoundId)) && (
-            <>
-              <div
-                onClick={() => handleUpdateAllAssemblies(contextMenu.volumeIndex, geometries, onUpdateGeometry, setContextMenu)}
-                style={{
-                  padding: '8px 16px',
-                  cursor: 'pointer',
-                  hover: { backgroundColor: '#f5f5f5' }
-                }}
-              >
-                Update All
-              </div>
+          {/* Show save option for any volume */}
+          {geometries.volumes[contextMenu.volumeIndex] && (
               <div
                 onClick={() => {
                   // Set the selected geometry to the current context menu item
-                  const volumeKey = `volume-${contextMenu.volumeIndex}`;
+                  const volumeKey = geometries.volumes[contextMenu.volumeIndex]?._id;
                   onSelect(volumeKey);
                   // Export explicitly using the clicked object key to avoid stale selection races
                   handleExportObject(volumeKey);
@@ -715,7 +846,45 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
               >
                 Save to Library
               </div>
-            </>
+          )}
+
+          {/* Add another placement of the same volume definition */}
+          {geometries.volumes[contextMenu.volumeIndex] &&
+           !geometries.volumes[contextMenu.volumeIndex]._componentIndex &&
+           geometries.volumes[contextMenu.volumeIndex]._componentIndex === undefined && (
+              <div
+                onClick={() => {
+                  const volumeKey = geometries.volumes[contextMenu.volumeIndex]?._id;
+                  handleAddPlacement(volumeKey);
+                  handleCloseContextMenu();
+                }}
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  hover: { backgroundColor: '#f5f5f5' }
+                }}
+              >
+                Add Placement
+              </div>
+          )}
+
+          {/* Duplicate volume definition (independent copy) */}
+          {geometries.volumes[contextMenu.volumeIndex] &&
+           geometries.volumes[contextMenu.volumeIndex]._componentIndex === undefined && (
+              <div
+                onClick={() => {
+                  const volumeKey = geometries.volumes[contextMenu.volumeIndex]?._id;
+                  handleDuplicateVolume(volumeKey);
+                  handleCloseContextMenu();
+                }}
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  hover: { backgroundColor: '#f5f5f5' }
+                }}
+              >
+                Duplicate Volume
+              </div>
           )}
           
           <div
@@ -727,115 +896,6 @@ export default function GeometryTree({ geometries, selectedGeometry, onSelect, o
             }}
           >
             Cancel
-          </div>
-        </div>
-      )}
-      
-      {/* Update Assemblies Dialog */}
-      {updateAssembliesDialog.open && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              padding: '20px',
-              borderRadius: '8px',
-              maxWidth: '80%',
-              maxHeight: '80%',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }}
-          >
-            <h3 style={{ margin: 0 }}>Select Assemblies to Update</h3>
-            <p>Select which assemblies should be updated with properties from the source assembly.</p>
-            
-            <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #ddd', padding: '8px' }}>
-              {updateAssembliesDialog.allAssemblies.map(item => (
-                <div 
-                  key={item.index}
-                  style={{
-                    padding: '8px',
-                    marginBottom: '4px',
-                    backgroundColor: updateAssembliesDialog.selectedIndices.includes(item.index) ? '#e3f2fd' : '#f5f5f5',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  onClick={() => {
-                    setUpdateAssembliesDialog(prev => {
-                      const newSelectedIndices = [...prev.selectedIndices];
-                      const indexPosition = newSelectedIndices.indexOf(item.index);
-                      
-                      if (indexPosition === -1) {
-                        // Add to selection
-                        newSelectedIndices.push(item.index);
-                      } else {
-                        // Remove from selection
-                        newSelectedIndices.splice(indexPosition, 1);
-                      }
-                      
-                      return {
-                        ...prev,
-                        selectedIndices: newSelectedIndices
-                      };
-                    });
-                  }}
-                >
-                  <input 
-                    type="checkbox" 
-                    checked={updateAssembliesDialog.selectedIndices.includes(item.index)}
-                    onChange={() => {}} // Handled by the parent div's onClick
-                    style={{ marginRight: '8px' }}
-                  />
-                  <span>
-                    {item.volume.g4name || item.volume.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#f5f5f5',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setUpdateAssembliesDialog(prev => ({ ...prev, open: false }))}
-              >
-                Cancel
-              </button>
-              <button
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-                onClick={handleUpdateAssembliesConfirm}
-              >
-                Update
-              </button>
-            </div>
           </div>
         </div>
       )}

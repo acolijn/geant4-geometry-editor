@@ -29,14 +29,14 @@ import AddIcon from '@mui/icons-material/Add';
 import { debugLog } from '../../../utils/logger.js';
 
 /**
- * Dialog for importing a JSON object from the objects directory
- * This dialog specifically uses jsonToGeometry to convert the object to geometry
+ * Dialog for importing a JSON object from the objects directory.
+ * Appends raw JSON volumes to the primary JSON state.
  */
 const ImportObjectDialog = ({
   open,
   onClose,
-  onImportGeometries,
   onImportMaterials,
+  onAppendJsonVolumes,
   geometries,
   materials
 }) => {
@@ -154,23 +154,17 @@ const ImportObjectDialog = ({
       const result = await loadObject(selectedObject.fileName);
       
       if (result.success) {
-        // Import the jsonToGeometry function
-        const { jsonToGeometry } = await import('../../json-viewer/utils/jsonToGeometry');
-        
-        // Create current geometry object
-        const currentGeometry = {
-          geometries: geometries,
-          materials: materials
-        };
-        
-        // Convert the object data to geometry
         debugLog('handleImport:: result.data', result.data);
-        debugLog('handleImport:: currentGeometry', currentGeometry);
-        const updatedGeometry = jsonToGeometry(result.data, currentGeometry);
         
-        // Call the import callbacks with the updated geometry and materials
-        onImportGeometries(updatedGeometry.geometries);
-        onImportMaterials(updatedGeometry.materials);
+        const objectData = result.data;
+        const objectJson = objectData.volumes ? objectData : { volumes: [objectData] };
+        
+        // Append raw JSON volumes directly — JSON-primary handles expansion
+        onAppendJsonVolumes(objectJson.volumes);
+        
+        if (objectData.materials) {
+          onImportMaterials({ ...objectData.materials, ...materials });
+        }
         
         onClose();
       } else {

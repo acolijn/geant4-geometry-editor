@@ -53,3 +53,8 @@ jsdoc-*.log
 
 # Temporary files directory
 /tmp/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo

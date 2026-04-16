@@ -9,6 +9,7 @@ import { useThree } from '@react-three/fiber';
 function CameraSetup({ setFrontViewCamera, worldSize }) {
   const { camera, controls } = useThree();
   const controlsRef = useRef(null);
+  const initializedRef = useRef(false);
   
   // Calculate camera distance based on world size
   // Using the implementation from Viewer3D.jsx (factor of 2 instead of 1.75)
@@ -47,25 +48,28 @@ function CameraSetup({ setFrontViewCamera, worldSize }) {
     }
   }, [controls, calculateCameraDistance]);
   
-  // Set front view on initial load with z-axis pointing upward
+  // Set front view only on initial mount, not on every re-render
   useEffect(() => {
-    // Position camera to look at the scene from the front (y-axis)
-    // with z-axis pointing upward
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     setFrontView();
     
-    // Store the camera and setFrontView function for external access
+    // Update camera far clipping plane based on world size
+    if (camera) {
+      camera.far = Math.abs(calculateCameraDistance()) * 4;
+      camera.updateProjectionMatrix();
+    }
+  }, [camera, setFrontView, calculateCameraDistance]);
+
+  // Keep the external reference up to date without resetting the camera
+  useEffect(() => {
     if (setFrontViewCamera) {
       setFrontViewCamera({
         camera,
         setFrontView,
         calculateCameraDistance
       });
-    }
-    
-    // Update camera far clipping plane based on world size
-    if (camera) {
-      camera.far = Math.abs(calculateCameraDistance()) * 4;
-      camera.updateProjectionMatrix();
     }
   }, [camera, setFrontViewCamera, setFrontView, calculateCameraDistance]);
   

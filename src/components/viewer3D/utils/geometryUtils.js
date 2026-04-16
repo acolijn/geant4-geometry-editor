@@ -395,7 +395,9 @@ export const worldToLocalCoordinates = (volume, worldPos, worldRot, geometries, 
 };
 
 // Function to get the parent key for a volume
-export const getParentKey = (volume, volumeNameToIndex) => {
+// When `volumes` is provided the returned key uses the stable `_id` field;
+// otherwise falls back to the legacy `volume-${index}` format.
+export const getParentKey = (volume, volumeNameToIndex, volumes) => {
   if (!volume.mother_volume || volume.mother_volume === 'World') {
     return 'world';
   }
@@ -403,6 +405,9 @@ export const getParentKey = (volume, volumeNameToIndex) => {
   // Find the index of the parent volume by name
   const parentIndex = volumeNameToIndex[volume.mother_volume];
   if (parentIndex !== undefined) {
+    if (volumes && volumes[parentIndex]?._id) {
+      return volumes[parentIndex]._id;
+    }
     return `volume-${parentIndex}`;
   }
   
@@ -418,14 +423,14 @@ export const groupVolumesByParent = (geometries, volumeNameToIndex) => {
   
   // Initialize volume groups for all volumes
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     volumesByParent[key] = []; // Initialize empty array for each volume
   });
   
   // Populate the groups
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
-    const parentKey = getParentKey(volume, volumeNameToIndex);
+    const key = volume._id;
+    const parentKey = getParentKey(volume, volumeNameToIndex, geometries.volumes);
     
     // Add this volume to its parent's children list
     if (volumesByParent[parentKey]) {

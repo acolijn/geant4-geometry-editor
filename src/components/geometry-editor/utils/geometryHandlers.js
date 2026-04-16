@@ -5,9 +5,24 @@
  */
 
 import { debugLog, debugWarn } from '../../../utils/logger.js';
+import { isVolumeKey, findFlatIndex } from '../../../utils/expandToFlat';
 
-export const generateUniqueName = (type) => {
-  return `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+export const generateUniqueName = (type, geometries) => {
+  const pad3 = (n) => String(n).padStart(3, '0');
+  const prefix = `${type}_`;
+  // Collect existing indices used by this type
+  const usedIndices = new Set();
+  if (geometries && geometries.volumes) {
+    for (const vol of geometries.volumes) {
+      if (vol.name && vol.name.startsWith(prefix)) {
+        const suffix = vol.name.slice(prefix.length);
+        if (/^\d+$/.test(suffix)) usedIndices.add(parseInt(suffix, 10));
+      }
+    }
+  }
+  let idx = 0;
+  while (usedIndices.has(idx)) idx++;
+  return `${prefix}${pad3(idx)}`;
 };
 
 /**
@@ -65,7 +80,7 @@ export const createGeometryHandlers = (props, state) => {
     
     // Generate a unique component ID that will persist throughout the object's lifecycle
     const componentId = `component_${timestamp}_${randomSuffix}`;
-    const uniqueName = generateUniqueName(newGeometryType);
+    const uniqueName = generateUniqueName(newGeometryType, geometries);
 
     const newObject = {
       name: uniqueName,
@@ -202,9 +217,9 @@ export const createGeometryHandlers = (props, state) => {
         
         if (instanceId === 'world') {
           instance = geometries.world;
-        } else if (instanceId.startsWith('volume-')) {
-          const volumeIndex = parseInt(instanceId.split('-')[1]);
-          instance = geometries.volumes[volumeIndex];
+        } else if (isVolumeKey(instanceId)) {
+          const volumeIndex = findFlatIndex(geometries.volumes, instanceId);
+          if (volumeIndex >= 0) instance = geometries.volumes[volumeIndex];
         }
         
         if (!instance) {
@@ -241,7 +256,7 @@ export const createGeometryHandlers = (props, state) => {
             if (volume.mother_volume === instance.name) {
               components.push({
                 index: i,
-                id: `volume-${i}`,
+                id: volume._id,
                 object: volume
               });
             }

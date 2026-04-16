@@ -6,4 +6,3 @@
 
 export { createPropertyHandlers } from './propertyHandlers';
 export { createGeometryHandlers } from './geometryHandlers';
-export { createUpdateHandlers } from './updateHandlers';

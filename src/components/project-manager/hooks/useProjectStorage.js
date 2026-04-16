@@ -7,19 +7,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import fileSystemManager from '../../../utils/FileSystemManager';
 import indexedDBManager from '../../../utils/IndexedDBManager';
-import { generateJson } from '../../json-viewer/utils/geometryToJson';
-import { jsonToGeometry } from '../../json-viewer/utils/jsonToGeometry';
 import { debugLog, debugWarn } from '../../../utils/logger.js';
+import { restructureCompounds } from '../../../utils/jsonOperations';
 
 /**
  * Custom hook for project storage management
- * @param {Object} geometries - Current geometry data
+ * @param {Object} geometries - Current geometry data (flat view, used for object saving)
  * @param {Object} materials - Current materials data
  * @param {Array} hitCollections - Current hit collections
  * @param {Function} onLoadProject - Callback when project is loaded
+ * @param {Object} jsonData - Primary hierarchical JSON state (used for project saving)
  * @returns {Object} Storage state and methods
  */
-export const useProjectStorage = (geometries, materials, hitCollections, onLoadProject) => {
+export const useProjectStorage = (geometries, materials, hitCollections, onLoadProject, jsonData) => {
   // Storage state
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -271,10 +271,11 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
 
     setIsLoading(true);
     try {
-      const geometryData = generateJson({
-        world: geometries.world,
-        volumes: geometries.volumes || []
-      });
+      // Use jsonData directly — it is the source of truth
+      const geometryData = structuredClone(jsonData || { world: { name: 'World', type: 'box', material: 'G4_AIR', dimensions: { x: 2000, y: 2000, z: 2000 } }, volumes: [] });
+
+      // Ensure any misplaced top-level volumes are moved into compound components
+      restructureCompounds(geometryData);
       
       if (materials && Object.keys(materials).length > 0) {
         geometryData.materials = materials;
@@ -323,7 +324,7 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
     } finally {
       setIsLoading(false);
     }
-  }, [isInitialized, storageManager, geometries, materials, hitCollections, loadSavedProjectsList]);
+  }, [isInitialized, storageManager, jsonData, materials, hitCollections, loadSavedProjectsList]);
 
   // Load project
   const loadProject = useCallback(async (projectName) => {
@@ -336,20 +337,13 @@ export const useProjectStorage = (geometries, materials, hitCollections, onLoadP
       if (projectData && projectData.geometry) {
         const geometryData = projectData.geometry;
         
-        const currentGeometry = {
-          geometries: geometries,
-          materials: materials
-        };
-        
-        const updatedGeometry = jsonToGeometry(geometryData, currentGeometry);
-        
-        if (!updatedGeometry || !updatedGeometry.geometries) {
-          throw new Error('Invalid geometry data structure after import');
-        }
-        
+        // Pass the hierarchical JSON directly to handleLoadProject.
+        // The state hook will derive the flat view via expandToFlat.
         const restoredHitCollections = geometryData.hitCollections || [];
+        const loadedMaterials = geometryData.materials || {};
         
-        onLoadProject(updatedGeometry.geometries, updatedGeometry.materials, restoredHitCollections);
+        // Pass the JSON data (with world, volumes, materials) directly
+        onLoadProject(geometryData, loadedMaterials, restoredHitCollections);
         
         setAlert({
           open: true,

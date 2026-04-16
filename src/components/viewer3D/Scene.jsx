@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { calculateWorldPosition, worldToLocalCoordinates, getParentKey } from './utils/geometryUtils';
+import { isVolumeKey, findFlatIndex } from '../../utils/expandToFlat';
 import * as THREE from 'three';
 import TransformableObject from './components/TransformableObject';
 import CoordinateSystem from './components/CoordinateSystem';
@@ -9,7 +10,7 @@ import { debugLog } from '../../utils/logger';
 // Scene component with all 3D elements
 
 // Simple Scene component with flat object structure
-export default function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize, materials }) {
+export default function Scene({ geometries, selectedGeometry, onSelect, setFrontViewCamera, transformMode, onTransformEnd, worldSize, materials, scopeRoot }) {
   // Track which objects are source objects (objects that have been loaded from files)
   const [sourceObjects, setSourceObjects] = useState({});
   
@@ -33,7 +34,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
   
   // Function to get a volume's parent object key using the imported function
   const getParentKeyWrapper = (volume) => {
-    return getParentKey(volume, volumeNameToIndex);
+    return getParentKey(volume, volumeNameToIndex, geometries.volumes);
   };
   
   // Group volumes by their parent
@@ -43,13 +44,13 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
   
   // Initialize volume groups for all volumes
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     volumesByParent[key] = []; // Initialize empty array for each volume
   });
   
   // Populate the groups
   geometries.volumes && geometries.volumes.forEach((volume, index) => {
-    const key = `volume-${index}`;
+    const key = volume._id;
     const parentKey = getParentKeyWrapper(volume);
     
     // Add this volume to its parent's children list
@@ -89,8 +90,8 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     }
     
     // Get the volume index from the key
-    const volumeIndex = parseInt(objKey.replace('volume-', ''));
-    if (isNaN(volumeIndex) || !geometries.volumes[volumeIndex]) {
+    const volumeIndex = findFlatIndex(geometries.volumes, objKey);
+    if (volumeIndex < 0 || !geometries.volumes[volumeIndex]) {
       console.error(`Invalid volume key: ${objKey}`);
       return;
     }
@@ -289,6 +290,36 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
     return names;
   }, [geometries.volumes]);
 
+  // When scoped to a specific node, compute the set of volume names that are
+  // descendants of that node (BFS via mother_volume). Volumes outside this set
+  // will be hidden in the 3D view.
+  const scopeVisibleNames = React.useMemo(() => {
+    if (!scopeRoot || scopeRoot === 'world' || !geometries.volumes) return null;
+    // Find the scope root volume
+    const rootVol = geometries.volumes.find(v => v._id === scopeRoot);
+    if (!rootVol) return null;
+    const names = new Set([rootVol.name]);
+    const childrenOf = {};
+    geometries.volumes.forEach(v => {
+      if (!v.mother_volume) return;
+      if (!childrenOf[v.mother_volume]) childrenOf[v.mother_volume] = [];
+      childrenOf[v.mother_volume].push(v);
+    });
+    const queue = [rootVol.name];
+    while (queue.length > 0) {
+      const parentName = queue.shift();
+      const children = childrenOf[parentName];
+      if (!children) continue;
+      children.forEach(child => {
+        if (!names.has(child.name)) {
+          names.add(child.name);
+          queue.push(child.name);
+        }
+      });
+    }
+    return names;
+  }, [scopeRoot, geometries.volumes]);
+
   // Render all volumes in a flat structure
   const renderVolumes = () => {
     if (!geometries.volumes) return null;
@@ -299,7 +330,7 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
       if (volume._is_boolean_component === true) {
         // Exception: If this boolean component is currently selected, render it anyway
         // This allows users to see and interact with the component when selected in the tree
-        const isSelected = selectedGeometry === `volume-${index}`;
+        const isSelected = selectedGeometry === volume._id;
         
         if (!isSelected) {
           // Return null for boolean components to maintain indices but not render them
@@ -310,9 +341,11 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
           // Continue rendering this component since it's selected
         }
       }
-      // Skip rendering descendants of assemblies – AssemblyObject renders them
-      if (assemblyDescendantNames.has(volume.name) && volume.type !== 'assembly') {
-        const isSelected = selectedGeometry === `volume-${index}`;
+      // Skip rendering descendants of assemblies – AssemblyObject renders them.
+      // Exception: compound types (union/subtraction) render via their own components.
+      if (assemblyDescendantNames.has(volume.name) && volume.type !== 'assembly'
+          && volume.type !== 'union' && volume.type !== 'subtraction') {
+        const isSelected = selectedGeometry === volume._id;
         if (!isSelected) {
           return null;
         }
@@ -321,7 +354,11 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
       if (volume.visible === false) {
         return null;
       }
-      const key = `volume-${index}`;
+      // Skip volumes outside the current scope
+      if (scopeVisibleNames && !scopeVisibleNames.has(volume.name)) {
+        return null;
+      }
+      const key = volume._id;
       const isMotherVolume = volumesByParent[key] && volumesByParent[key].length > 0;
       
       // Calculate the world position for this volume using our wrapper function
