@@ -155,6 +155,32 @@ tp["TpcWallHeight"] = 1500.8
 tp["TpcWallThickness"] = 3.0
 tp["TopGateRingToTopTPC"] = 2.8
 
+# PTFE ring below gate frame
+tp["RingBelowGateHeight"] = 5.0
+tp["RingBelowGateInnerDiameter"] = tp["CopperRingInnerDiameter"]  # 1358.0 mm
+tp["RingBelowGateWidth"] = 25.5
+
+# Bottom TPC ring (PTFE ring below TPC wall)
+# BottomTpcTopToTpcBot and BottomTpcHeight and BottomTpcWidth already defined above
+
+# PTFE ring below BM ring
+tp["TeflonBMringWidth"] = 2.0
+tp["TeflonBMringInnerD"] = 1380.5
+tp["BMringBotToPTFEReflectorTop"] = 2.005
+
+# Copper ring below pillars
+tp["CuBelowPillarsInnerDiameter"] = 1400.0
+tp["CuBelowPillarsWidth"] = 12.5
+tp["CuBelowPillarsHeight"] = 10.0
+
+# Pillar geometry parameters (needed for CuBelowPillars position)
+tp["TopBoxToTpcTop"] = 19.2
+tp["TopBox_height"] = 15.0
+tp["MiddleBox_height"] = 1466.0
+tp["MiddleBox_height_UpToTrapezoid"] = 1436.625
+tp["Trapezoid_height"] = 13.0
+tp["BottomBox_height"] = 128.375
+
 # Meshes (thin discs)
 tp["GateMeshDiameter"] = 1334.0
 tp["GateMeshThickness"] = 0.216
@@ -363,12 +389,47 @@ top_pmt_base_z = top_pmt_base_z_lxe - gxe_center_z
 
 # Bottom PMT Z
 bot_pmt_base_z = (BMRingOffsetZ - 0.5 * tp["BMringTotalHeight"]
-                  - 2.005 - 3.15 - 0.5 * tp["PMTheight"])
+                  - tp["BMringBotToPTFEReflectorTop"] - 3.15 - 0.5 * tp["PMTheight"])
 
 # Bottom reflector/copper
 bot_refl_z = (BMRingOffsetZ - 0.5 * tp["BMringTotalHeight"]
-              - 2.005 - 0.5 * tp["TopReflectorHeight"])
+              - tp["BMringBotToPTFEReflectorTop"] - 0.5 * tp["TopReflectorHeight"])
 bot_cu_z = bot_refl_z - 0.5 * tp["TopReflectorHeight"] - 55.0 - 0.5 * tp["BotCopperPlateHeight"]
 
 # Top copper plate
 top_cu_offsetZ = top_refl_offsetZ + 0.5 * tp["TopReflectorHeight"] + 60.0 + 0.5 * tp["TopCopperPlateHeight"]
+
+# ============================================================
+# Phase 1: new volume positions
+# ============================================================
+
+# PTFE ring below gate — sits in the gap between copper ring (top) and gate ring (bottom)
+PTFEringBelowGateHeight = dPTFECorrZ * tp["RingBelowGateHeight"]
+PTFERingBelowGateOffsetZ = (CuRingOffsetZ
+                            + 0.5 * tp["CopperRingHeight"]
+                            + 0.5 * PTFEringBelowGateHeight)
+
+# Bottom TPC ring — PTFE ring below the TPC wall
+BottomTPCRingHeight = dPTFECorrZ * tp["BottomTpcHeight"]
+BottomTPCRingOffsetZ = (TpcWallCenterZ
+                        - 0.5 * dPTFECorrZ * tp["TpcWallHeight"]
+                        - dPTFECorrZ * tp["BottomTpcTopToTpcBot"]
+                        - 0.5 * BottomTPCRingHeight)
+
+# PTFE ring below BM ring — thin PTFE ring beneath the bottom mesh ring
+TeflonBMringHeight = dPTFECorrZ * tp["BMringBotToPTFEReflectorTop"]
+TeflonBMRingOffsetZ = (BMRingOffsetZ
+                       - 0.5 * tp["BMringTubeHeight"]
+                       - 0.5 * TeflonBMringHeight)
+
+# Copper ring below pillars — bottom structural copper ring at the foot of the 24 PTFE pillars
+PTFEpillarOffsetZ = (TpcTopZ
+                     - dPTFECorrZ * tp["TopBoxToTpcTop"]
+                     - dPTFECorrZ * tp["TopBox_height"]
+                     - dPTFECorrZ * tp["MiddleBox_height"] * 0.5)
+CuBelowPillarsOffsetZ = (PTFEpillarOffsetZ
+                         + dPTFECorrZ * (0.5 * tp["MiddleBox_height"]
+                                         - tp["MiddleBox_height_UpToTrapezoid"]
+                                         - tp["Trapezoid_height"]
+                                         - tp["BottomBox_height"])
+                         - 0.5 * tp["CuBelowPillarsHeight"])

@@ -9,6 +9,10 @@ from .parameters import (
     GateRingOffsetZ, AnodeRingOffsetZ, TopMeshRingOffsetZ,
     TpcTopZ, TpcWallCenterZ, CathodeRingOffsetZ, BMRingOffsetZ,
     top_refl_offsetZ, top_cu_offsetZ, bot_refl_z, bot_cu_z,
+    PTFEringBelowGateHeight, PTFERingBelowGateOffsetZ,
+    BottomTPCRingHeight, BottomTPCRingOffsetZ,
+    TeflonBMringHeight, TeflonBMRingOffsetZ,
+    CuBelowPillarsOffsetZ,
 )
 from .helpers import placement
 
@@ -322,6 +326,73 @@ def build_tpc():
         "placements": [placement(0, 0, 0, "LXeVolume",
                                  "FieldShaper", "FieldShaper")],
         "components": fs_components,
+        "visible": True,
+    })
+
+    # ---- Phase 1: simple missing volumes ----
+
+    # PTFE ring below gate frame (fills gap between copper ring and gate ring)
+    ptfe_gate_inner_r = 0.5 * tp["RingBelowGateInnerDiameter"] + 0.2  # +0.2 mm for pillar clearance
+    volumes.append({
+        "name": "PTFERingBelowGate",
+        "g4name": "Teflon_RingBelowGate",
+        "type": "cylinder",
+        "material": "PTFE",
+        "dimensions": {
+            "radius": round(ptfe_gate_inner_r + tp["RingBelowGateWidth"], 3),
+            "height": round(PTFEringBelowGateHeight, 3),
+            "inner_radius": round(ptfe_gate_inner_r, 3),
+        },
+        "placements": [placement(0, 0, round(PTFERingBelowGateOffsetZ, 3),
+                                 "LXeVolume", "Teflon_RingBelowGate", "PTFERingBelowGate")],
+        "visible": True,
+    })
+
+    # Bottom TPC ring (PTFE ring below the TPC wall)
+    volumes.append({
+        "name": "BottomTPCRing",
+        "g4name": "Teflon_BottomTPC",
+        "type": "cylinder",
+        "material": "PTFE",
+        "dimensions": {
+            "radius": round(0.5 * tp["TpcWallDiameter"] + tp["TpcWallThickness"], 3),
+            "height": round(BottomTPCRingHeight, 3),
+            "inner_radius": round(0.5 * tp["TpcWallDiameter"], 3),
+        },
+        "placements": [placement(0, 0, round(BottomTPCRingOffsetZ, 3),
+                                 "LXeVolume", "Teflon_BottomTPC", "BottomTPCRing")],
+        "visible": True,
+    })
+
+    # PTFE ring below BM ring (thin ring between bottom mesh ring and bottom reflector)
+    volumes.append({
+        "name": "PTFERingBelowBMRing",
+        "g4name": "Teflon_RingBelowBottomMesh",
+        "type": "cylinder",
+        "material": "PTFE",
+        "dimensions": {
+            "radius": round(0.5 * tp["TeflonBMringInnerD"] + tp["TeflonBMringWidth"], 3),
+            "height": round(TeflonBMringHeight, 3),
+            "inner_radius": round(0.5 * tp["TeflonBMringInnerD"], 3),
+        },
+        "placements": [placement(0, 0, round(TeflonBMRingOffsetZ, 3),
+                                 "LXeVolume", "Teflon_RingBelowBottomMesh", "PTFERingBelowBMRing")],
+        "visible": True,
+    })
+
+    # Copper ring below pillars (structural ring at the bottom of the 24 PTFE pillars)
+    volumes.append({
+        "name": "CopperRingBelowPillars",
+        "g4name": "Copper_LowerRing",
+        "type": "cylinder",
+        "material": "G4_Cu",
+        "dimensions": {
+            "radius": round(0.5 * tp["CuBelowPillarsInnerDiameter"] + tp["CuBelowPillarsWidth"], 3),
+            "height": round(tp["CuBelowPillarsHeight"], 3),
+            "inner_radius": round(0.5 * tp["CuBelowPillarsInnerDiameter"], 3),
+        },
+        "placements": [placement(0, 0, round(CuBelowPillarsOffsetZ, 3),
+                                 "LXeVolume", "Copper_LowerRing", "CopperRingBelowPillars")],
         "visible": True,
     })
 

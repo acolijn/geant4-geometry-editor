@@ -76,19 +76,17 @@ The `XenonNtTPC.cc` reference implementation (~2,700 lines) constructs **~50 dis
 
 ## 3. Implementation Roadmap
 
-### Phase 1 — Simple Missing Volumes (Small effort)
+### Phase 1 — Simple Missing Volumes ✅ COMPLETE
 
-Add missing simple volumes that are just cylinders/rings:
-
-| Task | Shape | Effort |
+| Task | Shape | Status |
 |------|-------|--------|
-| PTFE Ring Below Gate | cylinder | 0.5 hr |
-| Bottom TPC Ring | cylinder | 0.5 hr |
-| PTFE Ring Below BM Ring | cylinder | 0.5 hr |
-| Copper Ring Below Pillars | cylinder | 0.5 hr |
-| PTFE Shrinkage corrections | parameter math | 1 hr |
+| PTFE Ring Below Gate | cylinder | ✅ Done |
+| Bottom TPC Ring | cylinder | ✅ Done |
+| PTFE Ring Below BM Ring | cylinder | ✅ Done |
+| Copper Ring Below Pillars | cylinder | ✅ Done |
+| PTFE Shrinkage corrections | parameter math | ✅ Done |
 
-**Total Phase 1: ~3 hours**
+All Phase 1 volumes added in `tpc.py`; parameters in `parameters.py`. Volume count: 27 → 31.
 
 ### Phase 2 — Assemblies with Simple Components (Medium effort)
 
@@ -148,7 +146,7 @@ These require the converter to generate boolean operations (union/subtraction), 
 ```
 Reference (XenonNtTPC.cc):  ████████████████████████████████████████ 100%
 Current Converter (TPC):    ██████████████████░░░░░░░░░░░░░░░░░░░░░░  45%
-After Phase 1:              ████████████████████░░░░░░░░░░░░░░░░░░░░  50%
+After Phase 1:              ████████████████████░░░░░░░░░░░░░░░░░░░░  50% ✅
 After Phase 2:              █████████████████████████░░░░░░░░░░░░░░░░  62%
 After Phase 3:              ████████████████████████████████░░░░░░░░░░  80%
 After Phase 4:              ███████████████████████████████████████░░░  95%
