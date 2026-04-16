@@ -58,3 +58,7 @@ jsdoc-*.log
 __pycache__/
 *.pyc
 *.pyo
+
+# Generated converter output
+tools/xenonnt_geometry.json
+xenonnt_geometry.json
