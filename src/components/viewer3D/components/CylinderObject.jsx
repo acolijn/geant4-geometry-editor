@@ -14,20 +14,31 @@ const CylinderObject = React.forwardRef(({ object, isSelected, onClick, material
   
   const radius = object.radius || 5;
   const height = object.height || 10;
-  
-  // The rotation is already handled by the parent TransformableObject component
-  // We don't need to apply any rotation here as the mesh is already properly oriented
-  // Note: No need to convert from degrees to radians as the values are already in radians
-  
-  // Create a cylinder geometry that aligns with Geant4 convention (height along z-axis)
+  const innerRadius = object.innerRadius || 0;
+
+  // Create a cylinder geometry that aligns with Geant4 convention (height along z-axis).
+  // When innerRadius > 0 (hollow cylinder / tube), ExtrudeGeometry with a ring shape is
+  // used because THREE.CylinderGeometry has no inner radius support.
   const createCylinderGeometry = () => {
-    // Create a standard cylinder (which has height along y-axis in Three.js)
+    if (innerRadius > 0) {
+      const shape = new THREE.Shape();
+      shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+      const hole = new THREE.Path();
+      hole.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+      shape.holes.push(hole);
+      const geom = new THREE.ExtrudeGeometry(shape, {
+        depth: height,
+        bevelEnabled: false,
+        curveSegments: 32,
+      });
+      // ExtrudeGeometry goes from z=0 to z=height; translate to centre at origin
+      geom.translate(0, 0, -height / 2);
+      return geom;
+    }
+
+    // Solid cylinder: Three.js height is along y-axis, rotate to z-axis
     const cylinderGeom = new THREE.CylinderGeometry(radius, radius, height, 32);
-    
-    // Rotate the geometry to align with z-axis
-    // This is a static rotation of the geometry itself, not a dynamic object rotation
-    cylinderGeom.rotateX(Math.PI/2);
-    
+    cylinderGeom.rotateX(Math.PI / 2);
     return cylinderGeom;
   };
 
