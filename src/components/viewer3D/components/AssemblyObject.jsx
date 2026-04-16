@@ -51,6 +51,21 @@ const createGeometryForVolume = (vol) => {
     case 'cylinder': {
       const r = vol.radius || 5;
       const h = vol.height || 10;
+      const innerR = vol.innerRadius || 0;
+      if (innerR > 0) {
+        const shape = new THREE.Shape();
+        shape.absarc(0, 0, r, 0, Math.PI * 2, false);
+        const hole = new THREE.Path();
+        hole.absarc(0, 0, innerR, 0, Math.PI * 2, true);
+        shape.holes.push(hole);
+        const geom = new THREE.ExtrudeGeometry(shape, {
+          depth: h,
+          bevelEnabled: false,
+          curveSegments: 32,
+        });
+        geom.translate(0, 0, -h / 2);
+        return geom;
+      }
       const geom = new THREE.CylinderGeometry(r, r, h, 32);
       geom.rotateX(Math.PI / 2);          // Geant4 convention: height along z
       return geom;
