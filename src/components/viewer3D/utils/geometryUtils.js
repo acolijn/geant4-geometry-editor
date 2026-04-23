@@ -111,22 +111,13 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
     const localRot = volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0];
     
     // Create a matrix to transform the local position by the assembly's transform
-    const assemblyMatrix = new THREE.Matrix4();
-    
-    // Create rotation matrix for the assembly
-    const rotMatrix = new THREE.Matrix4();
-    
-    // Create individual rotation matrices for the assembly
-    const rotX = new THREE.Matrix4().makeRotationX(assemblyRot[0]);
-    const rotY = new THREE.Matrix4().makeRotationY(assemblyRot[1]);
-    const rotZ = new THREE.Matrix4().makeRotationZ(assemblyRot[2]);
-    
-    // Apply in sequence: first X, then Y, then Z
-    rotMatrix.copy(rotX).multiply(rotY).multiply(rotZ);
-    
-    // Set assembly position and rotation
-    assemblyMatrix.setPosition(new THREE.Vector3(assemblyPos[0], assemblyPos[1], assemblyPos[2]));
-    assemblyMatrix.multiply(rotMatrix);
+    const assemblyMatrix = new THREE.Matrix4().compose(
+      new THREE.Vector3(assemblyPos[0], assemblyPos[1], assemblyPos[2]),
+      new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(assemblyRot[0], assemblyRot[1], assemblyRot[2], 'XYZ')
+      ),
+      new THREE.Vector3(1, 1, 1)
+    );
     
     // Transform local position by assembly matrix
     const localVector = new THREE.Vector3(localPos[0], localPos[1], localPos[2]);

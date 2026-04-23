@@ -887,9 +887,10 @@ export function applyDuplicateVolumeToJson(jsonData, flatVolumes, flatIndex) {
         if (pl.name) {
           const newPlName = pl.name.replace(oldName, newName);
           if (newPlName !== pl.name) {
-            nameMap.set(pl.name, newPlName);
+            const oldPlName = pl.name;  // capture before overwriting
+            nameMap.set(oldPlName, newPlName);
             pl.name = newPlName;
-            if (pl.g4name === pl.name) pl.g4name = newPlName;
+            if (pl.g4name === oldPlName) pl.g4name = newPlName;
           }
         }
       }
