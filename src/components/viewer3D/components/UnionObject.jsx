@@ -334,28 +334,37 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
   // Perform CSG union operation - only when componentMeshes changes
   // This ensures we don't recreate the union mesh unnecessarily
   useEffect(() => {
+    let producedMesh = null;
+
     if (!componentMeshes || componentMeshes.length === 0) {
-      setUnionMesh(null);
+      setUnionMesh(prev => {
+        if (prev) prev.geometry?.dispose();
+        return null;
+      });
       return;
     }
-    
+
     try {
       // If there's only one component, just use it directly
       if (componentMeshes.length === 1) {
         // Clone the mesh to avoid reference issues
         const singleMesh = componentMeshes[0].clone();
-        
+
         // Apply the union material
         singleMesh.material = unionMaterial;
-        
+
         // Important: Reset the position and rotation of the mesh
         // The parent TransformableObject will handle positioning
         singleMesh.position.set(0, 0, 0);
         singleMesh.rotation.set(0, 0, 0);
         singleMesh.updateMatrix();
-        
-        setUnionMesh(singleMesh);
-        return;
+
+        producedMesh = singleMesh;
+        setUnionMesh(prev => {
+          if (prev && prev !== singleMesh) prev.geometry?.dispose();
+          return singleMesh;
+        });
+        return () => { producedMesh?.geometry?.dispose(); };
       }
       
       // Group components by operation type
@@ -394,8 +403,12 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         );
         if (baseVols.length > 0) {
           const approxMesh = buildApproximateMesh(baseVols[0], subVols, unionMaterial);
-          setUnionMesh(approxMesh);
-          return;
+          producedMesh = approxMesh;
+          setUnionMesh(prev => {
+            if (prev && prev !== approxMesh) prev.geometry?.dispose();
+            return approxMesh;
+          });
+          return () => { producedMesh?.geometry?.dispose(); };
         }
       }
 
@@ -453,21 +466,39 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
       
       // Apply the union material
       resultMesh.material = unionMaterial;
-      
+
       // Important: Reset the position and rotation of the result mesh
       // The parent TransformableObject will handle positioning
       resultMesh.position.set(0, 0, 0);
       resultMesh.rotation.set(0, 0, 0);
       resultMesh.updateMatrix();
-      
-      // Set the union mesh
-      setUnionMesh(resultMesh);
+
+      // Set the union mesh; dispose previous to free GPU buffers
+      producedMesh = resultMesh;
+      setUnionMesh(prev => {
+        if (prev && prev !== resultMesh) prev.geometry?.dispose();
+        return resultMesh;
+      });
     } catch (err) {
       console.error('Error creating union mesh:', err);
     }
+
+    return () => { producedMesh?.geometry?.dispose(); };
     // componentVolumes and object.name are stable references captured indirectly via componentMeshes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [componentMeshes, unionMaterial]);
+
+  // Dispose per-component geometries when componentMeshes is replaced or unmounted
+  useEffect(() => {
+    return () => {
+      componentMeshes.forEach(m => m.geometry?.dispose());
+    };
+  }, [componentMeshes]);
+
+  // Dispose union material on unmount or replacement
+  useEffect(() => {
+    return () => { unionMaterial?.dispose(); };
+  }, [unionMaterial]);
   
   // The TransformableObject component expects to control the position of this group
   // So we need to make sure the group is positioned at the origin and let TransformableObject handle positioning

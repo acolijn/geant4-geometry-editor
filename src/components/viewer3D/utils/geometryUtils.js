@@ -198,29 +198,16 @@ export const calculateWorldPosition = (volume, visited = new Set(), geometries, 
   const localPos = volume.position ? [volume.position.x || 0, volume.position.y || 0, volume.position.z || 0] : [0, 0, 0];
   const localRot = volume.rotation ? [volume.rotation.x || 0, volume.rotation.y || 0, volume.rotation.z || 0] : [0, 0, 0];
   
-  // Create a matrix to transform the local position by the parent's transform
-  const parentMatrix = new THREE.Matrix4();
-  
-  // Set parent rotation (convert from degrees to radians)
-  const parentRotX = parentWorld.rotation[0];
-  const parentRotY = parentWorld.rotation[1];
-  const parentRotZ = parentWorld.rotation[2];
-  
-  // Apply rotations in the correct sequence for Geant4 (X, then Y around new Y, then Z around new Z)
-  // This is critical for compound objects to rotate correctly as a single solid
-  const rotMatrix = new THREE.Matrix4();
-  
-  // Create individual rotation matrices
-  const rotX = new THREE.Matrix4().makeRotationX(parentRotX);
-  const rotY = new THREE.Matrix4().makeRotationY(parentRotY);
-  const rotZ = new THREE.Matrix4().makeRotationZ(parentRotZ);
-  
-  // Apply in sequence: first X, then Y, then Z
-  rotMatrix.copy(rotX).multiply(rotY).multiply(rotZ);
-  
-  // Set parent position and rotation
-  parentMatrix.setPosition(new THREE.Vector3(parentWorld.position[0], parentWorld.position[1], parentWorld.position[2]));
-  parentMatrix.multiply(rotMatrix);
+  // Compose parent transform via translation * rotation * scale.
+  // Using setPosition() followed by multiply(rotMatrix) is incorrect because
+  // it post-multiplies, rotating the translation column into the wrong frame.
+  const parentMatrix = new THREE.Matrix4().compose(
+    new THREE.Vector3(parentWorld.position[0], parentWorld.position[1], parentWorld.position[2]),
+    new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(parentWorld.rotation[0], parentWorld.rotation[1], parentWorld.rotation[2], 'XYZ')
+    ),
+    new THREE.Vector3(1, 1, 1)
+  );
   
   // Transform local position by parent matrix
   const localVector = new THREE.Vector3(localPos[0], localPos[1], localPos[2]);
