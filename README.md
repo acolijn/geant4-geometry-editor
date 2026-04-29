@@ -104,4 +104,4 @@ npm run docs:serve     # generates API docs, then serves on http://localhost:800
 
 ## Development
 
-Built with **React 19**, **Vite 6**, **Three.js / React Three Fiber**, and **Material UI 7**. State management uses a custom `AppStateContext` with `useAppContext` hook (no prop drilling). ESLint is configured with zero warnings.
+Built with **React 19**, **Vite 6**, **Three.js / React Three Fiber**, **Material UI 7**, and **manifold-3d** (WASM CSG engine for boolean solids). State management uses a custom `AppStateContext` with `useAppContext` hook (no prop drilling). ESLint is configured with zero warnings.
