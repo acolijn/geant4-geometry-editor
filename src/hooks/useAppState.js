@@ -37,7 +37,7 @@ export const useAppState = () => {
     const flat = expandToFlat(jsonData);
     let updatedVolumes = [...flat.volumes];
     flat.volumes.forEach((volume, index) => {
-      if (['assembly', 'union', 'subtraction'].includes(volume.type)) {
+      if (['assembly', 'union'].includes(volume.type)) {
         if (!volume._compoundId) {
           updatedVolumes[index] = { ...volume, _compoundId: volume.name };
         }

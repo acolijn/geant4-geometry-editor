@@ -58,7 +58,7 @@ export function expandToFlat(json) {
   if (json.volumes && Array.isArray(json.volumes)) {
     json.volumes.forEach((volume, volumeIndex) => {
       if (!volume) return;
-      if (volume.type === 'assembly' || volume.type === 'union' || volume.type === 'subtraction') {
+      if (volume.type === 'assembly' || volume.type === 'union') {
         expandCompound(volume, volumeIndex, flatVolumes);
       } else {
         expandStandard(volume, volumeIndex, flatVolumes);
@@ -142,7 +142,7 @@ function expandStandard(volume, volumeIndex, flatVolumes) {
 }
 
 // ---------------------------------------------------------------------------
-// Compound volumes (assembly / union / subtraction)
+// Compound volumes (assembly / union)
 // ---------------------------------------------------------------------------
 
 function expandCompound(volume, volumeIndex, flatVolumes) {
@@ -158,7 +158,7 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
     const instanceId = `inst_${placementIndex}`;
     const compoundName = placement.name || volume.name;
 
-    // 1. The compound entry itself (assembly/union/subtraction header)
+    // 1. The compound entry itself (assembly/union header)
     const compoundFlat = {
       _id: buildVolumeKey(volumeIndex, placementIndex),
       name: compoundName,
@@ -241,9 +241,9 @@ function expandCompound(volume, volumeIndex, flatVolumes) {
 
         flatVolumes.push(componentFlat);
 
-        // If this component is itself a compound (union/subtraction nested inside
+        // If this component is itself a compound (union nested inside
         // an assembly), expand its own sub-components so UnionObject can find them.
-        const nestedCompoundTypes = new Set(['union', 'subtraction']);
+        const nestedCompoundTypes = new Set(['union']);
         if (nestedCompoundTypes.has(component.type) && component.components) {
           component.components.forEach((subComp, subCompIdx) => {
             const subPlacement = (subComp.placements && subComp.placements[0]) || { x: 0, y: 0, z: 0, rotation: { x: 0, y: 0, z: 0 } };

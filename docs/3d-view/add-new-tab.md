@@ -1,75 +1,49 @@
 # Add New Tab
 
-The Add New Tab provides a streamlined interface for creating new geometry objects and adding them to your design.
+The Add New Tab provides a streamlined interface for creating new geometry objects and importing objects from the library.
 
 ## Overview
 
-The Add New Tab is part of the right panel in the 3D View and allows you to create various types of geometry objects with predefined default properties. This tab simplifies the process of adding new elements to your geometry.
+The Add New Tab is part of the right panel in the 3D View. It contains three actions:
 
-## Features
+1. **Import From Library** — import a previously exported volume (with its components) from a JSON file
+2. **Create New Primitive** — create a new volume of a selected type in a chosen mother volume
+3. **Manage Hit Collections** — open the dialog to configure sensitive detector hit collections
 
-### Geometry Types
+## Supported geometry types
 
-The Add New Tab offers a variety of geometry types to choose from:
+When creating a new primitive, the following types are available:
 
-- **Basic Shapes**:
-  - Box: Rectangular prism with configurable dimensions
-  - Sphere: Spherical volume with configurable radius
-  - Cylinder: Cylindrical volume with configurable radius and height
-  - Cone: Conical volume with configurable top and bottom radii
-  - Torus: Toroidal volume with configurable radii
-  - Polyhedron: Custom shape defined by vertices and faces
+| Type | Description |
+|------|-------------|
+| `box` | Rectangular box (half-lengths in mm) |
+| `cylinder` | Cylinder or tube (radius, height, optional inner radius) |
+| `sphere` | Sphere (radius, optional inner radius) |
+| `trapezoid` | Trapezoid (`trd`) with two rectangular faces |
+| `torus` | Torus (minor and major radii) |
+| `ellipsoid` | Tri-axial ellipsoid |
+| `polycone` | Polycone defined by z-planes |
+| `assembly` | Group of sub-volumes (no material) |
+| `union` | Boolean union with sub-components |
 
-- **Advanced Geometries**:
-  - Assembly: Container for grouping multiple objects
-  - Boolean Operations: Union, subtraction, and intersection of volumes
-  - Replica: Multiple copies of an object arranged in a pattern
+After creation, use the Properties Tab to set dimensions, material, and position.
 
-### Creation Process
+## Creating a new primitive
 
-To create a new geometry object:
+1. Select the **Geometry Type** from the drop-down.
+2. Select the **Mother Volume** using the tree selector.
+3. Click **Add Geometry**.
 
-1. Select the desired geometry type from the list
-2. Configure the initial properties (optional)
-3. Click the "Create" button
-4. The new object will appear in the 3D Viewer and Geometry Tree
+The new volume is added to the Geometry Tree with default dimensions and `G4_AIR` material. Edit its properties in the Properties Tab.
 
-### Default Properties
+## Importing from library
 
-Each geometry type comes with sensible default properties:
+1. Click **Import From Library**.
+2. Select a `.json` file exported from this editor (a single volume definition with optional components).
+3. The volume is added with the currently selected mother volume.
 
-- **Default Size**: Appropriate dimensions for the selected shape
-- **Default Material**: The currently selected material or a default material
-- **Default Position**: Placed at the origin or at a logical position relative to the selected parent volume
-- **Default Name**: Automatically generated based on the geometry type and a unique identifier
+For assemblies and boolean volumes, all components are imported with the definition.
 
-### Parent Volume Selection
+## Managing hit collections
 
-The Add New Tab allows you to specify where the new object should be placed:
-
-- **World Volume**: Place the object in the top-level world volume
-- **Selected Volume**: Place the object inside the currently selected volume
-- **Custom Parent**: Select a specific volume as the parent
-
-### Templates and Presets
-
-To speed up the creation process, the Add New Tab includes:
-
-- **Templates**: Predefined configurations for common objects
-- **Recent Objects**: Quick access to recently created object types
-- **Favorites**: Save and reuse your frequently used configurations
-
-## Advanced Options
-
-For more complex scenarios, the Add New Tab provides advanced options:
-
-- **Copy Properties**: Create a new object with properties copied from an existing object
-- **Multiple Creation**: Create multiple instances of the same object with variations
-- **Parametric Creation**: Define objects using mathematical expressions
-
-## Usage Tips
-
-- **Quick Creation**: Use the default properties for rapid prototyping
-- **Organized Hierarchy**: Select the appropriate parent volume before creating new objects
-- **Efficient Workflow**: Create all objects of the same type at once, then adjust their properties
-- **Templates**: Save your own templates for frequently used configurations
+Click **Manage Hit Collections** to open the dialog where you can assign sensitive detector hit collection names to volumes. These names map to `hitsCollectionName` in the JSON and are used by `MySensitiveDetector.cc`.

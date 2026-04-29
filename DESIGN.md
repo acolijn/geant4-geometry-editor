@@ -54,6 +54,8 @@ Every volume has the same base fields:
 | `orb` | `radius` |
 | `elliptical_tube` | `dx, dy, dz` |
 | `polyhedra` | `startPhi, deltaPhi, numSides, zPlanes[]` |
+| `union` | No `dimensions` — uses `components[]` with `boolean_operation: "add"` or `"subtract"` |
+| `assembly` | No `dimensions` — uses `components[]` placed relative to assembly origin |
 
 ### Placements
 
@@ -80,13 +82,36 @@ Each volume has an array of placements. One definition, N placements — this is
 
 All placements of the same volume share the same shape, material, and dimensions. Only position, rotation, name, and parent differ.
 
-### Boolean solids (subtraction, union, intersection)
+### Boolean solids (subtraction, union)
 
-Boolean volumes have `components` instead of `dimensions`. The first component is the base shape; subsequent components have a `boolean_operation` field:
+Boolean volumes use `components` instead of `dimensions`. Every component specifies its relative position via its `placements[0]` entry (only one placement per component is used). Each component carries a `boolean_operation` field that tells `GeometryParser.cc` how to combine it into the final solid.
+
+**Supported `boolean_operation` values:**
+
+| Value | Meaning |
+|-------|---------|
+| `"union"` or `"add"` | Combine with the current solid via `G4UnionSolid` |
+| `"subtract"` | Remove from the current solid via `G4SubtractionSolid` |
+
+> **Note:** `"intersection"` is listed as a volume type in `GeometryParser.cc` routing but is **not implemented** in the component-level boolean processing. Do not use `"type": "intersection"` — it has no effect.
+
+**Important: processing order.** `GeometryParser.cc` separates all components into two groups and processes them in this fixed order regardless of their position in the JSON array:
+
+1. All `"union"` / `"add"` components are combined first (left-to-right within the group)
+2. All `"subtract"` components are then subtracted from the result (left-to-right within the group)
+
+This means `A union B subtract C subtract D` is always computed as `(A union B) - C - D`, not `((A - C) union B) - D`. Design your component lists accordingly.
+
+**Top-level `type` field:** The `"type"` field on the volume (`"subtraction"` or `"union"`) routes `GeometryParser.cc` to the boolean solid builder. The actual operations are determined entirely by `boolean_operation` on the components. The top-level `type` is also used by the editor UI to display the volume correctly.
+
+#### Subtraction example (`type: "subtraction"`)
+
+The base shape is the first component (no `boolean_operation` required — it defaults to the base). Subsequent components with `"boolean_operation": "subtract"` are cut out.
 
 ```json
 {
   "name": "FloorLeg_1",
+  "g4name": "support_leg1floor",
   "type": "subtraction",
   "material": "SS304LSteel",
   "components": [
@@ -94,18 +119,61 @@ Boolean volumes have `components` instead of `dimensions`. The first component i
       "name": "FloorLeg_1_outer",
       "type": "box",
       "dimensions": { "x": 150, "y": 150, "z": 3165 },
-      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }],
+      "_displayGroup": "Support Structure"
     },
     {
       "name": "FloorLeg_1_inner",
       "type": "box",
       "boolean_operation": "subtract",
       "dimensions": { "x": 138, "y": 138, "z": 3165 },
-      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }],
+      "_displayGroup": "Support Structure"
     }
   ],
   "placements": [
     { "name": "FloorLeg_1", "x": 2250, "y": 2250, "z": -2921.5, "parent": "Water" }
+  ],
+  "visible": true,
+  "_displayGroup": "Support Structure"
+}
+```
+
+#### Union with subtracted holes example (`type: "union"`)
+
+For `"type": "union"`, the first component typically carries an **explicit** `"boolean_operation": "union"`. Additional components can be added (`"union"`) or cut out (`"subtract"`). Here, a copper plate base with multiple cylindrical holes punched through it:
+
+```json
+{
+  "name": "TopCopperPlate",
+  "g4name": "Cu_TopCopperPlate",
+  "type": "union",
+  "material": "G4_Cu",
+  "components": [
+    {
+      "name": "TopCopperPlate_base",
+      "type": "cylinder",
+      "boolean_operation": "union",
+      "dimensions": { "radius": 706.0, "height": 20.0 },
+      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+    },
+    {
+      "name": "TopCopperPlate_hole_0",
+      "type": "cylinder",
+      "boolean_operation": "subtract",
+      "dimensions": { "radius": 39.5, "height": 22.0 },
+      "placements": [{ "x": 0, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+    },
+    {
+      "name": "TopCopperPlate_hole_1",
+      "type": "cylinder",
+      "boolean_operation": "subtract",
+      "dimensions": { "radius": 39.5, "height": 22.0 },
+      "placements": [{ "x": 76.2, "y": 0, "z": 0, "rotation": { "x": 0, "y": 0, "z": 0 } }]
+    }
+  ],
+  "placements": [
+    { "name": "TopCopperPlate", "x": 0, "y": 0, "z": 0, "parent": "LXeVolume" }
   ]
 }
 ```
@@ -295,12 +363,16 @@ Note: `R5912-100` and `R7081` have identical component structure (same 7 sub-vol
 
 These fields are used by the editor UI and ignored by `GeometryParser.cc`:
 
-| Field | Purpose |
-|-------|---------|
-| `_displayGroup` | Display folder in the tree (e.g. `"Support Structure"`) |
-| `visible` | Whether to show in 3D view |
-| `wireframe` | Render as wireframe |
-| `hitsCollectionName` | Sensitive detector hits collection |
+| Field | Applies to | Purpose |
+|-------|-----------|---------|
+| `_displayGroup` | volume, component | Display folder in the tree (e.g. `"Support Structure"`) |
+| `visible` | volume, placement, component | Whether to show in 3D view |
+| `wireframe` | volume | Render as wireframe in 3D view |
+| `hitsCollectionName` | volume, component | Sensitive detector hits collection name |
+| `_compoundId` | compound volume | Stable ID for assembly/union/subtraction grouping |
+| `_componentId` | component | Stable ID for a component within a compound |
+| `_is_boolean_component` | component | `true` when the component is part of a boolean solid |
+| `_boolean_parent` | component | Name of the parent boolean volume |
 
 ---
 
@@ -539,7 +611,8 @@ The JSON maps directly to Geant4 constructs:
 | Volume definition | `G4LogicalVolume` (solid + material) |
 | Placement entry | `G4PVPlacement` (position + rotation + parent) |
 | Assembly | `G4AssemblyVolume` + `MakeImprint()` per placement |
-| Boolean components | `G4UnionSolid` / `G4SubtractionSolid` / `G4IntersectionSolid` |
+| Boolean component (`boolean_operation: "add"`) | `G4UnionSolid` |
+| Boolean component (`boolean_operation: "subtract"`) | `G4SubtractionSolid` |
 | Material (nist) | `G4NistManager::FindOrBuildMaterial()` |
 | Material (compound) | `new G4Material()` with element fractions |
 

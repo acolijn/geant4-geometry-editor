@@ -62,3 +62,9 @@ __pycache__/
 # Generated converter output
 tools/xenonnt_geometry.json
 xenonnt_geometry.json
+
+# AI/development notes
+CLAUDE.md
+CODE_REVIEW.md
+CONVERTER_STATUS.md
+DESIGN_VS_IMPLEMENTATION.md

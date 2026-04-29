@@ -3,6 +3,136 @@ import React, { useRef, useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { CSG } from 'three-csg-ts';
 
+// When a boolean solid has more than this many subtraction components, use
+// Geant4-style approximate rendering (Inside-test) instead of CSG meshing.
+// CSG compounds because each subtraction recomputes the full triangle mesh.
+const SIMPLIFY_THRESHOLD = 5;
+
+// Grid subdivisions per axis used when building an approximate perforated
+// cylinder mesh.  60 divisions on a 706 mm-radius plate → ~23 mm cell, which
+// is smaller than the 39.5 mm hole radius and gives clean-looking holes.
+const APPROX_GRID_N = 60;
+
+// ---------------------------------------------------------------------------
+// Inside-test helpers (compound-local coordinates)
+// ---------------------------------------------------------------------------
+
+function isInsideSubtraction(px, py, pz, component) {
+  const cx = component.position?.x || 0;
+  const cy = component.position?.y || 0;
+  const cz = component.position?.z || 0;
+
+  if (component.type === 'cylinder') {
+    const r = 0.97*component.radius || 1;
+    const halfH = (component.height || 1) / 2;
+    const dx = px - cx, dy = py - cy;
+    return dx * dx + dy * dy <= r * r && Math.abs(pz - cz) <= halfH + 0.01;
+  }
+
+  if (component.type === 'box') {
+    const { x = 1, y = 1, z = 1 } = component.size || {};
+    return (
+      Math.abs(px - cx) <= x / 2 &&
+      Math.abs(py - cy) <= y / 2 &&
+      Math.abs(pz - cz) <= z / 2
+    );
+  }
+
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Approximate mesh builder for cylinder-with-many-holes
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a mesh for `baseVol` (cylinder) with all `subtractVols` cut out using
+ * the Inside-test approach: generate a fine planar grid for top/bottom caps,
+ * discard any triangle whose centroid falls inside a subtraction volume, and
+ * keep a standard cylinder side wall.
+ *
+ * All coordinates are in the boolean solid's local (compound) frame.
+ */
+function buildApproximateMesh(baseVol, subtractVols, material) {
+  // Fall back to simple geometry if base is not a cylinder
+  if (!baseVol || baseVol.type !== 'cylinder') {
+    const geom = createGeometry(baseVol || {});
+    const m = new THREE.Mesh(geom, material);
+    const p = baseVol?.position;
+    if (p) m.position.set(p.x || 0, p.y || 0, p.z || 0);
+    return m;
+  }
+
+  const R     = baseVol.radius || 1;
+  const H     = baseVol.height || 1;
+  const halfH = H / 2;
+  const bx    = baseVol.position?.x || 0;
+  const by    = baseVol.position?.y || 0;
+  const bz    = baseVol.position?.z || 0;
+  const innerR = baseVol.innerRadius || 0;
+
+  const step  = (2 * R) / APPROX_GRID_N;
+  const R2    = R * R;
+  const iR2   = innerR * innerR;
+  const posArr = [];
+
+  // Check whether a centroid lands inside any subtracted solid
+  const anyInside = (px, py, pz) =>
+    subtractVols.some(v => isInsideSubtraction(px, py, pz, v));
+
+  // Add one cap face (topZ or botZ).  flipWinding reverses triangle order so
+  // normals point outward on both faces.
+  function addCap(faceZ, flip) {
+    for (let ix = 0; ix < APPROX_GRID_N; ix++) {
+      for (let iy = 0; iy < APPROX_GRID_N; iy++) {
+        const x0 = bx - R + ix * step,       x1 = x0 + step;
+        const y0 = by - R + iy * step,       y1 = y0 + step;
+
+        // Triangle A: (x0,y0) – (x1,y0) – (x0,y1)
+        const cxA = (x0 + x1 + x0) / 3, cyA = (y0 + y0 + y1) / 3;
+        const dxA = cxA - bx, dyA = cyA - by, r2A = dxA * dxA + dyA * dyA;
+        if (r2A <= R2 && (innerR === 0 || r2A >= iR2) && !anyInside(cxA, cyA, faceZ)) {
+          if (!flip) posArr.push(x0,y0,faceZ, x1,y0,faceZ, x0,y1,faceZ);
+          else       posArr.push(x0,y1,faceZ, x1,y0,faceZ, x0,y0,faceZ);
+        }
+
+        // Triangle B: (x1,y0) – (x1,y1) – (x0,y1)
+        const cxB = (x1 + x1 + x0) / 3, cyB = (y0 + y1 + y1) / 3;
+        const dxB = cxB - bx, dyB = cyB - by, r2B = dxB * dxB + dyB * dyB;
+        if (r2B <= R2 && (innerR === 0 || r2B >= iR2) && !anyInside(cxB, cyB, faceZ)) {
+          if (!flip) posArr.push(x1,y0,faceZ, x1,y1,faceZ, x0,y1,faceZ);
+          else       posArr.push(x0,y1,faceZ, x1,y1,faceZ, x1,y0,faceZ);
+        }
+      }
+    }
+  }
+
+  addCap(bz + halfH, false); // top face, normal +Z
+  addCap(bz - halfH, true);  // bottom face, normal -Z
+
+  // Side wall (standard cylinder, no hole testing needed on the rim)
+  const N_SIDE = 64;
+  const topZ = bz + halfH, botZ = bz - halfH;
+  for (let i = 0; i < N_SIDE; i++) {
+    const a0 = (i / N_SIDE) * Math.PI * 2;
+    const a1 = ((i + 1) / N_SIDE) * Math.PI * 2;
+    const sx0 = bx + R * Math.cos(a0), sy0 = by + R * Math.sin(a0);
+    const sx1 = bx + R * Math.cos(a1), sy1 = by + R * Math.sin(a1);
+    posArr.push(sx0, sy0, botZ, sx1, sy1, topZ, sx1, sy1, botZ);
+    posArr.push(sx0, sy0, botZ, sx0, sy0, topZ, sx1, sy1, topZ);
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(posArr), 3));
+  geom.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geom, material);
+  mesh.position.set(0, 0, 0);
+  mesh.rotation.set(0, 0, 0);
+  mesh.updateMatrix();
+  return mesh;
+}
+
 // Helper function to create a basic geometry based on solid type
 const createGeometry = (solid) => {
   if (!solid || !solid.type) return new THREE.BoxGeometry(1, 1, 1);
@@ -249,7 +379,26 @@ const UnionObject = React.forwardRef(({ object, volumes, isSelected, onClick, ma
         setUnionMesh(null);
         return;
       }
-      
+
+      // --- Geant4-style approximate rendering for complex boolean solids ---
+      // When there are many subtractions (e.g. hundreds of PMT holes in a
+      // copper plate), sequential CSG recomputes the triangle mesh each step
+      // and hangs the browser.  Instead, filter the base geometry triangles
+      // by an Inside-test — the same approach Geant4's own visualiser uses.
+      if (subtractComponents.length > SIMPLIFY_THRESHOLD) {
+        const baseVols = componentVolumes.filter(
+          v => !v.boolean_operation || v.boolean_operation !== 'subtract'
+        );
+        const subVols = componentVolumes.filter(
+          v => v.boolean_operation === 'subtract'
+        );
+        if (baseVols.length > 0) {
+          const approxMesh = buildApproximateMesh(baseVols[0], subVols, unionMaterial);
+          setUnionMesh(approxMesh);
+          return;
+        }
+      }
+
       // Start with the first union mesh - clone it to avoid reference issues
       let resultMesh = unionComponents[0].clone();
       // Union with each subsequent union mesh

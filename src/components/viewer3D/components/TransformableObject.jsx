@@ -261,7 +261,6 @@ export default function TransformableObject({
             isSelected={isSelected} 
             onClick={onSelect} 
             materials={materials} 
-            // Add a key based on the object name to ensure proper re-rendering
             key={`union-${clonedObject.name}`}
           />
         );

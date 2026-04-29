@@ -32,12 +32,11 @@ When an object is selected, its properties will be displayed in the Properties T
 
 ## Context Menu
 
-Right-clicking on an object in the Geometry Tree or in the 3D Viewer will open a context menu with additional options:
+Right-clicking on a node in the Geometry Tree opens a context menu:
 
-- **Delete** - Remove the selected object
-- **Duplicate** - Create a copy of the selected object
-- **Add to Assembly** - Add the selected object to an existing assembly
-- **Export Object** - Export the selected object and its children as a JSON file
+- **Add Placement** — add another placement of this volume
+- **Delete** — remove this placement
+- **Export Object** — export the volume definition as a `.json` file
 
 ## Next Steps
 

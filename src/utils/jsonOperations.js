@@ -109,7 +109,7 @@ export function flatToJsonVolume(flat) {
   }];
 
   // Compound types need a components array
-  if (flat.type === 'assembly' || flat.type === 'union' || flat.type === 'subtraction') {
+  if (flat.type === 'assembly' || flat.type === 'union') {
     vol.components = [];
     if (flat._compoundId) vol._compoundId = flat._compoundId;
   }
@@ -141,7 +141,7 @@ function cascadeParentRename(json, oldName, newName) {
 // ──────────────────────────────────────────────────────────
 
 export function restructureCompounds(json) {
-  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+  const compoundTypes = new Set(['assembly', 'union']);
 
   // Build a map: placement name OR volume name → compound volume object
   // Also map component names and component placement names → compound
@@ -306,7 +306,7 @@ export function applyUpdateToJson(jsonData, flatVolumes, flatIndex, patch) {
   }
 
   // ── Boolean component: move volume into/out of a union's components ──
-  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+  const compoundTypes = new Set(['assembly', 'union']);
   if ('_boolean_parent' in patch || '_is_boolean_component' in patch) {
     const wantBoolean = patch._is_boolean_component !== false && !!patch._boolean_parent;
     const targetUnionName = patch._boolean_parent;
@@ -323,7 +323,7 @@ export function applyUpdateToJson(jsonData, flatVolumes, flatIndex, patch) {
       if (unionVol) {
         if (!unionVol.components) unionVol.components = [];
         const component = structuredClone(json.volumes[vi]);
-        component.boolean_operation = patch.boolean_operation || 'union';
+        component.boolean_operation = patch.boolean_operation || 'add';
         // Set placement parent to '' (direct child of compound)
         for (const pl of (component.placements || [])) {
           pl.parent = '';
@@ -383,7 +383,7 @@ export function applyWorldUpdateToJson(jsonData, currentWorld, patch) {
 
 // ──────────────────────────────────────────────────────────
 // ADD — insert a new flat volume into JSON
-// If the parent is a compound type (assembly/union/subtraction),
+// If the parent is a compound type (assembly/union),
 // the volume is added as a component inside that compound.
 // Otherwise it is added as a top-level volume.
 // ──────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ export function applyAddToJson(jsonData, flatNewVolume) {
   const json = structuredClone(jsonData);
   const newVol = flatToJsonVolume(flatNewVolume);
   const parentName = flatNewVolume.mother_volume;
-  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+  const compoundTypes = new Set(['assembly', 'union']);
 
   // Check if parent is a compound volume.
   // The parent may be a volume name OR a placement name (e.g. "MyAssembly_000").
@@ -467,10 +467,9 @@ export function applyAddToJson(jsonData, flatNewVolume) {
       parent: componentParentName, // '' for direct child, component name for nested
     }));
 
-    // For union/subtraction compounds, auto-set the boolean operation
-    // so expandCompound correctly marks the component as _is_boolean_component.
-    if ((parentVol.type === 'union' || parentVol.type === 'subtraction') && !component.boolean_operation) {
-      component.boolean_operation = parentVol.type === 'subtraction' ? 'subtract' : 'union';
+    // For union compounds, auto-set the boolean operation on the new component.
+    if (parentVol.type === 'union' && !component.boolean_operation) {
+      component.boolean_operation = 'add';
     }
 
     parentVol.components.push(component);
@@ -500,7 +499,7 @@ export function applyRemoveFromJson(jsonData, flatVolumes, flatIndex) {
   const ci = flatVol._componentIndex;
   const jsonVol = json.volumes[vi];
 
-  // ── Component inside a compound (assembly/union/subtraction) ──
+  // ── Component inside a compound (assembly/union) ──
   if (ci !== undefined && jsonVol.components && jsonVol.components[ci]) {
     const component = jsonVol.components[ci];
     const compName = component.name;
@@ -631,7 +630,7 @@ export function extractSubtreeFromJson(jsonData, volumeName, materialsMap) {
   }
 
   // Clone matching volumes (filter by volume name, not placement names)
-  const compoundTypes = new Set(['assembly', 'union', 'subtraction']);
+  const compoundTypes = new Set(['assembly', 'union']);
   const volumes = [];
   const isRoot = (vol) => vol === rootVol || vol.name === rootVol?.name;
 
@@ -912,7 +911,7 @@ export function applyDuplicateVolumeToJson(jsonData, flatVolumes, flatIndex) {
 
 // ──────────────────────────────────────────────────────────
 // MERGE VOLUMES — merge imported JSON volumes into existing JSON.
-// Compound types (assembly/union/subtraction) with the same name:
+// Compound types (assembly/union) with the same name:
 //   → merge placements (add new instances of the compound).
 // Standard volumes with the same name:
 //   → rename to make unique, updating internal parent references.

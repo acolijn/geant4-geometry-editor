@@ -342,9 +342,9 @@ export default function Scene({ geometries, selectedGeometry, onSelect, setFront
         }
       }
       // Skip rendering descendants of assemblies – AssemblyObject renders them.
-      // Exception: compound types (union/subtraction) render via their own components.
+      // Exception: union compound types render via their own components.
       if (assemblyDescendantNames.has(volume.name) && volume.type !== 'assembly'
-          && volume.type !== 'union' && volume.type !== 'subtraction') {
+          && volume.type !== 'union') {
         const isSelected = selectedGeometry === volume._id;
         if (!isSelected) {
           return null;

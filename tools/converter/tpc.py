@@ -18,7 +18,59 @@ from .parameters import (
     GuardCurvature, GuardEdgeMinorR, GuardTopOffsetZ,
     CathodeFrameOffsetZ,
 )
-from .helpers import placement
+from .helpers import placement, hexagonal_pmt_positions
+
+# Hole radius in the copper plates (from mc-master TopCopperPlateHoleDiameter = 79 mm)
+_CU_HOLE_RADIUS = 39.5   # mm
+_PMT_PITCH      = 76.2   # mm (same pitch as PMT array)
+
+
+def _copper_plate_with_holes(name, g4name, plate_r, plate_h, n_holes, offset_z, parent):
+    """Return a subtraction volume: copper disc with n_holes cylindrical cutouts
+    matching the hexagonal PMT positions.  The editor renders this with the
+    approximate (Inside-test) path; Geant4 builds the full boolean chain.
+    """
+    # The hole height is slightly taller than the plate so the cut goes all the way through.
+    hole_h = round(plate_h + 2.0, 3)
+
+    components = [
+        # Base: solid copper cylinder — must have boolean_operation "union" so
+        # expandToFlat sets _is_boolean_component = true and UnionObject finds it.
+        {
+            "name": f"{name}_base",
+            "g4name": g4name,
+            "type": "cylinder",
+            "material": "G4_Cu",
+            "boolean_operation": "union",
+            "dimensions": {"radius": round(plate_r, 3), "height": round(plate_h, 3)},
+            "placements": [{"name": f"{name}_base", "x": 0, "y": 0, "z": 0,
+                            "rotation": {"x": 0, "y": 0, "z": 0}, "parent": ""}],
+            "visible": True,
+        }
+    ]
+
+    for i, (px, py) in enumerate(hexagonal_pmt_positions(n_holes, _PMT_PITCH)):
+        components.append({
+            "name": f"{name}_hole_{i}",
+            "type": "cylinder",
+            "material": "G4_Cu",
+            "boolean_operation": "subtract",
+            "dimensions": {"radius": _CU_HOLE_RADIUS, "height": hole_h},
+            "placements": [{"name": f"{name}_hole_{i}",
+                            "x": round(px, 3), "y": round(py, 3), "z": 0,
+                            "rotation": {"x": 0, "y": 0, "z": 0}, "parent": ""}],
+            "visible": True,
+        })
+
+    return {
+        "name": name,
+        "g4name": g4name,
+        "type": "union",
+        "material": "G4_Cu",
+        "components": components,
+        "placements": [placement(0, 0, round(offset_z, 3), parent, g4name, name)],
+        "visible": True,
+    }
 
 
 def build_tpc():
@@ -267,35 +319,27 @@ def build_tpc():
         "visible": True,
     })
 
-    # Top copper plate
-    volumes.append({
-        "name": "TopCopperPlate",
-        "g4name": "Cu_TopCopperPlate",
-        "type": "cylinder",
-        "material": "G4_Cu",
-        "dimensions": {
-            "radius": round(0.5 * tp["TopCopperPlateDiameter"], 3),
-            "height": round(tp["TopCopperPlateHeight"], 3),
-        },
-        "placements": [placement(0, 0, round(top_cu_offsetZ, 3),
-                                 "LXeVolume", "Cu_TopCopperPlate", "TopCopperPlate")],
-        "visible": True,
-    })
+    # Top copper plate (253 PMT holes, same positions as top PMT array)
+    volumes.append(_copper_plate_with_holes(
+        name="TopCopperPlate",
+        g4name="Cu_TopCopperPlate",
+        plate_r=round(0.5 * tp["TopCopperPlateDiameter"], 3),
+        plate_h=round(tp["TopCopperPlateHeight"], 3),
+        n_holes=253,
+        offset_z=round(top_cu_offsetZ, 3),
+        parent="LXeVolume",
+    ))
 
-    # Bottom copper plate
-    volumes.append({
-        "name": "BotCopperPlate",
-        "g4name": "Cu_BotCopperPlate",
-        "type": "cylinder",
-        "material": "G4_Cu",
-        "dimensions": {
-            "radius": round(0.5 * tp["BotCopperPlateDiameter"], 3),
-            "height": round(tp["BotCopperPlateHeight"], 3),
-        },
-        "placements": [placement(0, 0, round(bot_cu_z, 3),
-                                 "LXeVolume", "Cu_BotCopperPlate", "BotCopperPlate")],
-        "visible": True,
-    })
+    # Bottom copper plate (241 PMT holes, same positions as bottom PMT array)
+    volumes.append(_copper_plate_with_holes(
+        name="BotCopperPlate",
+        g4name="Cu_BotCopperPlate",
+        plate_r=round(0.5 * tp["BotCopperPlateDiameter"], 3),
+        plate_h=round(tp["BotCopperPlateHeight"], 3),
+        n_holes=241,
+        offset_z=round(bot_cu_z, 3),
+        parent="LXeVolume",
+    ))
 
     # Field shaper wires — single assembly placed once, with 71 wire components
     fs_radius = round(0.5 * tp["TpcWallDiameter"] + tp["TpcWallThickness"] + 2.0, 3)

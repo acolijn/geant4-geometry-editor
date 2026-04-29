@@ -148,7 +148,7 @@ const collectDescendants = (assemblyName, volumes) => {
 
       // Skip compound children – they have their own renderers (UnionObject, etc.)
       // But still continue BFS through them so their descendants can be collected.
-      if (child.type === 'assembly' || child.type === 'union' || child.type === 'subtraction') {
+      if (child.type === 'assembly' || child.type === 'union') {
         return;
       }
 

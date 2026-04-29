@@ -1,66 +1,53 @@
 # Geometry Tree
 
-The Geometry Tree provides a hierarchical view of all geometry objects in your design. It allows you to navigate, select, and organize your geometry components.
+The Geometry Tree provides a hierarchical view of all geometry objects in your design.
 
 ## Overview
 
-The Geometry Tree displays your geometry in a tree structure, with the World volume at the top level and all other volumes organized according to their parent-child relationships. This representation makes it easy to understand the structure of complex geometries.
+The tree is built from the `placements[].parent` fields in the JSON. The World volume is at the root; every volume is shown under its parent volume. Display group folders (`_displayGroup`) group related volumes under a named virtual folder inside their parent.
 
-## Features
+## Tree structure rules
 
-### Hierarchical Display
+- Each volume appears once per placement, under its `placement.parent`.
+- A `_displayGroup` folder is created as a virtual child of the parent volume. It groups all placements of volumes with the same display group under that parent.
+- Display group folders are shown only at the highest matching parent level — they are not duplicated down the hierarchy.
+- Assembly instances and boolean volumes appear as expandable nodes whose children are their components.
 
-- **World Volume**: The top-level container for all geometry objects
-- **Parent-Child Relationships**: Objects are nested according to their placement in the geometry
-- **Expandable Nodes**: Click the arrow next to a node to expand or collapse its children
-- **Visual Indicators**: Icons indicate the type of each geometry object (box, sphere, cylinder, etc.)
-
-### Selection
-
-- Click on any item in the tree to select it
-- The selected item will be highlighted in the 3D Viewer
-- The properties of the selected item will be displayed in the Properties Tab
-
-### Organization
-
-The Geometry Tree organizes objects based on their relationships:
-
-- **Physical Volumes**: Standard geometry objects placed in the World or other volumes
-- **Assemblies**: Groups of objects that can be manipulated as a single unit
-- **Boolean Operations**: Objects created through union, subtraction, or intersection operations
-- **Replicas**: Multiple copies of an object arranged in a pattern
-
-### Context Menu
-
-Right-click on any item in the Geometry Tree to access a context menu with additional options:
-
-- **Delete**: Remove the selected object and its children
-- **Duplicate**: Create a copy of the selected object
-- **Add to Assembly**: Add the selected object to an existing assembly
-- **Export Object**: Export the selected object and its children as a JSON file
-- **Update Assemblies**: Update all instances of an assembly with changes made to one instance
-
-## Usage Tips
-
-- **Organizing Complex Geometries**: Use assemblies to group related objects and manage complexity
-- **Finding Objects**: Expand and collapse nodes to locate specific objects in complex geometries
-- **Bulk Operations**: Select a parent node to perform operations on multiple objects at once
-- **Visibility Control**: Toggle the visibility of objects or groups of objects
-
-## Example
-
-A typical Geometry Tree might look like this:
+### XENONnT example (simplified)
 
 ```
 World
-├── Detector
-│   ├── Crystal1
-│   ├── Crystal2
-│   └── Housing
-├── Support Structure
-│   ├── Base
-│   └── Frame
-└── Shielding
+└── WaterTank
+    └── Water
+        ├── 📁 Cryostats
+        │   └── OuterCryostat → OuterCryostatVacuum → InnerCryostat
+        │       ├── LXeVolume
+        │       │   ├── 📁 TPC
+        │       │   │   └── BellPlate, TPCWall, FieldShaper_0..33 ...
+        │       │   └── GXeVolume
+        │       │       └── 📁 PMTs
+        │       │           └── TopPMT_0..252
+        │       └── 📁 PMTs
+        │           └── BotPMT_0..240
+        ├── 📁 Support Structure
+        │   └── FloorLeg_1..4, HorizontalBeam_1..8 ...
+        ├── 📁 Neutron Veto
+        │   └── nVSidePMT_0..119
+        └── 📁 Muon Veto
+            └── mVetoTopPMT_0..83
 ```
 
-In this example, "Detector" and "Support Structure" are parent volumes that contain other volumes. Clicking on "Crystal1" would select that specific object, while expanding "Support Structure" would reveal its child objects "Base" and "Frame".
+## Selection
+
+- Click a tree node to select it. The 3D Viewer highlights the object and the Properties Tab shows its properties.
+- Assemblies and boolean volumes show their component tree when expanded.
+
+## Context menu
+
+Right-click any tree node to access:
+
+| Action | Description |
+|--------|-------------|
+| **Add Placement** | Add a new placement of this volume at a default position |
+| **Delete** | Remove this placement (and volume definition if it was the last placement) |
+| **Export Object** | Export the volume definition (with components) as a `.json` file |
